@@ -1493,7 +1493,7 @@ function aiBgComposite(shot,bgUrl){
     return geminiImage([
       {inline_data:{mime_type:"image/jpeg",data:toB64(shot,1408)}},
       {inline_data:{mime_type:"image/jpeg",data:toB64(bg,1024)}},
-      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify, redraw or alter them; preserve the facial detail pixel-faithfully even if the face is small in the frame (full-body shot). Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph, and keep the scene's elements BEHIND the person — nothing from the background may overlap or cover any part of the person. Keep the same framing and camera angle as the first image. Output only the final photo."}
+      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify, redraw or alter them; preserve the facial detail pixel-faithfully even if the face is small in the frame (full-body shot). Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph, and keep the scene's elements BEHIND the person — nothing from the background may overlap or cover any part of the person. If the scene already contains people, keep them completely unchanged (same faces, same positions) and place the new person BESIDE them, standing naturally next to them without covering them. Keep the same framing and camera angle as the first image. Output only the final photo."}
     ],shot.width,shot.height);
   });
 }
@@ -1637,7 +1637,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.16 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.16.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1989,7 +1989,7 @@ function buildBgStrip(){
     }
     thumbBtn("Yok",null,function(){bgSel=null;shotsBg=null;compose();},!bgSel);
     bgs.forEach(function(r){
-      thumbBtn(r.name.slice(0,10),r.dataUrl,function(){applyBg(r)},bgSel===r.id);
+      thumbBtn(r.name.replace(/^tek[_-]/i,"").slice(0,10),r.dataUrl,function(){applyBg(r)},bgSel===r.id);
     });
   });
 }
