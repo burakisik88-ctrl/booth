@@ -306,6 +306,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="pwrap"><div class="print"><div class="badge" id="aiBadge" hidden>✨ AI</div><img id="previewImg" alt="Baskı önizlemesi"></div></div>
         <div class="opts">
           <button class="btn ghost" id="aiBtn" hidden>✨ AI Dönüşüm</button>
+          <div id="frWrap" hidden><div class="lbl">Çerçeve</div><div class="fstrip" id="frStrip"></div></div>
           <div id="bgWrap" hidden><div class="lbl">Arka Plan</div><div class="fstrip" id="bgStrip"></div><div class="bgbusy" id="bgBusy" hidden><i></i><span>Arka plan uygulanıyor…</span></div></div>
           <div><div class="lbl">Filtre</div><div class="fstrip" id="filterStrip"></div></div>
           <div><div class="lbl">Kaç adet basalım?</div><div class="chips" id="copyChips"></div></div>
@@ -531,6 +532,7 @@ h1 em{font-style:italic;color:var(--amber)}
             <input type="file" id="libBgFile" accept="image/*" multiple hidden>
           </div>
           <div id="libBgList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div class="sw"><div class="t">Misafir çerçeve seçebilsin<div class="note">Kapalıysa "Kullan" ile seçtiğin çerçeve sabittir</div></div><div class="tg" id="tgFrChoice"><i></i></div></div>
           <div class="sw"><div class="t">Misafir arka plan seçebilsin<div class="note">Çekimden sonra kişi fotoğraftan ayrılıp seçilen fona oturtulur. İnternet gerektirir.</div></div><div class="tg" id="tgBg"><i></i></div></div>
         </div>
 
@@ -610,7 +612,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,
-  bgOn:true,cldName:"",cldPreset:"",pngText:true,
+  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -1130,8 +1132,8 @@ function fitFont(x,str,maxW,size,fam,weight,style){
       if(x.measureText(str).width<=maxW||size<=11)break; size-=2; }while(true);
   return size;
 }
-function layoutFor(id){
-  var f=S.frame,strip=(id==="serit");
+function layoutFor(id,fo){
+  var f=fo||S.frame,strip=(id==="serit");
   if(f==="kongre")return {t:strip?104:200,b:strip?168:300,s:strip?18:40,solid:true};
   if(f==="kenar") return {t:strip?18:56,b:strip?150:300,s:strip?18:56,solid:true};
   if(f==="bant")  return {t:0,b:strip?150:(id==="tek"?0:300),s:strip?18:40,solid:true};
@@ -1187,12 +1189,14 @@ function placeGrid(x,sh,cols,rows,cx0,cy0,cw,chh,ar){
 }
 var composed="";
 function showReview(){
-  compose();buildFilterStrip();buildBgStrip();
+  compose();buildFilterStrip();buildBgStrip();buildFrameStrip();
   $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}));
   go("review");
 }
+var gFrame=null,gFrameId=null;
 function composeOn(x,id,sh){
-  var lay=layoutFor(id),f=S.frame;
+  var f=gFrame?"png":S.frame;
+  var lay=layoutFor(id,f);
   x.fillStyle=(f==="yok"||f==="png")?"#12100E":S.bandBg;
   x.fillRect(0,0,W,H);
   if(id==="serit"){
@@ -1225,8 +1229,9 @@ function composeOn(x,id,sh){
     else placeGrid(x,sh,2,2,cx0,cy0,cw,chh,3/4);
     if(lay.b>0)drawFooter(x,0,H-lay.b,W,lay.b,false,S.bandFg);
   }
-  if(S.frame==="png"&&overlays[id])x.drawImage(overlays[id],0,0,W,H);
-  if(S.frame==="png"&&S.pngText){
+  var ovx=gFrame||overlays[id];
+  if(f==="png"&&ovx)x.drawImage(ovx,0,0,W,H);
+  if(f==="png"&&S.pngText){
     if(id==="tek")drawFooter(x,0,H-330,W,300,false,"#F6F0E6");
     else if(id==="kare4"){
       var g4=x.createLinearGradient(0,H-190,0,H);
@@ -1254,7 +1259,7 @@ function chips(){
     b.onclick=function(){copies=n;chips();};c.appendChild(b);
   });
 }
-$("#retakeBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiShots=[];bgSel=null;shotsBg=null;copies=1;chips();beginSeq(mode)};
+$("#retakeBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiShots=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;copies=1;chips();beginSeq(mode)};
 
 /* ---------- AI dönüşüm ---------- */
 function aiState(st){
@@ -1440,7 +1445,7 @@ function drawQR(text){
     x.fillText("QR hazırlanamadı",cv.width/2,cv.height/2);
   }
 }
-$("#againBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiShots=[];bgSel=null;shotsBg=null;copies=1;chips();go("mode")};
+$("#againBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiShots=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;copies=1;chips();go("mode")};
 $("#doneBtn").onclick=function(){go("attract")};
 var autoT=null;
 function autoBack(sec){
@@ -1541,10 +1546,10 @@ function fillAdmin(){
   ovNote();drawPreviews();
   tg($("#tgAi"),S.aiOn);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
   buildStyleRows();refreshProfUI();renderLib();
-  tg($("#tgBg"),S.bgOn);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;
+  tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.6.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.7 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1613,6 +1618,7 @@ function makeDummy(){
 }
 function drawPreviews(){
   if(!$("#prevTek"))return;
+  var keepG=gFrame;gFrame=null;
   var d=makeDummy();
   [["#prevTek","tek"],["#prevSerit","serit"],["#prevKare","kare4"]].forEach(function(p){
     var cv=$(p[0]);if(!cv)return;
@@ -1621,6 +1627,7 @@ function drawPreviews(){
     var px=cv.getContext("2d");px.clearRect(0,0,cv.width,cv.height);
     px.drawImage(big,0,0,cv.width,cv.height);
   });
+  gFrame=keepG;
 }
 $("#enhDemo").onclick=function(){$("#enhFile").click()};
 $("#enhFile").addEventListener("change",function(){
@@ -1709,6 +1716,7 @@ $("#libBgFile").addEventListener("change",function(){
   })(0);
 });
 $("#tgBg").onclick=function(){S.bgOn=!S.bgOn;tg(this,S.bgOn);save()};
+$("#tgFrChoice").onclick=function(){S.frameChoice=!S.frameChoice;tg(this,S.frameChoice);save()};
 $("#tgPngText").onclick=function(){S.pngText=!S.pngText;tg(this,S.pngText);save();drawPreviews()};
 
 /* ---------- arka plan değiştirme (segmentasyon) ---------- */
@@ -1771,6 +1779,40 @@ function bgComposite(shot,bgUrl){
   });
 }
 var bgSel=null,shotsBg=null;
+function buildFrameStrip(){
+  var wrap=$("#frWrap"),strip=$("#frStrip");
+  if(!wrap||!mode)return;
+  libAll(function(list){
+    var frs=list.filter(function(r){return r.kind==="frame"&&r.mode===mode.id});
+    if(!S.frameChoice||!frs.length){wrap.hidden=true;return}
+    wrap.hidden=false;strip.innerHTML="";
+    function mk(label,rec,on){
+      var t=document.createElement("button");t.className="fthumb"+(on?" on":"");
+      var cv=document.createElement("canvas");cv.width=84;cv.height=112;
+      var x=cv.getContext("2d");
+      x.fillStyle="#8a8178";x.fillRect(0,0,84,112);
+      x.fillStyle="#6b635b";x.beginPath();x.arc(42,44,17,0,7);x.fill();
+      x.beginPath();x.ellipse(42,102,26,34,0,Math.PI,0);x.fill();
+      if(rec){var im=new Image();im.onload=function(){x.drawImage(im,0,0,84,112)};im.src=rec.dataUrl;}
+      else{x.strokeStyle="rgba(243,237,228,.5)";x.lineWidth=3;x.strokeRect(4,4,76,104);}
+      var sp=document.createElement("span");sp.textContent=label;
+      t.appendChild(cv);t.appendChild(sp);
+      t.onclick=function(){
+        strip.querySelectorAll(".fthumb").forEach(function(o){o.classList.remove("on")});
+        t.classList.add("on");
+        if(!rec){gFrame=null;gFrameId=null;compose();}
+        else{
+          var im=new Image();
+          im.onload=function(){gFrame=im;gFrameId=rec.id;compose();};
+          im.src=rec.dataUrl;
+        }
+      };
+      strip.appendChild(t);
+    }
+    mk("Standart",null,!gFrameId);
+    frs.forEach(function(r){mk(r.name.slice(0,10),r,gFrameId===r.id)});
+  });
+}
 function buildBgStrip(){
   var wrap=$("#bgWrap"),strip=$("#bgStrip");
   if(!wrap)return;
