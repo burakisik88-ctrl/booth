@@ -444,6 +444,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="grp">
           <h3>Çekim</h3>
           <div class="fld"><div class="lbl">Geri sayım (saniye)</div><input type="number" id="fCount" min="1" max="10"></div>
+          <div class="sw"><div class="t">Şerit: 8 farklı çekim<div class="note">Kapalıyken 4 çekim yapılır, iki eş kopya basılır (klasik: kes, biri sende biri onda)</div></div><div class="tg" id="tgSerit8"><i></i></div></div>
           <div class="sw"><div class="t">Ayna görüntüsü basılsın<div class="note">Kapalıysa baskı gerçek yönde çıkar</div></div><div class="tg" id="tgMirror"><i></i></div></div>
           <div class="sw"><div class="t">Ses</div><div class="tg" id="tgSound"><i></i></div></div>
         </div>
@@ -618,7 +619,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,
-  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,
+  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -781,6 +782,7 @@ var mode=null,shots=[],shotsEnh=[],timer=null;
 function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
   mode=m;shots=[];shotsEnh=[];
+  if(m.id==="serit")m.shots=S.serit8?8:4;
   filt="dogal";aiShots=[];aiSel=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;chips();
   go("shoot");
   $("#shootTitle").textContent=m.name;
@@ -1144,27 +1146,29 @@ function layoutFor(id,fo){
   if(f==="kongre")return {t:strip?104:200,b:strip?168:300,s:strip?18:40,solid:true};
   if(f==="kenar") return {t:strip?18:56,b:strip?150:300,s:strip?18:56,solid:true};
   if(f==="bant")  return {t:0,b:strip?150:(id==="tek"?0:300),s:strip?18:40,solid:true};
-  return {t:0,b:(f==="png"&&strip)?140:0,s:strip?18:0,solid:false};
+  if(f==="png")return {t:0,b:strip?150:((id==="kare4"&&S.pngText)?200:0),s:strip?18:0,solid:false};
+  return {t:0,b:0,s:strip?18:0,solid:false};
 }
 /* alt bant: başlık + tarih/alt satır + logolar */
 function drawFooter(x,bx,by,bw,bh,small,dark){
   var pad=small?14:34,cx=bx+bw/2;
+  var s1base=small?30:50,s2base=small?17:24;
   var line1=(S.frame==="kongre")?(S.botText||S.evt||""):(S.evt||"");
   var line2=(S.frame==="kongre")?[S.date,S.sub].filter(Boolean).join("   ·   ")
                                 :[S.date,S.sub].filter(Boolean).join("   ·   ");
   var logos=[logoImg,logoImg2].filter(Boolean);
-  var lh=small?bh*.42:bh*.34,used=0,i,lw;
+  var lh=small?bh*.44:bh*.36,used=0,i,lw;
   x.textAlign="center";x.textBaseline="alphabetic";
   var avail=bw-2*pad-(logos.length?(logos.length*(lh*1.6)+pad):0);
-  var s1=small?26:44;
+  var s1=s1base;
   s1=fitFont(x,line1,avail,s1,"'Instrument Serif',Georgia,serif","400","italic");
   x.fillStyle=dark;
   var ty=by+bh*(small?.52:.46);
   x.fillText(line1,cx,ty);
   if(line2){
-    var s2=small?15:22;
+    var s2=s2base;
     fitFont(x,line2,avail,s2,"Figtree,-apple-system,sans-serif","500","");
-    x.globalAlpha=.72;x.fillText(line2,cx,ty+(small?22:38));x.globalAlpha=1;
+    x.globalAlpha=.72;x.fillText(line2,cx,ty+(small?24:42));x.globalAlpha=1;
   }
   for(i=0;i<logos.length;i++){
     lw=lh*(logos[i].width/logos[i].height);
@@ -1215,7 +1219,7 @@ function composeOn(x,id,sh){
       var iy=lay.t,ih=H-lay.t-lay.b,pad=lay.s;
       if(f==="kongre")drawTopBand(x,sx0,0,sw,lay.t,true);
       var gap=12,cellW=sw-2*pad,cellH=(ih-gap*3-(f==="kenar"?pad:0))/4;
-      for(var i=0;i<4;i++)cover(x,sh[i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
+      for(var i=0;i<4;i++)cover(x,sh[(sh.length>=8?st2*4:0)+i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
       if(lay.b>0&&f!=="png"){
         drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
       }
@@ -1243,10 +1247,7 @@ function composeOn(x,id,sh){
   if(f==="png"&&S.pngText){
     if(id==="tek")drawFooter(x,0,H-330,W,300,false,"#F6F0E6");
     else if(id==="kare4"){
-      var g4=x.createLinearGradient(0,H-190,0,H);
-      g4.addColorStop(0,"rgba(10,8,7,0)");g4.addColorStop(1,"rgba(10,8,7,.75)");
-      x.fillStyle=g4;x.fillRect(0,H-190,W,190);
-      drawFooter(x,0,H-160,W,150,true,"#F6F0E6");
+      drawFooter(x,0,H-195,W,185,false,"#F6F0E6");
     }
     else if(id==="serit"&&lay.b>0){
       for(var sp=0;sp<2;sp++){
@@ -1377,16 +1378,14 @@ function runStyle(st){
     setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},6000);
   });
 }
-function aiTransform(src,st){
-  /* kaynağı küçült: uzun kenar 1024 */
-  var sc=1024/Math.max(src.width,src.height);if(sc>1)sc=1;
-  var c=document.createElement("canvas");c.width=Math.round(src.width*sc);c.height=Math.round(src.height*sc);
-  c.getContext("2d").drawImage(src,0,0,c.width,c.height);
-  var b64=c.toDataURL("image/jpeg",.85).split(",")[1];
-  var body={contents:[{parts:[
-    {inline_data:{mime_type:"image/jpeg",data:b64}},
-    {text:st.p+" Portrait orientation, high quality, photorealistic rendering of the style."}
-  ]}]};
+function toB64(img,max){
+  var sc=max/Math.max(img.width,img.height);if(sc>1)sc=1;
+  var c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  return c.toDataURL("image/jpeg",.85).split(",")[1];
+}
+function geminiImage(parts,outW,outH){
+  var body={contents:[{parts:parts}]};
   var ctrl=new AbortController();
   var tmo=setTimeout(function(){ctrl.abort()},75000);
   return fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key="+encodeURIComponent(S.aiKey),
@@ -1412,9 +1411,9 @@ function aiTransform(src,st){
     return new Promise(function(res,rej){
       var im=new Image();
       im.onload=function(){
-        var out=document.createElement("canvas");out.width=1200;out.height=1600;
-        var x=out.getContext("2d");x.fillStyle="#111";x.fillRect(0,0,1200,1600);
-        cover(x,im,0,0,1200,1600);
+        var out=document.createElement("canvas");out.width=outW;out.height=outH;
+        var x=out.getContext("2d");x.fillStyle="#111";x.fillRect(0,0,outW,outH);
+        cover(x,im,0,0,outW,outH);
         res(out);
       };
       im.onerror=function(){rej(new Error("görsel çözülemedi"))};
@@ -1425,6 +1424,24 @@ function aiTransform(src,st){
     clearTimeout(tmo);
     if(e.name==="AbortError")throw new Error("süre aşıldı, bağlantıyı kontrol et");
     throw e;
+  });
+}
+function aiTransform(src,st){
+  return geminiImage([
+    {inline_data:{mime_type:"image/jpeg",data:toB64(src,1024)}},
+    {text:st.p+" Preserve the person's exact identity: same gender presentation, age, skin tone, body type and facial features — do not change who they are. Portrait orientation, high quality, photorealistic rendering of the style."}
+  ],1200,1600);
+}
+function aiBgComposite(shot,bgUrl){
+  var pb=bgImgCache[bgUrl]?Promise.resolve(bgImgCache[bgUrl]):new Promise(function(res,rej){
+    var im=new Image();im.onload=function(){bgImgCache[bgUrl]=im;res(im)};im.onerror=function(){rej(new Error("fon okunamadı"))};im.src=bgUrl;
+  });
+  return pb.then(function(bg){
+    return geminiImage([
+      {inline_data:{mime_type:"image/jpeg",data:toB64(shot,1024)}},
+      {inline_data:{mime_type:"image/jpeg",data:toB64(bg,1024)}},
+      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify or alter them. Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph. Keep the same framing and camera angle as the first image. Output only the final photo."}
+    ],shot.width,shot.height);
   });
 }
 
@@ -1555,7 +1572,7 @@ function fillAdmin(){
   $("#fEvt").value=S.evt;$("#fDate").value=S.date;$("#fSub").value=S.sub;
   $("#fBrand").value=S.brand;$("#fTag").value=S.tag;
   $("#fCount").value=S.count;
-  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);
+  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);tg($("#tgSerit8"),S.serit8);
   $("#stShots").textContent=S.shots;$("#stPrints").textContent=S.prints;$("#stSheets").textContent=S.sheets;
   $("#logoPrev").style.display=S.logo?"block":"none";if(S.logo)$("#logoPrev").src=S.logo;
   $("#logo2Prev").style.display=S.logo2?"block":"none";if(S.logo2)$("#logo2Prev").src=S.logo2;
@@ -1567,7 +1584,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.9.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.10 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1575,6 +1592,7 @@ bindTxt("#fBrand","brand");bindTxt("#fTag","tag");
 $("#fCount").addEventListener("input",function(){S.count=Math.max(1,Math.min(10,+this.value||3));save()});
 $("#tgMirror").onclick=function(){S.mirror=!S.mirror;tg(this,S.mirror);save()};
 $("#tgSound").onclick=function(){S.sound=!S.sound;tg(this,S.sound);save()};
+$("#tgSerit8").onclick=function(){S.serit8=!S.serit8;tg(this,S.serit8);save()};
 $("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save()};
 $("#logoBtn").onclick=function(){$("#logoFile").click()};
 $("#logoFile").addEventListener("change",function(){
@@ -1875,7 +1893,14 @@ function applyBg(rec){
   bgSel=rec.id;
   $("#bgBusy").hidden=false;
   var mine=shotsEnh.slice();
-  Promise.all(mine.map(function(c){return bgComposite(c,rec.dataUrl)})).then(function(outs){
+  var useAi=!!(S.aiOn&&S.aiKey);
+  var bsp=document.querySelector("#bgBusy span");
+  if(bsp)bsp.textContent=useAi?"AI sahneye yerleştiriyor… (10-15 sn)":"Arka plan uygulanıyor…";
+  Promise.all(mine.map(function(c){
+    return useAi
+      ? aiBgComposite(c,rec.dataUrl).catch(function(){return bgComposite(c,rec.dataUrl)})
+      : bgComposite(c,rec.dataUrl);
+  })).then(function(outs){
     if(bgSel!==rec.id)return;
     shotsBg=outs;aiShots=[];
     $("#bgBusy").hidden=true;
