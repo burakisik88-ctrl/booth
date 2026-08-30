@@ -582,6 +582,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="grp">
           <h3>AI Dönüşüm</h3>
           <div class="sw"><div class="t">Misafire açık<div class="note">Tek Kare modunda görünür</div></div><div class="tg" id="tgAi"><i></i></div></div>
+          <div class="sw"><div class="t">İnce rötuş<div class="note">AI üretimlerde profesyonel dokunuş: iyi ışık, temiz cilt, hafif fit duruş — abartısız, kişi kendisi kalır</div></div><div class="tg" id="tgFlatter"><i></i></div></div>
           <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="text" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
           <div id="styleList" style="display:flex;flex-direction:column;gap:10px"></div>
           <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="aiTestBtn">Anahtarı test et</button></div>
@@ -620,7 +621,7 @@ var W=1200,H=1800; // 10x15cm @ ~300dpi
 
 /* ---------- ayarlar ---------- */
 var DEFSTYLES=[
- {id:"hero",e:"\u{1F9B8}",n:"Süper Kahraman",on:true,p:"Transform this person into a comic-book superhero wearing a heroic costume and cape, dramatic city skyline at dusk behind them, dynamic rim lighting. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"hero",e:"\u{1F9B8}",n:"Süper Kahraman",on:true,p:"Transform this person into an ORIGINAL comic-book superhero with a heroic costume and cape designed to suit this specific person, dramatic city skyline at dusk behind them, dynamic rim lighting. Do NOT copy any existing famous superhero costume, logo or colors. Keep the same face clearly recognizable, same pose and framing.",v:["a cosmic guardian with glowing star energy and a deep blue-gold suit","a storm hero with wind-swept cape and lightning crackling around the fists","a night sentinel in a sleek dark armored suit on a rooftop","a solar champion in radiant golden-red armor at sunrise","a speedster in a streamlined suit with dynamic motion streaks","an ice-powered hero with crystalline armor details and frosty air","a nature-powered hero with a vivid emerald suit and organic patterns"]},
  {id:"y70",e:"\u{1F57A}",n:"70'ler",on:true,p:"Restyle this photo as an authentic 1970s studio portrait: seventies fashion and hairstyle, warm faded film colors, vintage backdrop. Keep the same face clearly recognizable, same pose and framing."},
  {id:"y90",e:"\u{1F4FC}",n:"90'lar",on:true,p:"Restyle this photo as a 1990s school-portrait style studio photo: nineties fashion and hair, laser-grid backdrop, direct flash look. Keep the same face clearly recognizable, same pose and framing."},
  {id:"comic",e:"\u{1F4A5}",n:"Çizgi Roman",on:true,p:"Redraw this photo as a bold comic-book illustration with ink outlines, halftone shading and vivid colors. Keep the same face recognizable, same pose and framing."},
@@ -640,7 +641,7 @@ var DEFSTYLES=[
 var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.08.2026",
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
-  enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,
+  enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,flatter:true,
   bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
@@ -649,7 +650,7 @@ if(!S.aiStyles||!S.aiStyles.length)S.aiStyles=JSON.parse(JSON.stringify(DEFSTYLE
 DEFSTYLES.forEach(function(d){
   var s=null;for(var i2=0;i2<S.aiStyles.length;i2++)if(S.aiStyles[i2].id===d.id)s=S.aiStyles[i2];
   if(!s)S.aiStyles.push(JSON.parse(JSON.stringify(d)));
-  else if(!s.cust&&s.p!==d.p)s.p=d.p;
+  else if(!s.cust){if(s.p!==d.p)s.p=d.p;if(d.v)s.v=d.v;}
 });
 function save(){try{localStorage.setItem("booth.v1",JSON.stringify(S));}catch(e){}}
 
@@ -1368,7 +1369,7 @@ $("#aiGo").onclick=function(){
   var done=0;
   $("#aiMsg").textContent="0/"+jobs.length+" görsel üretildi…";
   Promise.all(jobs.map(function(j){
-    return aiTransform(shotsEnh[j.i],j.st).then(function(c){
+    return aiStyled(shotsEnh[j.i],j.st).then(function(c){
       aiShots[j.i]=c;done++;
       $("#aiMsg").textContent=done+"/"+jobs.length+" görsel üretildi…";
     });
@@ -1393,7 +1394,7 @@ function runStyle(st){
   if(!shotsEnh[0])return;
   aiState("work");
   $("#aiMsg").textContent="\""+st.n+"\" hazırlanıyor — 15-20 saniye sürebilir…";
-  aiTransform(shotsEnh[0],st).then(function(c){
+  aiStyled(shotsEnh[0],st).then(function(c){
     aiResult=c;aiShots=[c];
     $("#aiImg").src=c.toDataURL("image/jpeg",.9);
     aiState("res");
@@ -1455,10 +1456,18 @@ function geminiImage(parts,outW,outH){
     throw e;
   });
 }
+var aiCache=new Map();
+function aiStyled(src,st){
+  var cc=aiCache.get(src)||{};
+  if(cc[st.id])return Promise.resolve(cc[st.id]);
+  return aiTransform(src,st).then(function(c){cc[st.id]=c;aiCache.set(src,cc);return c});
+}
 function aiTransform(src,st){
+  var extra=(st.v&&st.v.length)?(" Hero concept for this image: "+st.v[Math.floor(Math.random()*st.v.length)]+".") : "";
+  var ret=S.flatter?" Render the person at their best, like a professional photographer would: flattering studio-quality light, smooth healthy skin, confident posture, a subtly fit look — very natural, never exaggerated.":"";
   return geminiImage([
-    {inline_data:{mime_type:"image/jpeg",data:toB64(src,1024)}},
-    {text:st.p+" Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Replace the entire background consistently with the style. High quality rendering."}
+    {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
+    {text:st.p+extra+" Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Keep the face detailed and crisp even if it is small in the frame. Replace the entire background consistently with the style."+ret+" High quality rendering."}
   ],src.width,src.height);
 }
 function aiBgComposite(shot,bgUrl){
@@ -1467,9 +1476,9 @@ function aiBgComposite(shot,bgUrl){
   });
   return pb.then(function(bg){
     return geminiImage([
-      {inline_data:{mime_type:"image/jpeg",data:toB64(shot,1024)}},
+      {inline_data:{mime_type:"image/jpeg",data:toB64(shot,1408)}},
       {inline_data:{mime_type:"image/jpeg",data:toB64(bg,1024)}},
-      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify or alter them. Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph. Keep the same framing and camera angle as the first image. Output only the final photo."}
+      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify, redraw or alter them; preserve the facial detail pixel-faithfully even if the face is small in the frame (full-body shot). Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph, and keep the scene's elements BEHIND the person — nothing from the background may overlap or cover any part of the person. Keep the same framing and camera angle as the first image. Output only the final photo."}
     ],shot.width,shot.height);
   });
 }
@@ -1608,12 +1617,12 @@ function fillAdmin(){
   $("#fFrame").value=S.frame;$("#fTop").value=S.topText;$("#fBot").value=S.botText;
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
-  tg($("#tgAi"),S.aiOn);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
+  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
   buildStyleRows();refreshProfUI();renderLib();
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.13 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.14 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1623,6 +1632,7 @@ $("#tgMirror").onclick=function(){S.mirror=!S.mirror;tg(this,S.mirror);save()};
 $("#tgSound").onclick=function(){S.sound=!S.sound;tg(this,S.sound);save()};
 $("#tgSerit8").onclick=function(){S.serit8=!S.serit8;tg(this,S.serit8);save()};
 $("#tgGuide").onclick=function(){S.guide=!S.guide;tg(this,S.guide);save()};
+$("#tgFlatter").onclick=function(){S.flatter=!(S.flatter!==false);tg(this,S.flatter);save()};
 $("#fBgMode").addEventListener("change",function(){S.bgMode=this.value;save()});
 $("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save()};
 $("#logoBtn").onclick=function(){$("#logoFile").click()};
@@ -1982,7 +1992,7 @@ function applyBg(rec){
     return bgComposite(c,rec.dataUrl).catch(function(){return c});
   })).then(function(outs){
     if(bgSel!==rec.id)return;
-    shotsBg=outs;aiShots=[];
+    shotsBg=outs; /* AI'lı kareler korunur: aiShots hücre bazında önceliklidir, silinmez */
     $("#bgBusy").hidden=true;
     compose();
     /* 2. adım: misafir bu fonda kaldıysa AI temiz birleştirme (önbelleğe yazılır) */
