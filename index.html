@@ -1456,7 +1456,7 @@ function fillAdmin(){
   buildStyleRows();refreshProfUI();renderLib();
   tg($("#tgBg"),S.bgOn);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.5.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.5.2 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1899,7 +1899,8 @@ $("#aiTestFile").addEventListener("change",function(){
   $("#aiTestNote").textContent="Test ediliyor ("+st.n+")… 15-20 sn";
   var t0=Date.now();
   fileToCanvas(f,3/4).then(function(c){return aiTransform(c,st)}).then(function(){
-    $("#aiTestNote").textContent="Çalıştı ✓ ("+Math.round((Date.now()-t0)/1000)+" sn). Anahtar geçerli, AI hazır.";
+    S.aiOn=true;save();tg($("#tgAi"),true);
+    $("#aiTestNote").textContent="Çalıştı ✓ ("+Math.round((Date.now()-t0)/1000)+" sn). Anahtar geçerli — AI misafire otomatik açıldı (üstteki düğmeden kapatabilirsin).";
   }).catch(function(e){
     $("#aiTestNote").textContent="Olmadı: "+((e&&e.message)||"hata")+".";
   });
