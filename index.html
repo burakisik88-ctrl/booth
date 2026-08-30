@@ -243,6 +243,7 @@ h1 em{font-style:italic;color:var(--amber)}
 
 #printArea{display:none}
 @page{size:100mm 150mm;margin:0}
+#duoGhost{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.38;pointer-events:none;z-index:4}
 #guideBox{position:absolute;inset:0;pointer-events:none;z-index:5}
 #guideBox i{position:absolute;left:50%;top:5%;transform:translateX(-50%);width:34%;height:88%;
   border:3px dashed rgba(246,240,230,.5);border-radius:120px 120px 26px 26px}
@@ -297,6 +298,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <img id="fileThumb" alt="" hidden>
         <div class="count" id="count"></div>
         <div class="flash" id="flash"></div>
+        <img id="duoGhost" hidden alt="">
         <div id="guideBox" hidden><i></i><span>Çizgiye geç · boydan kadraja gir</span></div>
       </div>
       <div class="shotdots" id="dots"></div>
@@ -658,6 +660,7 @@ function save(){try{localStorage.setItem("booth.v1",JSON.stringify(S));}catch(e)
 var cur="attract";
 function go(name){
   var el=$("#s-"+name); if(!el)return;
+  if(name==="mode")try{buildModes()}catch(e){}
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on")});
   el.classList.add("on"); cur=name; resetIdle();
   if(name==="attract"){applyBrand();stopSeq();}
@@ -802,14 +805,25 @@ function buildModes(){
     b.onclick=function(){beginSeq(m)};
     w.appendChild(b);
   });
+  /* duo_ fonları: her biri "birlikte çekim" kartı olur */
+  libAll(function(list){
+    list.filter(function(r){return r.kind==="bg"&&/^duo[_-]/i.test(r.name)}).forEach(function(r){
+      var b=document.createElement("button");b.className="card";
+      var nm=r.name.replace(/^duo[_-]/i,"").replace(/[_-]+/g," ").trim().toUpperCase().slice(0,16)||"BİRLİKTE";
+      b.innerHTML='<div class="thumb" style="grid-template-columns:1fr"><i style="background-image:url('+"'"+r.dataUrl+"'"+');background-size:cover;background-position:center"></i></div>'+
+        '<div class="cn">'+nm+' İLE</div><div class="shots">1 çekim</div><div class="cd">Sahnedeki boşluğa geç, hizalan — seni yanına yerleştirelim.</div>';
+      b.onclick=function(){beginSeq(MODES[0],r)};
+      w.appendChild(b);
+    });
+  });
 }
 buildModes();
 
 /* ---------- çekim akışı ---------- */
-var mode=null,shots=[],shotsEnh=[],timer=null;
+var mode=null,shots=[],shotsEnh=[],timer=null,duoRec=null;
 function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
-function beginSeq(m){
-  mode=m;shots=[];shotsEnh=[];
+function beginSeq(m,duo){
+  mode=m;shots=[];shotsEnh=[];duoRec=duo||null;
   if(m.id==="serit")m.shots=S.serit8?8:4;
   filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;chips();
   go("shoot");
@@ -824,7 +838,9 @@ function drawDots(){
   for(var i=0;i<mode.shots;i++){var s=document.createElement("i");if(i<shots.length)s.className="done";d.appendChild(s)}
   $("#recTxt").textContent=Math.min(shots.length+1,mode.shots)+" / "+mode.shots;
   $("#camFrame").classList.toggle("nomirror",!S.mirror);
-  var gb=$("#guideBox");if(gb)gb.hidden=!S.guide;
+  var gb=$("#guideBox");if(gb)gb.hidden=!S.guide&&!duoRec;
+  var dg=$("#duoGhost");
+  if(dg){dg.hidden=!duoRec;if(duoRec)dg.src=duoRec.dataUrl;}
   $("#camFrame").style.setProperty("--ar",mode.id==="serit"?"1.3333":"0.75");
 }
 function next(){
@@ -1230,8 +1246,9 @@ function placeGrid(x,sh,cols,rows,cx0,cy0,cw,chh,ar){
 var composed="";
 function showReview(){
   compose();buildFilterStrip();buildBgStrip();buildFrameStrip();
-  $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}));
+  $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}))||!!duoRec;
   go("review");
+  if(duoRec){var d=duoRec;setTimeout(function(){if(mode&&duoRec===d)applyBg(d);},150);}
 }
 var gFrame=null,gFrameId=null,gStd=false;
 function composeOn(x,id,sh){
@@ -1637,7 +1654,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.16.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.17 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1967,6 +1984,9 @@ function buildBgStrip(){
   if(!wrap)return;
   libAll(function(list){
     var bgs=list.filter(function(r){return r.kind==="bg"});
+    /* duo_ fonları fon şeridinde görünmez (kendi modu var); birlikte çekimde şerit tamamen kapalı */
+    if(duoRec){wrap.hidden=true;return}
+    bgs=bgs.filter(function(r){return !/^duo[_-]/i.test(r.name)});
     /* "tek_" ile başlayan fonlar yalnız Tek Kare modunda görünür */
     if(mode&&mode.id!=="tek")bgs=bgs.filter(function(r){return !/^tek[_-]/i.test(r.name)});
     /* AI uygulanmışsa fon seçimi kapalı — karışık sonuç olmasın (çerçeve ve filtre serbest) */
