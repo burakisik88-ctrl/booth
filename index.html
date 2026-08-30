@@ -642,7 +642,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,flatter:true,
-  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,
+  bgOn:false,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -1637,7 +1637,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.19 (sade) · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.19.1 (sade) · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
