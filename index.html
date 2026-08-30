@@ -1262,7 +1262,7 @@ function placeGrid(x,sh,cols,rows,cx0,cy0,cw,chh,ar){
 var composed="";
 function showReview(){
   compose();buildFilterStrip();buildBgStrip();buildFrameStrip();
-  $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}))||!!duoRec;
+  $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}));
   go("review");
   if(duoRec){var d=duoRec;setTimeout(function(){if(mode&&duoRec===d)applyBg(d);},150);}
 }
@@ -1698,7 +1698,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.18 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.18.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1989,6 +1989,7 @@ var bgSel=null,shotsBg=null;
 function buildFrameStrip(){
   var wrap=$("#frWrap"),strip=$("#frStrip");
   if(!wrap||!mode)return;
+  if(duoRec){wrap.hidden=true;return} /* birlikte çekimde çerçeve yok */
   libAll(function(list){
     var frs=list.filter(function(r){return r.kind==="frame"&&r.mode===mode.id});
     if(!S.frameChoice||!frs.length){wrap.hidden=true;return}
@@ -2065,6 +2066,8 @@ function applyBg(rec){
   $("#bgBusy").hidden=false;
   var mine=shotsEnh.slice();
   var bm=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
+  /* birlikte çekim: yeşil perde varsa onu kullan, yoksa temiz AI birleştirme (kaba cihaz kesimi değil) */
+  if(duoRec&&bm!=="chroma")bm="ai";
   var useAi=bm==="ai"&&!!(S.aiOn&&S.aiKey);
   var bsp=document.querySelector("#bgBusy span");
   if(bsp)bsp.textContent="Arka plan uygulanıyor…";
