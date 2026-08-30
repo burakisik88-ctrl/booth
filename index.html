@@ -1283,10 +1283,13 @@ function aiTransform(src,st){
     {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:ctrl.signal})
   .then(function(r){
     clearTimeout(tmo);
-    if(r.status===400||r.status===403)throw new Error("API anahtarı geçersiz görünüyor");
-    if(r.status===429)throw new Error("kota/limit doldu, biraz bekle");
-    if(!r.ok)throw new Error("servis hatası ("+r.status+")");
-    return r.json();
+    if(r.ok)return r.json();
+    return r.json().catch(function(){return {}}).then(function(j){
+      var gm=(j&&j.error&&j.error.message)?String(j.error.message).slice(0,160):"";
+      if(r.status===400||r.status===403)throw new Error("API anahtarı geçersiz görünüyor"+(gm?" — "+gm:""));
+      if(r.status===429)throw new Error("Google kota vermedi (429). Ücretsiz katmanda görsel modeli çoğu hesapta 0 kotalıdır — AI Studio'da Billing açılınca düzelir."+(gm?" Google: "+gm:""));
+      throw new Error("servis hatası ("+r.status+")"+(gm?" — "+gm:""));
+    });
   })
   .then(function(j){
     var parts=(((j.candidates||[])[0]||{}).content||{}).parts||[];
@@ -1453,7 +1456,7 @@ function fillAdmin(){
   buildStyleRows();refreshProfUI();renderLib();
   tg($("#tgBg"),S.bgOn);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.5 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.5.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
