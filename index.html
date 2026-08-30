@@ -30,6 +30,7 @@ body{margin:0;background:var(--ink);color:var(--text);font-family:var(--ui);
   overscroll-behavior:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
 img{max-width:100%}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,textarea,select{-webkit-user-select:text;user-select:text}
 
 #app{position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden;background:var(--ink)}
 .grain{position:fixed;inset:0;pointer-events:none;opacity:.055;z-index:60;background-repeat:repeat;background-size:150px 150px}
@@ -38,8 +39,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 
 .screen{position:absolute;inset:0;display:none;flex-direction:column;z-index:10}
 .screen.on{display:flex}
-.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:clamp(14px,2.4vh,26px);padding:var(--pad);text-align:center;position:relative;z-index:12}
+.stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;
+  gap:clamp(14px,2.4vh,26px);padding:var(--pad);text-align:center;position:relative;z-index:12;
+  overflow-y:auto;-webkit-overflow-scrolling:touch}
 
 /* ---- brand + type ---- */
 .mark{font-family:var(--disp);letter-spacing:.42em;text-indent:.42em;
@@ -149,7 +151,7 @@ h1 em{font-style:italic;color:var(--amber)}
   display:grid;place-items:center;font-size:20px;color:var(--muted)}
 
 /* ---- admin ---- */
-#admin .stage{justify-content:flex-start;overflow-y:auto;text-align:left;align-items:stretch}
+#s-admin .stage{justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;text-align:left;align-items:stretch}
 .panel{width:min(620px,100%);margin:0 auto;display:flex;flex-direction:column;gap:18px}
 .fld{display:flex;flex-direction:column;gap:8px}
 .fld input[type=text],.fld input[type=date],.fld input[type=number],.fld select{
@@ -1542,7 +1544,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.6 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.6.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
