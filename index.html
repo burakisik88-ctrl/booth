@@ -613,7 +613,13 @@ var DEFSTYLES=[
  {id:"pop",e:"\u{1F3A8}",n:"Pop Art",on:true,p:"Convert this photo into a pop-art screen-print style portrait with bold flat colors and graphic shapes. Keep the same face recognizable, same pose and framing."},
  {id:"neon",e:"\u{1F303}",n:"Neon Cyberpunk",on:true,p:"Restyle this photo as a cyberpunk portrait in a neon-lit futuristic city, teal and magenta lights, light rain. Keep the same face clearly recognizable, same pose and framing."},
  {id:"noir",e:"\u{1F3A9}",n:"Retro Stüdyo",on:true,p:"Restyle this photo as a 1950s black-and-white Hollywood glamour studio portrait with dramatic soft key light. Keep the same face clearly recognizable, same pose and framing."},
- {id:"royal",e:"\u{1F451}",n:"Kraliyet Portresi",on:true,p:"Transform this person into a regal renaissance royal portrait with ornate attire and a crown, palace background, painterly style. Keep the same face clearly recognizable, same pose and framing."}
+ {id:"royal",e:"\u{1F451}",n:"Kraliyet Portresi",on:true,p:"Transform this person into a regal renaissance royal portrait with ornate attire and a crown, palace background, painterly style. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y20",e:"\u{1F3A9}",n:"1920'ler",on:true,p:"Restyle this photo as an authentic 1920s portrait: elegant twenties fashion, art-deco studio backdrop, warm sepia film tones, soft vintage grain. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y50",e:"\u{1F3B8}",n:"50'ler Rock'n Roll",on:true,p:"Restyle this photo as a 1950s rock'n roll era portrait: fifties fashion and hairstyle, diner or jukebox backdrop, rich Kodachrome colors. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y80",e:"\u{1F4FB}",n:"80'ler Neon",on:true,p:"Restyle this photo as a 1980s portrait: eighties fashion and hair, synthwave neon-grid studio backdrop, vibrant airbrush colors. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y2000",e:"\u{1F4F1}",n:"Y2K 2000'ler",on:true,p:"Restyle this photo as an early-2000s Y2K era portrait: glossy futuristic silver-blue fashion, frosted tips or sleek hair, chrome and translucent plastic backdrop. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"sci",e:"\u{1F9EA}",n:"Dahi Bilim İnsanı",on:true,p:"Transform this person into a brilliant eccentric scientist in a vintage physics laboratory: lab coat, chalkboard full of equations behind them, glowing apparatus, dramatic warm lighting. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"astro",e:"\u{1F680}",n:"Astronot",on:true,p:"Transform this person into an astronaut on the moon surface: detailed space suit with the helmet visor open showing their face, Earth visible in the black sky behind. Keep the same face clearly recognizable, same pose and framing."}
 ];
 var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.08.2026",
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
@@ -624,6 +630,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
 if(!S.aiStyles||!S.aiStyles.length)S.aiStyles=JSON.parse(JSON.stringify(DEFSTYLES));
+DEFSTYLES.forEach(function(d){if(!S.aiStyles.some(function(s){return s.id===d.id}))S.aiStyles.push(JSON.parse(JSON.stringify(d)))});
 function save(){try{localStorage.setItem("booth.v1",JSON.stringify(S));}catch(e){}}
 
 /* ---------- ekran yönetimi ---------- */
@@ -1324,9 +1331,10 @@ function drawAiShots(){
   $("#aiGo").textContent=n?("Oluştur ("+n+" görsel)"):"Oluştur";
 }
 $("#aiPreset").onclick=function(){
-  var ids=["y70","y90","hero","comic"],k=0;
+  var ids=["y20","y50","y70","y80","y90","y2000","hero","comic"];
+  var open=S.aiStyles.filter(function(q){return q.on});
   aiSel=aiSel.map(function(_,i){
-    var st=S.aiStyles.filter(function(q){return q.id===ids[i%4]&&q.on})[0]||S.aiStyles.filter(function(q){return q.on})[i%4];
+    var st=S.aiStyles.filter(function(q){return q.id===ids[i%ids.length]&&q.on})[0]||open[i%open.length];
     return st||null;
   });
   drawAiShots();
@@ -1584,7 +1592,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.10 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.11 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
