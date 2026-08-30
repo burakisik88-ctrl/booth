@@ -219,6 +219,20 @@ h1 em{font-style:italic;color:var(--amber)}
   font-family:var(--ui);min-height:54px;box-shadow:inset 0 0 0 1px var(--line);resize:vertical;width:100%}
 .mini{min-height:46px;padding:0 16px;font-size:13px}
 
+
+/* ---- panel erişimi + kütüphane + arka plan ---- */
+.gear{position:absolute;right:14px;bottom:14px;z-index:30;width:56px;height:56px;border-radius:50%;
+  display:grid;place-items:center;font-size:24px;color:var(--muted);opacity:.5;
+  box-shadow:inset 0 0 0 1.5px var(--line)}
+.gear:active{opacity:1}
+.librow{display:flex;align-items:center;gap:12px;background:var(--ink3);border-radius:12px;padding:10px 12px}
+.librow img{width:52px;height:70px;object-fit:cover;border-radius:6px;background:#fff;flex:none}
+.librow .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.librow .md{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber)}
+.librow button{flex:none}
+.bgbusy{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+.bgbusy i{width:18px;height:18px;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--amber);animation:spin 1s linear infinite;display:block}
+
 #printArea{display:none}
 @page{size:100mm 150mm;margin:0}
 @media print{
@@ -247,6 +261,7 @@ h1 em{font-style:italic;color:var(--amber)}
       <button class="btn lg wide" id="startBtn">BAŞLAMAK İÇİN DOKUN</button>
       <div class="hint"><span class="pulse"></span><span>Fotoğrafın 12 saniyede elinde</span></div>
     </div>
+    <button class="gear" id="gearBtn" aria-label="Yönetici paneli">⚙</button>
   </section>
 
   <!-- MODE -->
@@ -283,6 +298,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="pwrap"><div class="print"><div class="badge" id="aiBadge" hidden>✨ AI</div><img id="previewImg" alt="Baskı önizlemesi"></div></div>
         <div class="opts">
           <button class="btn ghost" id="aiBtn" hidden>✨ AI Dönüşüm</button>
+          <div id="bgWrap" hidden><div class="lbl">Arka Plan</div><div class="fstrip" id="bgStrip"></div><div class="bgbusy" id="bgBusy" hidden><i></i><span>Arka plan uygulanıyor…</span></div></div>
           <div><div class="lbl">Filtre</div><div class="fstrip" id="filterStrip"></div></div>
           <div><div class="lbl">Kaç adet basalım?</div><div class="chips" id="copyChips"></div></div>
           <button class="btn lg" id="printBtn">YAZDIR</button>
@@ -485,6 +501,25 @@ h1 em{font-style:italic;color:var(--amber)}
         </div>
 
         <div class="grp">
+          <h3>Kütüphane — kendi çerçeve ve arka planların</h3>
+          <div class="fld"><div class="lbl">Çerçeve yükle (PNG, 1200×1800, şeffaf zemin)</div>
+            <div class="row2">
+              <div class="fld"><select id="libFrMode"><option value="tek">Tek Kare</option><option value="serit">Çift Şerit</option><option value="kare4">Dörtlü</option></select></div>
+              <button class="btn ghost mini" id="libFrBtn">Çerçeve ekle</button>
+            </div>
+            <input type="file" id="libFrFile" accept="image/png,image/webp" hidden>
+          </div>
+          <div id="libFrList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div class="note">"Kullan" dediğin çerçeve o düzenin aktif çerçevesi olur ve çerçeve tipi otomatik "Yüklenen PNG"ye geçer.</div>
+          <div class="fld"><div class="lbl">Arka plan yükle (JPG/PNG — stüdyo fonu, marka duvarı vb.)</div>
+            <button class="btn ghost mini" id="libBgBtn">Arka plan ekle</button>
+            <input type="file" id="libBgFile" accept="image/*" multiple hidden>
+          </div>
+          <div id="libBgList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div class="sw"><div class="t">Misafir arka plan seçebilsin<div class="note">Çekimden sonra kişi fotoğraftan ayrılıp seçilen fona oturtulur. İnternet gerektirir.</div></div><div class="tg" id="tgBg"><i></i></div></div>
+        </div>
+
+        <div class="grp">
           <h3>Filtreler</h3>
           <div class="fld"><div class="lbl">Misafire açık filtreler</div>
             <select id="fFilterMode">
@@ -494,6 +529,14 @@ h1 em{font-style:italic;color:var(--amber)}
             </select>
           </div>
           <div class="note">Filtreler cihazda anında uygulanır, internet ve ücret gerektirmez. Misafir kendi yüzüyle canlı önizleme görür.</div>
+        </div>
+
+        <div class="grp">
+          <h3>Dijital Teslim (QR)</h3>
+          <div class="fld"><div class="lbl">Cloudinary cloud name</div><input type="text" id="fCldName" placeholder="ör. dxy12abcd" autocomplete="off"></div>
+          <div class="fld"><div class="lbl">Upload preset (unsigned)</div><input type="text" id="fCldPreset" placeholder="ör. booth_unsigned" autocomplete="off"></div>
+          <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="cldTestBtn">Bağlantıyı test et</button></div>
+          <div class="note" id="cldNote">Misafirin telefonuna QR ile fotoğraf gitmesi için ücretsiz bir Cloudinary hesabı bağlanır. Bağlı değilken QR ekranı bunu açıkça söyler, sahte kod gösterilmez.</div>
         </div>
 
         <div class="grp">
@@ -552,6 +595,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,
+  bgOn:true,cldName:"",cldPreset:"",
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -978,8 +1022,9 @@ function currentFilter(){
 }
 function currentShots(){
   if(mode&&mode.id==="tek"&&aiCanvas)return [aiCanvas];
+  var base=(shotsBg&&shotsBg.length===shotsEnh.length)?shotsBg:shotsEnh;
   var f=currentFilter();
-  return shotsEnh.map(function(c){return applyFilter(c,f)});
+  return base.map(function(c){return applyFilter(c,f)});
 }
 function buildFilterStrip(){
   var w=$("#filterStrip");if(!w)return;
@@ -987,7 +1032,7 @@ function buildFilterStrip(){
   var list=visibleFilters();
   w.parentElement.style.display=(S.filterMode==="kapali")?"none":"";
   if(S.filterMode==="kapali")return;
-  var src=shotsEnh[0];if(!src)return;
+  var src=(shotsBg&&shotsBg[0])||shotsEnh[0];if(!src)return;
   var small=document.createElement("canvas");small.width=84;small.height=112;
   var sx=small.getContext("2d");
   var side=Math.min(src.width,src.height*(84/112));
@@ -1122,7 +1167,7 @@ function placeGrid(x,sh,cols,rows,cx0,cy0,cw,chh,ar){
 }
 var composed="";
 function showReview(){
-  compose();buildFilterStrip();
+  compose();buildFilterStrip();buildBgStrip();
   $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&mode&&mode.id==="tek"&&S.aiStyles.some(function(st){return st.on}));
   go("review");
 }
@@ -1180,7 +1225,7 @@ function chips(){
     b.onclick=function(){copies=n;chips();};c.appendChild(b);
   });
 }
-$("#retakeBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiCanvas=null;copies=1;chips();beginSeq(mode)};
+$("#retakeBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiCanvas=null;bgSel=null;shotsBg=null;copies=1;chips();beginSeq(mode)};
 
 /* ---------- AI dönüşüm ---------- */
 function aiState(st){
@@ -1289,9 +1334,8 @@ function doPrint(){
   }
 }
 function finish(){
-  var code=(Date.now().toString(36)+Math.random().toString(36).slice(2,5)).toUpperCase().slice(-8);
-  drawQR("https://"+(S.brand||"booth").toLowerCase().replace(/[^a-z0-9]/g,"")+".app/f/"+code);
-  go("done");autoBack(20);
+  go("done");autoBack(45);
+  deliverQR();
 }
 function drawQR(text){
   var cv=$("#qrCanvas"),x=cv.getContext("2d");
@@ -1306,7 +1350,7 @@ function drawQR(text){
     x.fillText("QR hazırlanamadı",cv.width/2,cv.height/2);
   }
 }
-$("#againBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiCanvas=null;copies=1;chips();go("mode")};
+$("#againBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiCanvas=null;bgSel=null;shotsBg=null;copies=1;chips();go("mode")};
 $("#doneBtn").onclick=function(){go("attract")};
 var autoT=null;
 function autoBack(sec){
@@ -1319,12 +1363,13 @@ var db=null;
 function openDB(){
   return new Promise(function(res){
     if(!window.indexedDB)return res(null);
-    var rq=indexedDB.open("boothDB",3);
+    var rq=indexedDB.open("boothDB",4);
     rq.onupgradeneeded=function(e){
       var d=e.target.result;
       if(!d.objectStoreNames.contains("shots"))d.createObjectStore("shots",{keyPath:"id",autoIncrement:true});
       if(!d.objectStoreNames.contains("assets"))d.createObjectStore("assets");
       if(!d.objectStoreNames.contains("profiles"))d.createObjectStore("profiles",{keyPath:"id"});
+      if(!d.objectStoreNames.contains("lib"))d.createObjectStore("lib",{keyPath:"id"});
     };
     rq.onsuccess=function(e){db=e.target.result;loadOverlays();res(db)};
     rq.onerror=function(){res(null)};
@@ -1363,6 +1408,7 @@ function drawGallery(){
 }
 
 /* ---------- yönetici ---------- */
+$("#gearBtn").onclick=function(){pinBuf="";drawPin();go("pin")};
 var taps=0,tapT=null;
 $("#hotCorner").addEventListener("click",function(){
   taps++;clearTimeout(tapT);tapT=setTimeout(function(){taps=0},2500);
@@ -1404,9 +1450,10 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   tg($("#tgAi"),S.aiOn);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
-  buildStyleRows();refreshProfUI();
+  buildStyleRows();refreshProfUI();renderLib();
+  tg($("#tgBg"),S.bgOn);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.4 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.5 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1515,6 +1562,210 @@ $("#testPrint").onclick=function(){
   setTimeout(function(){try{window.print()}catch(e){}},400);
 };
 
+/* ---------- kütüphane (çerçeve + arka plan) ---------- */
+function libAll(cb){
+  if(!db)return cb([]);
+  var out=[];
+  try{
+    db.transaction("lib","readonly").objectStore("lib").openCursor().onsuccess=function(e){
+      var c=e.target.result; if(c){out.push(c.value);c.continue()}else cb(out);
+    };
+  }catch(e){cb([])}
+}
+function libPut(rec,cb){ if(!db)return; try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").put(rec);tx.oncomplete=function(){cb&&cb()}}catch(e){} }
+function libDel(id,cb){ if(!db)return; try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").delete(id);tx.oncomplete=function(){cb&&cb()}}catch(e){} }
+function readFileDataUrl(file){return new Promise(function(res){var r=new FileReader();r.onload=function(){res(r.result)};r.readAsDataURL(file)})}
+function renderLib(){
+  libAll(function(list){
+    var fr=$("#libFrList"),bg=$("#libBgList");
+    if(!fr||!bg)return;
+    fr.innerHTML="";bg.innerHTML="";
+    var names={tek:"Tek",serit:"Şerit",kare4:"Dörtlü"};
+    list.forEach(function(r){
+      var d=document.createElement("div");d.className="librow";
+      var im=new Image();im.src=r.dataUrl;d.appendChild(im);
+      var nm=document.createElement("div");nm.className="nm";
+      nm.innerHTML=r.name+(r.kind==="frame"?' <span class="md">'+(names[r.mode]||"")+'</span>':"");
+      d.appendChild(nm);
+      if(r.kind==="frame"){
+        var use=document.createElement("button");use.className="btn ghost mini";use.textContent="Kullan";
+        use.onclick=function(){saveOverlay(r.mode,r.dataUrl).then(function(){S.frame="png";save();fillAdmin();})};
+        d.appendChild(use);
+      }
+      var del=document.createElement("button");del.className="btn ghost mini";del.textContent="Sil";
+      del.onclick=function(){libDel(r.id,renderLib)};
+      d.appendChild(del);
+      (r.kind==="frame"?fr:bg).appendChild(d);
+    });
+  });
+}
+$("#libFrBtn").onclick=function(){$("#libFrFile").click()};
+$("#libFrFile").addEventListener("change",function(){
+  var f=this.files&&this.files[0];this.value="";if(!f)return;
+  var mode2=$("#libFrMode").value;
+  readFileDataUrl(f).then(function(u){
+    libPut({id:Date.now().toString(36),kind:"frame",mode:mode2,name:f.name.replace(/\.[^.]+$/,""),dataUrl:u},renderLib);
+  });
+});
+$("#libBgBtn").onclick=function(){$("#libBgFile").click()};
+$("#libBgFile").addEventListener("change",function(){
+  var fs=[].slice.call(this.files||[]);this.value="";
+  (function next2(i){
+    if(i>=fs.length){renderLib();return}
+    readFileDataUrl(fs[i]).then(function(u){
+      libPut({id:Date.now().toString(36)+i,kind:"bg",name:fs[i].name.replace(/\.[^.]+$/,""),dataUrl:u},function(){next2(i+1)});
+    });
+  })(0);
+});
+$("#tgBg").onclick=function(){S.bgOn=!S.bgOn;tg(this,S.bgOn);save()};
+
+/* ---------- arka plan değiştirme (segmentasyon) ---------- */
+var segInst=null,segLoadP=null,segBusyQ=Promise.resolve();
+function loadSeg(){
+  if(segLoadP)return segLoadP;
+  segLoadP=new Promise(function(res,rej){
+    function init(){
+      try{
+        var si=new SelfieSegmentation({locateFile:function(f){
+          return "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/"+f;
+        }});
+        si.setOptions({modelSelection:1});
+        segInst=si;res(si);
+      }catch(e){rej(e)}
+    }
+    if(window.SelfieSegmentation)return init();
+    var sc=document.createElement("script");
+    sc.src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js";
+    sc.onload=init;
+    sc.onerror=function(){rej(new Error("model yüklenemedi"))};
+    document.head.appendChild(sc);
+  });
+  return segLoadP;
+}
+function segMask(canvas){
+  segBusyQ=segBusyQ.then(function(){
+    return loadSeg().then(function(si){
+      return new Promise(function(res,rej){
+        var t=setTimeout(function(){rej(new Error("segmentasyon zaman aşımı"))},20000);
+        si.onResults(function(r){clearTimeout(t);res(r.segmentationMask)});
+        si.send({image:canvas}).catch(function(e){clearTimeout(t);rej(e)});
+      });
+    });
+  });
+  return segBusyQ;
+}
+var maskCache=new WeakMap(),bgImgCache={};
+function bgComposite(shot,bgUrl){
+  var pm=maskCache.get(shot)?Promise.resolve(maskCache.get(shot)):segMask(shot).then(function(m){
+    var mc=document.createElement("canvas");mc.width=shot.width;mc.height=shot.height;
+    mc.getContext("2d").drawImage(m,0,0,mc.width,mc.height);
+    maskCache.set(shot,mc);return mc;
+  });
+  var pb=bgImgCache[bgUrl]?Promise.resolve(bgImgCache[bgUrl]):new Promise(function(res,rej){
+    var im=new Image();im.onload=function(){bgImgCache[bgUrl]=im;res(im)};im.onerror=function(){rej(new Error("fon okunamadı"))};im.src=bgUrl;
+  });
+  return Promise.all([pm,pb]).then(function(a){
+    var mask=a[0],bg=a[1],w=shot.width,h=shot.height;
+    var person=document.createElement("canvas");person.width=w;person.height=h;
+    var px=person.getContext("2d");
+    px.filter="blur(3px)";px.drawImage(mask,0,0,w,h);px.filter="none";
+    px.globalCompositeOperation="source-in";
+    px.drawImage(shot,0,0,w,h);
+    var out=document.createElement("canvas");out.width=w;out.height=h;
+    var ox=out.getContext("2d");
+    cover(ox,bg,0,0,w,h);
+    ox.drawImage(person,0,0);
+    return out;
+  });
+}
+var bgSel=null,shotsBg=null;
+function buildBgStrip(){
+  var wrap=$("#bgWrap"),strip=$("#bgStrip");
+  if(!wrap)return;
+  libAll(function(list){
+    var bgs=list.filter(function(r){return r.kind==="bg"});
+    if(!S.bgOn||!bgs.length||!shotsEnh[0]){wrap.hidden=true;return}
+    wrap.hidden=false;strip.innerHTML="";
+    function thumbBtn(label,imgSrc,onSel,on){
+      var t=document.createElement("button");t.className="fthumb"+(on?" on":"");
+      var cv=document.createElement("canvas");cv.width=84;cv.height=112;
+      var x=cv.getContext("2d");
+      if(imgSrc){var im=new Image();im.onload=function(){cover(x,im,0,0,84,112)};im.src=imgSrc;}
+      else{x.fillStyle="#211C19";x.fillRect(0,0,84,112);x.strokeStyle="rgba(243,237,228,.4)";x.lineWidth=2;
+        x.beginPath();x.moveTo(24,24);x.lineTo(60,88);x.moveTo(60,24);x.lineTo(24,88);x.stroke();}
+      var sp=document.createElement("span");sp.textContent=label;
+      t.appendChild(cv);t.appendChild(sp);
+      t.onclick=function(){
+        strip.querySelectorAll(".fthumb").forEach(function(o){o.classList.remove("on")});
+        t.classList.add("on");onSel();
+      };
+      strip.appendChild(t);
+    }
+    thumbBtn("Yok",null,function(){bgSel=null;shotsBg=null;compose();},!bgSel);
+    bgs.forEach(function(r){
+      thumbBtn(r.name.slice(0,10),r.dataUrl,function(){applyBg(r)},bgSel===r.id);
+    });
+  });
+}
+function applyBg(rec){
+  bgSel=rec.id;
+  $("#bgBusy").hidden=false;
+  var mine=shotsEnh.slice();
+  Promise.all(mine.map(function(c){return bgComposite(c,rec.dataUrl)})).then(function(outs){
+    if(bgSel!==rec.id)return;
+    shotsBg=outs;aiCanvas=null;
+    $("#bgBusy").hidden=true;
+    compose();
+  }).catch(function(e){
+    $("#bgBusy").hidden=true;
+    bgSel=null;shotsBg=null;
+    var wrap=$("#bgWrap");
+    var d=document.createElement("div");d.className="err";
+    d.textContent="Arka plan uygulanamadı: "+((e&&e.message)||"hata")+". İnternet bağlantısını kontrol et.";
+    wrap.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},6000);
+    buildBgStrip();compose();
+  });
+}
+
+/* ---------- QR dijital teslim (Cloudinary) ---------- */
+function cldReady(){return !!(S.cldName&&S.cldPreset)}
+function uploadPhoto(dataUrl,tag){
+  return fetch(dataUrl).then(function(r){return r.blob()}).then(function(blob){
+    var fd=new FormData();
+    fd.append("file",blob,(tag||"foto")+".jpg");
+    fd.append("upload_preset",S.cldPreset);
+    var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},45000);
+    return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/image/upload",
+      {method:"POST",body:fd,signal:ctrl.signal})
+      .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("yükleme reddedildi ("+r.status+")");return r.json()})
+      .then(function(j){if(!j.secure_url)throw new Error("adres dönmedi");return j.secure_url})
+      .catch(function(e){clearTimeout(tmo);if(e.name==="AbortError")throw new Error("yükleme zaman aşımı");throw e});
+  });
+}
+function qrMessage(lines){
+  var cv=$("#qrCanvas"),x=cv.getContext("2d");
+  x.fillStyle="#F6F0E6";x.fillRect(0,0,cv.width,cv.height);
+  x.fillStyle="#171310";x.textAlign="center";
+  x.font="500 26px Figtree,sans-serif";
+  lines.forEach(function(l,i){x.fillText(l,cv.width/2,cv.height/2-((lines.length-1)/2-i)*40)});
+}
+var lastUrl=null;
+function deliverQR(){
+  lastUrl=null;
+  if(!cldReady()){
+    qrMessage(["Dijital teslim bağlı değil.","Panel → Dijital Teslim (QR)","bölümünden bağla."]);
+    $("#qrCanvas").onclick=null;return;
+  }
+  qrMessage(["Fotoğraf yükleniyor…","birkaç saniye"]);
+  var myCode=Date.now().toString(36);
+  uploadPhoto(composed,myCode).then(function(url){
+    lastUrl=url;drawQR(url);
+    $("#qrCanvas").onclick=null;
+  }).catch(function(e){
+    qrMessage(["Yüklenemedi: "+((e&&e.message)||"hata"),"Tekrar denemek için","karekod alanına dokun."]);
+    $("#qrCanvas").onclick=function(){deliverQR()};
+  });
+}
 /* ---------- etkinlik profilleri ---------- */
 var PROF_KEYS=["evt","date","sub","logo","logo2","frame","bandBg","bandFg","topText","botText","filterMode","enh"];
 function profAll(cb){
@@ -1619,6 +1870,22 @@ function buildStyleRows(){
     w.appendChild(d);
   });
 }
+$("#fCldName").addEventListener("input",function(){S.cldName=this.value.trim();save()});
+$("#fCldPreset").addEventListener("input",function(){S.cldPreset=this.value.trim();save()});
+$("#cldTestBtn").onclick=function(){
+  if(!cldReady()){$("#cldNote").textContent="Önce iki alanı da doldur.";return}
+  $("#cldNote").textContent="Test ediliyor…";
+  var c=document.createElement("canvas");c.width=300;c.height=450;
+  var x=c.getContext("2d");x.fillStyle="#F2A93B";x.fillRect(0,0,300,450);
+  x.fillStyle="#171310";x.font="600 34px Figtree,sans-serif";x.textAlign="center";
+  x.fillText("TEST",150,230);
+  var t0=Date.now();
+  uploadPhoto(c.toDataURL("image/jpeg",.9),"test").then(function(url){
+    $("#cldNote").textContent="Çalıştı ✓ ("+Math.round((Date.now()-t0)/1000)+" sn). QR teslimi hazır. Test adresi: "+url;
+  }).catch(function(e){
+    $("#cldNote").textContent="Olmadı: "+((e&&e.message)||"hata")+". Cloud name ve preset adını kontrol et (preset UNSIGNED olmalı).";
+  });
+};
 $("#aiTestBtn").onclick=function(){
   if(!S.aiKey){$("#aiTestNote").textContent="Önce API anahtarını gir.";return}
   $("#aiTestFile").click();
