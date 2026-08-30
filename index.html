@@ -544,7 +544,14 @@ h1 em{font-style:italic;color:var(--amber)}
           <div id="libBgList" style="display:flex;flex-direction:column;gap:8px"></div>
           <div class="sw"><div class="t">Misafir çerçeve seçebilsin<div class="note">Kapalıysa "Kullan" ile seçtiğin çerçeve sabittir</div></div><div class="tg" id="tgFrChoice"><i></i></div></div>
           <div class="sw"><div class="t">Misafir arka plan seçebilsin<div class="note">Çekimden sonra kişi fotoğraftan ayrılıp seçilen fona oturtulur. İnternet gerektirir.</div></div><div class="tg" id="tgBg"><i></i></div></div>
-          <div class="sw"><div class="t">Arka planı AI birleştirsin<div class="note">Fon gezinirken ücretsiz hızlı önizleme gösterilir; misafir bir fonda karar kılınca AI temiz birleştirmeyi yapar (kare başı ~0,04$, sonuç önbelleğe alınır). Kapalıysa yalnız cihaz içi ücretsiz kesim çalışır.</div></div><div class="tg" id="tgBgAi"><i></i></div></div>
+          <div class="fld"><div class="lbl">Arka plan birleştirme yöntemi</div>
+            <select id="fBgMode">
+              <option value="chroma">Yeşil perde — ücretsiz (arkada düz TEK renk zemin ister)</option>
+              <option value="ai">AI birleştirme — kare başı ~0,04$ (fon paneli gerekmez)</option>
+              <option value="cihaz">Cihaz içi kesim — ücretsiz, orta kalite</option>
+            </select>
+            <div class="note">Yeşil perde: arkadaki düz zemini otomatik algılar ve keser — internet/ücret yok, sonuç anında. İdeali doygun yeşil kumaş/panel; beyaz-siyah duvarda da çalışır ama saç/kıyafet zeminle aynı tondaysa kalite düşer. AI modunda fon gezinme ücretsiz önizlemedir, karar kılınca AI birleştirir ve önbelleğe alır.</div>
+          </div>
         </div>
 
         <div class="grp">
@@ -634,7 +641,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,
-  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,guide:false,
+  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -1594,7 +1601,7 @@ function fillAdmin(){
   $("#fEvt").value=S.evt;$("#fDate").value=S.date;$("#fSub").value=S.sub;
   $("#fBrand").value=S.brand;$("#fTag").value=S.tag;
   $("#fCount").value=S.count;
-  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);tg($("#tgSerit8"),S.serit8);tg($("#tgGuide"),S.guide);tg($("#tgBgAi"),S.bgAi!==false);
+  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);tg($("#tgSerit8"),S.serit8);tg($("#tgGuide"),S.guide);$("#fBgMode").value=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
   $("#stShots").textContent=S.shots;$("#stPrints").textContent=S.prints;$("#stSheets").textContent=S.sheets;
   $("#logoPrev").style.display=S.logo?"block":"none";if(S.logo)$("#logoPrev").src=S.logo;
   $("#logo2Prev").style.display=S.logo2?"block":"none";if(S.logo2)$("#logo2Prev").src=S.logo2;
@@ -1606,7 +1613,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.12 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.13 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1616,7 +1623,7 @@ $("#tgMirror").onclick=function(){S.mirror=!S.mirror;tg(this,S.mirror);save()};
 $("#tgSound").onclick=function(){S.sound=!S.sound;tg(this,S.sound);save()};
 $("#tgSerit8").onclick=function(){S.serit8=!S.serit8;tg(this,S.serit8);save()};
 $("#tgGuide").onclick=function(){S.guide=!S.guide;tg(this,S.guide);save()};
-$("#tgBgAi").onclick=function(){S.bgAi=!(S.bgAi!==false);tg(this,S.bgAi);save()};
+$("#fBgMode").addEventListener("change",function(){S.bgMode=this.value;save()});
 $("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save()};
 $("#logoBtn").onclick=function(){$("#logoFile").click()};
 $("#logoFile").addEventListener("change",function(){
@@ -1846,6 +1853,51 @@ function bgComposite(shot,bgUrl){
     return out;
   });
 }
+/* yeşil perde / düz renk zemin anahtarı — köşelerden fon rengini öğrenir, ücretsiz keser */
+function chromaComposite(shot,bgUrl){
+  var pb=bgImgCache[bgUrl]?Promise.resolve(bgImgCache[bgUrl]):new Promise(function(res,rej){
+    var im=new Image();im.onload=function(){bgImgCache[bgUrl]=im;res(im)};im.onerror=function(){rej(new Error("fon okunamadı"))};im.src=bgUrl;
+  });
+  return pb.then(function(bg){
+    var w=shot.width,h=shot.height;
+    var sc=document.createElement("canvas");sc.width=w;sc.height=h;
+    var sx=sc.getContext("2d");sx.drawImage(shot,0,0);
+    var im=sx.getImageData(0,0,w,h),d=im.data;
+    function med(px){px.sort(function(a,b){return a-b});return px[px.length>>1]}
+    var rs=[],gs=[],bs=[],P=24;
+    [[2,2],[w-P-2,2]].forEach(function(o){
+      for(var y=0;y<P;y++)for(var x=0;x<P;x++){
+        var i=((o[1]+y)*w+(o[0]+x))*4;rs.push(d[i]);gs.push(d[i+1]);bs.push(d[i+2]);
+      }
+    });
+    var kr=med(rs),kg=med(gs),kb=med(bs);
+    var kcb=128-0.168736*kr-0.331264*kg+0.5*kb, kcr=128+0.5*kr-0.418688*kg-0.081312*kb;
+    var kY=0.299*kr+0.587*kg+0.114*kb;
+    var satK=Math.sqrt((kcb-128)*(kcb-128)+(kcr-128)*(kcr-128));
+    var lowSat=satK<18; /* beyaz/siyah/gri duvar */
+    var t1=lowSat?16:9, t2=lowSat?40:26;
+    var greenish=(kg>kr+12&&kg>kb+12);
+    for(var i=0;i<d.length;i+=4){
+      var r=d[i],g=d[i+1],b=d[i+2];
+      var cb=128-0.168736*r-0.331264*g+0.5*b, cr=128+0.5*r-0.418688*g-0.081312*b;
+      var dist=Math.sqrt((cb-kcb)*(cb-kcb)+(cr-kcr)*(cr-kcr));
+      if(lowSat){
+        var Y=0.299*r+0.587*g+0.114*b;
+        var dl=Math.abs(Y-kY)*0.45;
+        dist=Math.max(dist,dl);
+      }
+      var a=(dist-t1)/(t2-t1);a=a<0?0:a>1?1:a;a=a*a*(3-2*a);
+      if(greenish&&a>0&&a<1){var m=(r+b)/2;if(g>m)d[i+1]=Math.round(g*a+m*(1-a));}
+      d[i+3]=Math.round(a*255);
+    }
+    sx.putImageData(im,0,0);
+    var out=document.createElement("canvas");out.width=w;out.height=h;
+    var ox=out.getContext("2d");
+    cover(ox,bg,0,0,w,h);
+    ox.drawImage(sc,0,0);
+    return out;
+  });
+}
 var bgSel=null,shotsBg=null;
 function buildFrameStrip(){
   var wrap=$("#frWrap"),strip=$("#frStrip");
@@ -1918,13 +1970,15 @@ function applyBg(rec){
   bgSel=rec.id;
   $("#bgBusy").hidden=false;
   var mine=shotsEnh.slice();
-  var useAi=!!(S.aiOn&&S.aiKey&&S.bgAi!==false);
+  var bm=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
+  var useAi=bm==="ai"&&!!(S.aiOn&&S.aiKey);
   var bsp=document.querySelector("#bgBusy span");
   if(bsp)bsp.textContent="Arka plan uygulanıyor…";
-  /* 1. adım: anında ücretsiz önizleme (önbellekte AI sonucu varsa direkt o) */
+  /* 1. adım: anında ücretsiz birleştirme (chroma / cihaz kesimi; önbellekte AI sonucu varsa direkt o) */
   Promise.all(mine.map(function(c){
     var cc=aiBgCache.get(c);
     if(cc&&cc[rec.dataUrl])return Promise.resolve(cc[rec.dataUrl]);
+    if(bm==="chroma")return chromaComposite(c,rec.dataUrl).catch(function(){return bgComposite(c,rec.dataUrl).catch(function(){return c})});
     return bgComposite(c,rec.dataUrl).catch(function(){return c});
   })).then(function(outs){
     if(bgSel!==rec.id)return;
@@ -2199,7 +2253,7 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
-window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib};
+window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,_chroma:chromaComposite};
 })();
 </script>
 
