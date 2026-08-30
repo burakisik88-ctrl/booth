@@ -243,11 +243,6 @@ h1 em{font-style:italic;color:var(--amber)}
 
 #printArea{display:none}
 @page{size:100mm 150mm;margin:0}
-#apprOv{position:fixed;inset:0;background:rgba(10,8,7,.93);z-index:60;display:flex;align-items:center;justify-content:center}
-#apprOv[hidden]{display:none}
-.apprCard{display:flex;flex-direction:column;gap:14px;align-items:center;max-width:440px;padding:24px}
-#apprImg{max-height:36vh;max-width:80vw;border-radius:12px;border:1px solid rgba(243,237,228,.25)}
-#duoGhost{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.38;pointer-events:none;z-index:4}
 #guideBox{position:absolute;inset:0;pointer-events:none;z-index:5}
 #guideBox i{position:absolute;left:50%;top:5%;transform:translateX(-50%);width:34%;height:88%;
   border:3px dashed rgba(246,240,230,.5);border-radius:120px 120px 26px 26px}
@@ -302,7 +297,6 @@ h1 em{font-style:italic;color:var(--amber)}
         <img id="fileThumb" alt="" hidden>
         <div class="count" id="count"></div>
         <div class="flash" id="flash"></div>
-        <img id="duoGhost" hidden alt="">
         <div id="guideBox" hidden><i></i><span>Çizgiye geç · boydan kadraja gir</span></div>
       </div>
       <div class="shotdots" id="dots"></div>
@@ -409,17 +403,6 @@ h1 em{font-style:italic;color:var(--amber)}
     </div>
   </section>
 
-  <!-- BASKI ONAYI -->
-  <div id="apprOv" hidden>
-    <div class="apprCard">
-      <div class="mark sm">GÖREVLİ ONAYI</div>
-      <img id="apprImg" alt="">
-      <div class="pindots" id="apprDots"><i></i><i></i><i></i><i></i></div>
-      <div class="pin" id="apprPad"></div>
-      <button class="btn ghost" id="apprCancel">Vazgeç</button>
-    </div>
-  </div>
-
   <!-- ADMIN -->
   <section class="screen" id="s-admin">
     <div class="topbar"><div class="t">Yönetici paneli</div><button class="iconbtn" data-go="attract">✕</button></div>
@@ -470,7 +453,6 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="fld"><div class="lbl">Geri sayım (saniye)</div><input type="number" id="fCount" min="1" max="10"></div>
           <div class="sw"><div class="t">Şerit: 8 farklı çekim<div class="note">Kapalıyken 4 çekim yapılır, iki eş kopya basılır (klasik: kes, biri sende biri onda)</div></div><div class="tg" id="tgSerit8"><i></i></div></div>
           <div class="sw"><div class="t">Kadraj rehberi<div class="note">Çekim ekranına boydan siluet rehberi çizer — misafir 1,5-2 m geriye, çizgiye yönlenir</div></div><div class="tg" id="tgGuide"><i></i></div></div>
-          <div class="sw"><div class="t">Baskı öncesi görevli onayı<div class="note">Misafir YAZDIR'a bassa bile kağıt çıkmaz: önizleme + PIN ekranı gelir, görevli PIN (1234) girmeden basılmaz. Kurumsal/hassas işler için.</div></div><div class="tg" id="tgApprove"><i></i></div></div>
           <div class="sw"><div class="t">Ayna görüntüsü basılsın<div class="note">Kapalıysa baskı gerçek yönde çıkar</div></div><div class="tg" id="tgMirror"><i></i></div></div>
           <div class="sw"><div class="t">Ses</div><div class="tg" id="tgSound"><i></i></div></div>
         </div>
@@ -555,7 +537,7 @@ h1 em{font-style:italic;color:var(--amber)}
           </div>
           <div id="libFrList" style="display:flex;flex-direction:column;gap:8px"></div>
           <div class="note">"Kullan" dediğin çerçeve o düzenin aktif çerçevesi olur ve çerçeve tipi otomatik "Yüklenen PNG"ye geçer.</div>
-          <div class="fld"><div class="lbl">Arka plan yükle (JPG/PNG — stüdyo fonu, marka duvarı vb.) · Ad "tek_" ile başlarsa yalnız Tek Kare'de görünür; "duo_" ile başlarsa mod ekranında "… İLE" birlikte-çekim kartı olur</div>
+          <div class="fld"><div class="lbl">Arka plan yükle (JPG/PNG — stüdyo fonu, marka duvarı vb.)</div>
             <button class="btn ghost mini" id="libBgBtn">Arka plan ekle</button>
             <input type="file" id="libBgFile" accept="image/*" multiple hidden>
           </div>
@@ -660,7 +642,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,flatter:true,
-  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,approvePrint:false,
+  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -676,7 +658,6 @@ function save(){try{localStorage.setItem("booth.v1",JSON.stringify(S));}catch(e)
 var cur="attract";
 function go(name){
   var el=$("#s-"+name); if(!el)return;
-  if(name==="mode")try{buildModes()}catch(e){}
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on")});
   el.classList.add("on"); cur=name; resetIdle();
   if(name==="attract"){applyBrand();stopSeq();}
@@ -821,25 +802,14 @@ function buildModes(){
     b.onclick=function(){beginSeq(m)};
     w.appendChild(b);
   });
-  /* duo_ fonları: her biri "birlikte çekim" kartı olur */
-  libAll(function(list){
-    list.filter(function(r){return r.kind==="bg"&&/^duo[_-]/i.test(r.name)}).forEach(function(r){
-      var b=document.createElement("button");b.className="card";
-      var nm=r.name.replace(/^duo[_-]/i,"").replace(/[_-]+/g," ").trim().toUpperCase().slice(0,16)||"BİRLİKTE";
-      b.innerHTML='<div class="thumb" style="grid-template-columns:1fr"><i style="background-image:url('+"'"+r.dataUrl+"'"+');background-size:cover;background-position:center"></i></div>'+
-        '<div class="cn">'+nm+' İLE</div><div class="shots">1 çekim</div><div class="cd">Sahnedeki boşluğa geç, hizalan — seni yanına yerleştirelim.</div>';
-      b.onclick=function(){beginSeq(MODES[0],r)};
-      w.appendChild(b);
-    });
-  });
 }
 buildModes();
 
 /* ---------- çekim akışı ---------- */
-var mode=null,shots=[],shotsEnh=[],timer=null,duoRec=null;
+var mode=null,shots=[],shotsEnh=[],timer=null;
 function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
-function beginSeq(m,duo){
-  mode=m;shots=[];shotsEnh=[];duoRec=duo||null;
+function beginSeq(m){
+  mode=m;shots=[];shotsEnh=[];
   if(m.id==="serit")m.shots=S.serit8?8:4;
   filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;chips();
   go("shoot");
@@ -854,9 +824,7 @@ function drawDots(){
   for(var i=0;i<mode.shots;i++){var s=document.createElement("i");if(i<shots.length)s.className="done";d.appendChild(s)}
   $("#recTxt").textContent=Math.min(shots.length+1,mode.shots)+" / "+mode.shots;
   $("#camFrame").classList.toggle("nomirror",!S.mirror);
-  var gb=$("#guideBox");if(gb)gb.hidden=!S.guide&&!duoRec;
-  var dg=$("#duoGhost");
-  if(dg){dg.hidden=!duoRec;if(duoRec)dg.src=duoRec.dataUrl;}
+  var gb=$("#guideBox");if(gb)gb.hidden=!S.guide;
   $("#camFrame").style.setProperty("--ar",mode.id==="serit"?"1.3333":"0.75");
 }
 function next(){
@@ -1264,7 +1232,6 @@ function showReview(){
   compose();buildFilterStrip();buildBgStrip();buildFrameStrip();
   $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}));
   go("review");
-  if(duoRec){var d=duoRec;setTimeout(function(){if(mode&&duoRec===d)applyBg(d);},150);}
 }
 var gFrame=null,gFrameId=null,gStd=false;
 function composeOn(x,id,sh){
@@ -1526,16 +1493,13 @@ function aiBgComposite(shot,bgUrl){
     return geminiImage([
       {inline_data:{mime_type:"image/jpeg",data:toB64(shot,1408)}},
       {inline_data:{mime_type:"image/jpeg",data:toB64(bg,1024)}},
-      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify, redraw or alter them; preserve the facial detail pixel-faithfully even if the face is small in the frame (full-body shot). Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph, and keep the scene's elements BEHIND the person — nothing from the background may overlap or cover any part of the person. If the scene already contains people, keep them completely unchanged (same faces, same positions) and place the new person BESIDE them, standing naturally next to them without covering them. Keep the same framing and camera angle as the first image. Output only the final photo."}
+      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify, redraw or alter them; preserve the facial detail pixel-faithfully even if the face is small in the frame (full-body shot). Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph, and keep the scene's elements BEHIND the person — nothing from the background may overlap or cover any part of the person. Keep the same framing and camera angle as the first image. Output only the final photo."}
     ],shot.width,shot.height);
   });
 }
 
 /* ---------- baskı ---------- */
-$("#printBtn").onclick=function(){
-  if(S.approvePrint){apprBuf="";drawAppr();$("#apprImg").src=composed;$("#apprOv").hidden=false;return}
-  doPrint();
-};
+$("#printBtn").onclick=function(){doPrint()};
 function doPrint(){
   go("printing");
   var ms=Math.max(3000,copies*4000),t0=Date.now(),bar=$("#progBar");
@@ -1656,37 +1620,12 @@ function drawPin(){
   var d=$("#pinDots").children;
   for(var i=0;i<4;i++)d[i].className=i<pinBuf.length?"f":"";
 }
-/* ---------- baskı öncesi görevli onayı ---------- */
-var apprBuf="";
-function drawAppr(){
-  var p=$("#apprPad");
-  if(!p.childElementCount){
-    ["1","2","3","4","5","6","7","8","9","","0","←"].forEach(function(k){
-      var b=document.createElement("button");b.textContent=k;
-      if(!k)b.style.visibility="hidden";
-      b.onclick=function(){
-        if(k==="←")apprBuf=apprBuf.slice(0,-1);
-        else if(k)apprBuf+=k;
-        if(apprBuf.length>4)apprBuf=apprBuf.slice(0,4);
-        drawAppr();
-        if(apprBuf.length===4){
-          if(apprBuf===PIN){apprBuf="";drawAppr();$("#apprOv").hidden=true;doPrint();}
-          else{apprBuf="";drawAppr();beep(180,.25);}
-        }
-      };
-      p.appendChild(b);
-    });
-  }
-  var d=$("#apprDots").children;
-  for(var i=0;i<4;i++)d[i].className=i<apprBuf.length?"f":"";
-}
-$("#apprCancel").onclick=function(){apprBuf="";drawAppr();$("#apprOv").hidden=true;};
 function tg(el,val){el.classList.toggle("on",!!val)}
 function fillAdmin(){
   $("#fEvt").value=S.evt;$("#fDate").value=S.date;$("#fSub").value=S.sub;
   $("#fBrand").value=S.brand;$("#fTag").value=S.tag;
   $("#fCount").value=S.count;
-  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);tg($("#tgSerit8"),S.serit8);tg($("#tgGuide"),S.guide);tg($("#tgApprove"),S.approvePrint);$("#fBgMode").value=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
+  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);tg($("#tgSerit8"),S.serit8);tg($("#tgGuide"),S.guide);$("#fBgMode").value=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
   $("#stShots").textContent=S.shots;$("#stPrints").textContent=S.prints;$("#stSheets").textContent=S.sheets;
   $("#logoPrev").style.display=S.logo?"block":"none";if(S.logo)$("#logoPrev").src=S.logo;
   $("#logo2Prev").style.display=S.logo2?"block":"none";if(S.logo2)$("#logo2Prev").src=S.logo2;
@@ -1698,7 +1637,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.18.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.19 (sade) · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1709,7 +1648,6 @@ $("#tgSound").onclick=function(){S.sound=!S.sound;tg(this,S.sound);save()};
 $("#tgSerit8").onclick=function(){S.serit8=!S.serit8;tg(this,S.serit8);save()};
 $("#tgGuide").onclick=function(){S.guide=!S.guide;tg(this,S.guide);save()};
 $("#tgFlatter").onclick=function(){S.flatter=!(S.flatter!==false);tg(this,S.flatter);save()};
-$("#tgApprove").onclick=function(){S.approvePrint=!S.approvePrint;tg(this,S.approvePrint);save()};
 $("#fBgMode").addEventListener("change",function(){S.bgMode=this.value;save()});
 $("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save()};
 $("#logoBtn").onclick=function(){$("#logoFile").click()};
@@ -1989,7 +1927,6 @@ var bgSel=null,shotsBg=null;
 function buildFrameStrip(){
   var wrap=$("#frWrap"),strip=$("#frStrip");
   if(!wrap||!mode)return;
-  if(duoRec){wrap.hidden=true;return} /* birlikte çekimde çerçeve yok */
   libAll(function(list){
     var frs=list.filter(function(r){return r.kind==="frame"&&r.mode===mode.id});
     if(!S.frameChoice||!frs.length){wrap.hidden=true;return}
@@ -2031,10 +1968,6 @@ function buildBgStrip(){
   libAll(function(list){
     var bgs=list.filter(function(r){return r.kind==="bg"});
     /* duo_ fonları fon şeridinde görünmez (kendi modu var); birlikte çekimde şerit tamamen kapalı */
-    if(duoRec){wrap.hidden=true;return}
-    bgs=bgs.filter(function(r){return !/^duo[_-]/i.test(r.name)});
-    /* "tek_" ile başlayan fonlar yalnız Tek Kare modunda görünür */
-    if(mode&&mode.id!=="tek")bgs=bgs.filter(function(r){return !/^tek[_-]/i.test(r.name)});
     /* AI uygulanmışsa fon seçimi kapalı — karışık sonuç olmasın (çerçeve ve filtre serbest) */
     if(!S.bgOn||!bgs.length||!shotsEnh[0]||aiShots.some(Boolean)){wrap.hidden=true;return}
     wrap.hidden=false;strip.innerHTML="";
@@ -2055,7 +1988,7 @@ function buildBgStrip(){
     }
     thumbBtn("Yok",null,function(){bgSel=null;shotsBg=null;compose();},!bgSel);
     bgs.forEach(function(r){
-      thumbBtn(r.name.replace(/^tek[_-]/i,"").slice(0,10),r.dataUrl,function(){applyBg(r)},bgSel===r.id);
+      thumbBtn(r.name.slice(0,10),r.dataUrl,function(){applyBg(r)},bgSel===r.id);
     });
   });
 }
@@ -2066,8 +1999,6 @@ function applyBg(rec){
   $("#bgBusy").hidden=false;
   var mine=shotsEnh.slice();
   var bm=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
-  /* birlikte çekim: yeşil perde varsa onu kullan, yoksa temiz AI birleştirme (kaba cihaz kesimi değil) */
-  if(duoRec&&bm!=="chroma")bm="ai";
   var useAi=bm==="ai"&&!!(S.aiOn&&S.aiKey);
   var bsp=document.querySelector("#bgBusy span");
   if(bsp)bsp.textContent="Arka plan uygulanıyor…";
