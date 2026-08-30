@@ -811,7 +811,7 @@ function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
   mode=m;shots=[];shotsEnh=[];
   if(m.id==="serit")m.shots=S.serit8?8:4;
-  filt="dogal";aiShots=[];aiSel=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;chips();
+  filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;chips();
   go("shoot");
   $("#shootTitle").textContent=m.name;
   $("#fileThumb").hidden=true;$("#fileBtn").hidden=true;
@@ -1315,7 +1315,7 @@ function aiState(st){
   $("#aiWork").hidden=st!=="work";
   $("#aiRes").hidden=st!=="res";
 }
-var aiSel=[],aiCell=0;
+var aiSel=[],aiCell=0,aiDone=[],aiForce=[],lastTekStyle=null;
 function multiMode(){return mode&&mode.shots>1}
 function openAi(){
   aiSel=shotsEnh.map(function(){return null});aiCell=0;
@@ -1325,6 +1325,12 @@ function openAi(){
     b.innerHTML="<b>"+st.e+"</b><span>"+st.n+"</span>";
     b.onclick=function(){
       if(!multiMode()){runStyle(st);return}
+      if(aiDone[aiCell]===st.id){
+        /* üretilmiş karenin stiline dokunuş = yeniden üret (↻); tekrar dokunuş = vazgeç */
+        aiForce[aiCell]=!aiForce[aiCell];
+        aiSel[aiCell]=st;drawAiShots();return;
+      }
+      aiForce[aiCell]=false;
       aiSel[aiCell]=st;
       drawAiShots();
       aiCell=(aiCell+1)%aiSel.length;
@@ -1344,7 +1350,7 @@ function drawAiShots(){
     var d=document.createElement("button");d.className="aishot"+(i===aiCell?" on":"");
     var cv=document.createElement("canvas");cv.width=74;cv.height=99;
     cover(cv.getContext("2d"),aiShots[i]||sh,0,0,74,99);
-    var sp=document.createElement("span");sp.textContent=aiSel[i]?aiSel[i].n:"—";
+    var sp=document.createElement("span");sp.textContent=aiSel[i]?(aiSel[i].n+(aiForce[i]?" ↻":"")):(aiDone[i]?"✓":"—");
     d.appendChild(cv);d.appendChild(sp);
     d.onclick=function(){aiCell=i;drawAiShots();};
     w.appendChild(d);
@@ -1363,38 +1369,47 @@ $("#aiPreset").onclick=function(){
 };
 $("#aiClear").onclick=function(){aiSel=aiSel.map(function(){return null});aiShots=[];drawAiShots();};
 $("#aiGo").onclick=function(){
-  var jobs=aiSel.map(function(st,i){return st?{i:i,st:st}:null}).filter(Boolean);
-  if(!jobs.length)return;
+  var jobs=[];
+  aiSel.forEach(function(st,i){
+    if(!st)return;
+    var force=!!aiForce[i];
+    if(aiDone[i]===st.id&&!force)return; /* zaten üretildi, değişmedi — kredi yakma */
+    jobs.push({i:i,st:st,force:force});
+  });
+  if(!jobs.length){filt="dogal";compose();buildFilterStrip();go("review");return}
   aiState("work");
-  var done=0;
+  var done=0,fail=0;
   $("#aiMsg").textContent="0/"+jobs.length+" görsel üretildi…";
   Promise.all(jobs.map(function(j){
-    return aiStyled(shotsEnh[j.i],j.st).then(function(c){
-      aiShots[j.i]=c;done++;
+    return aiStyled(shotsEnh[j.i],j.st,j.force).then(function(c){
+      aiShots[j.i]=c;aiDone[j.i]=j.st.id;aiForce[j.i]=false;done++;
       $("#aiMsg").textContent=done+"/"+jobs.length+" görsel üretildi…";
-    });
+    }).catch(function(e){fail++;aiForce[j.i]=false;});
   })).then(function(){
-    filt="dogal";compose();buildFilterStrip();go("review");
-  }).catch(function(err){
-    aiState("pick");drawAiShots();
-    var g=$("#aiGrid");
-    var d=document.createElement("div");d.className="err";d.style.gridColumn="1/-1";
-    d.textContent="Bazı görseller üretilemedi: "+((err&&err.message)||"hata")+" — kalanlar korundu, tekrar deneyebilirsin.";
-    g.insertBefore(d,g.firstChild);
-    setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},7000);
+    /* yarım kalsa bile misafir devam eder: hazır kareler uygulanır */
+    filt="dogal";compose();buildFilterStrip();buildBgStrip();go("review");
+    if(fail){
+      var host=$("#printBtn").parentElement;
+      var d=document.createElement("div");d.className="err";
+      d.textContent=fail+" kare üretilemedi — hazır olanlar korundu. AI ekranına dönüp o kareler için tekrar deneyebilirsin (hazır kareler yeniden ücret yakmaz).";
+      host.insertBefore(d,host.firstChild);
+      setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},9000);
+    }
   });
 };
 $("#aiBtn").onclick=openAi;
 $("#aiClose").onclick=function(){go("review")};
 $("#aiOther").onclick=function(){aiState("pick")};
-$("#aiNorm").onclick=function(){aiShots=[];compose();go("review")};
-$("#aiUse").onclick=function(){filt="dogal";compose();buildFilterStrip();go("review")};
+$("#aiNorm").onclick=function(){aiShots=[];aiDone=[];aiForce=[];compose();buildBgStrip();go("review")};
+$("#aiUse").onclick=function(){filt="dogal";compose();buildFilterStrip();buildBgStrip();go("review")};
 var aiResult=null;
 function runStyle(st){
   if(!shotsEnh[0])return;
+  var force=(lastTekStyle===st.id&&!!aiResult); /* aynı stili tekrar istemek = yeniden üret */
   aiState("work");
   $("#aiMsg").textContent="\""+st.n+"\" hazırlanıyor — 15-20 saniye sürebilir…";
-  aiStyled(shotsEnh[0],st).then(function(c){
+  aiStyled(shotsEnh[0],st,force).then(function(c){
+    lastTekStyle=st.id;
     aiResult=c;aiShots=[c];
     $("#aiImg").src=c.toDataURL("image/jpeg",.9);
     aiState("res");
@@ -1457,9 +1472,9 @@ function geminiImage(parts,outW,outH){
   });
 }
 var aiCache=new Map();
-function aiStyled(src,st){
+function aiStyled(src,st,force){
   var cc=aiCache.get(src)||{};
-  if(cc[st.id])return Promise.resolve(cc[st.id]);
+  if(cc[st.id]&&!force)return Promise.resolve(cc[st.id]);
   return aiTransform(src,st).then(function(c){cc[st.id]=c;aiCache.set(src,cc);return c});
 }
 function aiTransform(src,st){
@@ -1622,7 +1637,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.14 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.15 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1952,7 +1967,8 @@ function buildBgStrip(){
   if(!wrap)return;
   libAll(function(list){
     var bgs=list.filter(function(r){return r.kind==="bg"});
-    if(!S.bgOn||!bgs.length||!shotsEnh[0]){wrap.hidden=true;return}
+    /* AI uygulanmışsa fon seçimi kapalı — karışık sonuç olmasın (çerçeve ve filtre serbest) */
+    if(!S.bgOn||!bgs.length||!shotsEnh[0]||aiShots.some(Boolean)){wrap.hidden=true;return}
     wrap.hidden=false;strip.innerHTML="";
     function thumbBtn(label,imgSrc,onSel,on){
       var t=document.createElement("button");t.className="fthumb"+(on?" on":"");
@@ -1977,6 +1993,7 @@ function buildBgStrip(){
 }
 var aiBgCache=new Map();
 function applyBg(rec){
+  if(aiShots&&aiShots.some(Boolean))return; /* AI uygulandıysa fon değiştirilemez */
   bgSel=rec.id;
   $("#bgBusy").hidden=false;
   var mine=shotsEnh.slice();
