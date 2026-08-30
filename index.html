@@ -243,6 +243,10 @@ h1 em{font-style:italic;color:var(--amber)}
 
 #printArea{display:none}
 @page{size:100mm 150mm;margin:0}
+#apprOv{position:fixed;inset:0;background:rgba(10,8,7,.93);z-index:60;display:flex;align-items:center;justify-content:center}
+#apprOv[hidden]{display:none}
+.apprCard{display:flex;flex-direction:column;gap:14px;align-items:center;max-width:440px;padding:24px}
+#apprImg{max-height:36vh;max-width:80vw;border-radius:12px;border:1px solid rgba(243,237,228,.25)}
 #duoGhost{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.38;pointer-events:none;z-index:4}
 #guideBox{position:absolute;inset:0;pointer-events:none;z-index:5}
 #guideBox i{position:absolute;left:50%;top:5%;transform:translateX(-50%);width:34%;height:88%;
@@ -405,6 +409,17 @@ h1 em{font-style:italic;color:var(--amber)}
     </div>
   </section>
 
+  <!-- BASKI ONAYI -->
+  <div id="apprOv" hidden>
+    <div class="apprCard">
+      <div class="mark sm">GÖREVLİ ONAYI</div>
+      <img id="apprImg" alt="">
+      <div class="pindots" id="apprDots"><i></i><i></i><i></i><i></i></div>
+      <div class="pin" id="apprPad"></div>
+      <button class="btn ghost" id="apprCancel">Vazgeç</button>
+    </div>
+  </div>
+
   <!-- ADMIN -->
   <section class="screen" id="s-admin">
     <div class="topbar"><div class="t">Yönetici paneli</div><button class="iconbtn" data-go="attract">✕</button></div>
@@ -455,6 +470,7 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="fld"><div class="lbl">Geri sayım (saniye)</div><input type="number" id="fCount" min="1" max="10"></div>
           <div class="sw"><div class="t">Şerit: 8 farklı çekim<div class="note">Kapalıyken 4 çekim yapılır, iki eş kopya basılır (klasik: kes, biri sende biri onda)</div></div><div class="tg" id="tgSerit8"><i></i></div></div>
           <div class="sw"><div class="t">Kadraj rehberi<div class="note">Çekim ekranına boydan siluet rehberi çizer — misafir 1,5-2 m geriye, çizgiye yönlenir</div></div><div class="tg" id="tgGuide"><i></i></div></div>
+          <div class="sw"><div class="t">Baskı öncesi görevli onayı<div class="note">Misafir YAZDIR'a bassa bile kağıt çıkmaz: önizleme + PIN ekranı gelir, görevli PIN (1234) girmeden basılmaz. Kurumsal/hassas işler için.</div></div><div class="tg" id="tgApprove"><i></i></div></div>
           <div class="sw"><div class="t">Ayna görüntüsü basılsın<div class="note">Kapalıysa baskı gerçek yönde çıkar</div></div><div class="tg" id="tgMirror"><i></i></div></div>
           <div class="sw"><div class="t">Ses</div><div class="tg" id="tgSound"><i></i></div></div>
         </div>
@@ -539,7 +555,7 @@ h1 em{font-style:italic;color:var(--amber)}
           </div>
           <div id="libFrList" style="display:flex;flex-direction:column;gap:8px"></div>
           <div class="note">"Kullan" dediğin çerçeve o düzenin aktif çerçevesi olur ve çerçeve tipi otomatik "Yüklenen PNG"ye geçer.</div>
-          <div class="fld"><div class="lbl">Arka plan yükle (JPG/PNG — stüdyo fonu, marka duvarı vb.)</div>
+          <div class="fld"><div class="lbl">Arka plan yükle (JPG/PNG — stüdyo fonu, marka duvarı vb.) · Ad "tek_" ile başlarsa yalnız Tek Kare'de görünür; "duo_" ile başlarsa mod ekranında "… İLE" birlikte-çekim kartı olur</div>
             <button class="btn ghost mini" id="libBgBtn">Arka plan ekle</button>
             <input type="file" id="libBgFile" accept="image/*" multiple hidden>
           </div>
@@ -644,7 +660,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,flatter:true,
-  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,
+  bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"",guide:false,approvePrint:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -1516,7 +1532,10 @@ function aiBgComposite(shot,bgUrl){
 }
 
 /* ---------- baskı ---------- */
-$("#printBtn").onclick=function(){doPrint()};
+$("#printBtn").onclick=function(){
+  if(S.approvePrint){apprBuf="";drawAppr();$("#apprImg").src=composed;$("#apprOv").hidden=false;return}
+  doPrint();
+};
 function doPrint(){
   go("printing");
   var ms=Math.max(3000,copies*4000),t0=Date.now(),bar=$("#progBar");
@@ -1637,12 +1656,37 @@ function drawPin(){
   var d=$("#pinDots").children;
   for(var i=0;i<4;i++)d[i].className=i<pinBuf.length?"f":"";
 }
+/* ---------- baskı öncesi görevli onayı ---------- */
+var apprBuf="";
+function drawAppr(){
+  var p=$("#apprPad");
+  if(!p.childElementCount){
+    ["1","2","3","4","5","6","7","8","9","","0","←"].forEach(function(k){
+      var b=document.createElement("button");b.textContent=k;
+      if(!k)b.style.visibility="hidden";
+      b.onclick=function(){
+        if(k==="←")apprBuf=apprBuf.slice(0,-1);
+        else if(k)apprBuf+=k;
+        if(apprBuf.length>4)apprBuf=apprBuf.slice(0,4);
+        drawAppr();
+        if(apprBuf.length===4){
+          if(apprBuf===PIN){apprBuf="";drawAppr();$("#apprOv").hidden=true;doPrint();}
+          else{apprBuf="";drawAppr();beep(180,.25);}
+        }
+      };
+      p.appendChild(b);
+    });
+  }
+  var d=$("#apprDots").children;
+  for(var i=0;i<4;i++)d[i].className=i<apprBuf.length?"f":"";
+}
+$("#apprCancel").onclick=function(){apprBuf="";drawAppr();$("#apprOv").hidden=true;};
 function tg(el,val){el.classList.toggle("on",!!val)}
 function fillAdmin(){
   $("#fEvt").value=S.evt;$("#fDate").value=S.date;$("#fSub").value=S.sub;
   $("#fBrand").value=S.brand;$("#fTag").value=S.tag;
   $("#fCount").value=S.count;
-  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);tg($("#tgSerit8"),S.serit8);tg($("#tgGuide"),S.guide);$("#fBgMode").value=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
+  tg($("#tgMirror"),S.mirror);tg($("#tgSound"),S.sound);tg($("#tgPrint"),S.realPrint);tg($("#tgSerit8"),S.serit8);tg($("#tgGuide"),S.guide);tg($("#tgApprove"),S.approvePrint);$("#fBgMode").value=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
   $("#stShots").textContent=S.shots;$("#stPrints").textContent=S.prints;$("#stSheets").textContent=S.sheets;
   $("#logoPrev").style.display=S.logo?"block":"none";if(S.logo)$("#logoPrev").src=S.logo;
   $("#logo2Prev").style.display=S.logo2?"block":"none";if(S.logo2)$("#logo2Prev").src=S.logo2;
@@ -1654,7 +1698,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.17 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.18 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1665,6 +1709,7 @@ $("#tgSound").onclick=function(){S.sound=!S.sound;tg(this,S.sound);save()};
 $("#tgSerit8").onclick=function(){S.serit8=!S.serit8;tg(this,S.serit8);save()};
 $("#tgGuide").onclick=function(){S.guide=!S.guide;tg(this,S.guide);save()};
 $("#tgFlatter").onclick=function(){S.flatter=!(S.flatter!==false);tg(this,S.flatter);save()};
+$("#tgApprove").onclick=function(){S.approvePrint=!S.approvePrint;tg(this,S.approvePrint);save()};
 $("#fBgMode").addEventListener("change",function(){S.bgMode=this.value;save()});
 $("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save()};
 $("#logoBtn").onclick=function(){$("#logoFile").click()};
