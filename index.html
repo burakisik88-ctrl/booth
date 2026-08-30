@@ -244,10 +244,10 @@ h1 em{font-style:italic;color:var(--amber)}
 #printArea{display:none}
 @page{size:100mm 150mm;margin:0}
 @media print{
-  html,body{background:#fff!important}
+  html,body{background:#fff!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important;overflow:visible!important}
   #app,.grain,.vig{display:none!important}
-  #printArea{display:block!important;position:absolute;inset:0}
-  #printArea img{width:100mm;height:150mm;display:block;break-after:page;page-break-after:always}
+  #printArea{display:block!important;position:static!important;margin:0!important;padding:0!important}
+  #printArea img{width:100mm;height:150mm;display:block;margin:0!important;break-after:page;page-break-after:always}
   #printArea img:last-child{break-after:auto;page-break-after:auto}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -781,7 +781,7 @@ var mode=null,shots=[],shotsEnh=[],timer=null;
 function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
   mode=m;shots=[];shotsEnh=[];
-  filt="dogal";aiShots=[];aiSel=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;copies=1;chips();
+  filt="dogal";aiShots=[];aiSel=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;chips();
   go("shoot");
   $("#shootTitle").textContent=m.name;
   $("#fileThumb").hidden=true;$("#fileBtn").hidden=true;
@@ -1200,9 +1200,9 @@ function showReview(){
   $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}));
   go("review");
 }
-var gFrame=null,gFrameId=null;
+var gFrame=null,gFrameId=null,gStd=false;
 function composeOn(x,id,sh){
-  var f=gFrame?"png":S.frame;
+  var f=gStd?"bant":(gFrame?"png":S.frame);
   var lay=layoutFor(id,f);
   x.fillStyle=(f==="yok"||f==="png")?"#12100E":S.bandBg;
   x.fillRect(0,0,W,H);
@@ -1216,13 +1216,8 @@ function composeOn(x,id,sh){
       if(f==="kongre")drawTopBand(x,sx0,0,sw,lay.t,true);
       var gap=12,cellW=sw-2*pad,cellH=(ih-gap*3-(f==="kenar"?pad:0))/4;
       for(var i=0;i<4;i++)cover(x,sh[i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
-      if(lay.b>0&&(f!=="png"||S.pngText)){
-        if(f==="png"){
-          var gs=x.createLinearGradient(0,H-lay.b-40,0,H);
-          gs.addColorStop(0,"rgba(10,8,7,0)");gs.addColorStop(1,"rgba(10,8,7,.65)");
-          x.fillStyle=gs;x.fillRect(sx0,H-lay.b-40,sw,lay.b+40);
-        }
-        drawFooter(x,sx0,H-lay.b,sw,lay.b,true,(f==="png")?"#F6F0E6":S.bandFg);
+      if(lay.b>0&&f!=="png"){
+        drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
       }
     }
     x.strokeStyle="rgba(255,255,255,.30)";x.setLineDash([10,12]);x.lineWidth=2;
@@ -1243,7 +1238,7 @@ function composeOn(x,id,sh){
     else placeGrid(x,sh,2,2,cx0,cy0,cw,chh,3/4);
     if(lay.b>0)drawFooter(x,0,H-lay.b,W,lay.b,false,S.bandFg);
   }
-  var ovx=gFrame||overlays[id];
+  var ovx=gStd?null:(gFrame||overlays[id]);
   if(f==="png"&&ovx)x.drawImage(ovx,0,0,W,H);
   if(f==="png"&&S.pngText){
     if(id==="tek")drawFooter(x,0,H-330,W,300,false,"#F6F0E6");
@@ -1252,6 +1247,15 @@ function composeOn(x,id,sh){
       g4.addColorStop(0,"rgba(10,8,7,0)");g4.addColorStop(1,"rgba(10,8,7,.75)");
       x.fillStyle=g4;x.fillRect(0,H-190,W,190);
       drawFooter(x,0,H-160,W,150,true,"#F6F0E6");
+    }
+    else if(id==="serit"&&lay.b>0){
+      for(var sp=0;sp<2;sp++){
+        var spx=20+sp*620;
+        var gsp=x.createLinearGradient(0,H-lay.b-40,0,H);
+        gsp.addColorStop(0,"rgba(10,8,7,0)");gsp.addColorStop(1,"rgba(10,8,7,.55)");
+        x.fillStyle=gsp;x.fillRect(spx,H-lay.b-40,560,lay.b+40);
+        drawFooter(x,spx,H-lay.b,560,lay.b,true,"#F6F0E6");
+      }
     }
   }
 }
@@ -1563,7 +1567,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.9 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.9.1 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1822,17 +1826,21 @@ function buildFrameStrip(){
       t.onclick=function(){
         strip.querySelectorAll(".fthumb").forEach(function(o){o.classList.remove("on")});
         t.classList.add("on");
-        if(!rec){gFrame=null;gFrameId=null;compose();}
+        if(!rec){gStd=true;gFrame=null;gFrameId=null;compose();}
         else{
           var im=new Image();
-          im.onload=function(){gFrame=im;gFrameId=rec.id;compose();};
+          im.onload=function(){gStd=false;gFrame=im;gFrameId=rec.id;compose();};
           im.src=rec.dataUrl;
         }
       };
       strip.appendChild(t);
     }
-    mk("Standart",null,!gFrameId);
-    frs.forEach(function(r){mk(r.name.slice(0,10),r,gFrameId===r.id)});
+    var actId=null;
+    if(!gFrameId&&!gStd&&S.frame==="png"&&ovRaw[mode.id]){
+      for(var fi=0;fi<frs.length;fi++){if(frs[fi].dataUrl===ovRaw[mode.id]){actId=frs[fi].id;break}}
+    }
+    mk("Standart",null,gStd||(!gFrameId&&!actId));
+    frs.forEach(function(r){mk(r.name.slice(0,10),r,gFrameId===r.id||actId===r.id)});
   });
 }
 function buildBgStrip(){
@@ -2119,7 +2127,7 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
-window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays};
+window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib};
 })();
 </script>
 
