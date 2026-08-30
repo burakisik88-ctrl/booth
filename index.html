@@ -248,6 +248,7 @@ h1 em{font-style:italic;color:var(--amber)}
   #app,.grain,.vig{display:none!important}
   #printArea{display:block!important;position:absolute;inset:0}
   #printArea img{width:100mm;height:150mm;display:block;break-after:page;page-break-after:always}
+  #printArea img:last-child{break-after:auto;page-break-after:auto}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 @media (max-height:560px){.stage{gap:10px}.btn{min-height:56px}}
@@ -554,6 +555,11 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="fld"><div class="lbl">Upload preset (unsigned)</div><input type="text" id="fCldPreset" placeholder="ör. booth_unsigned" autocomplete="off"></div>
           <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="cldTestBtn">Bağlantıyı test et</button></div>
           <div class="note" id="cldNote">Misafirin telefonuna QR ile fotoğraf gitmesi için ücretsiz bir Cloudinary hesabı bağlanır. Bağlı değilken QR ekranı bunu açıkça söyler, sahte kod gösterilmez.</div>
+          <div class="fld" style="margin-top:14px"><div class="lbl">Etkinlik galerisi — iş sonu tek link</div>
+            <input type="text" id="fGalLink" readonly onclick="this.select()">
+            <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost mini" id="galCopyBtn">Linki kopyala</button></div>
+            <div class="note">Her çekim, etkinlik (profil) adına göre açılan klasörde toplanır — ör. <b>booth/turk-pediatri-kongresi</b>. İş bitince müşteriye bu tek linki gönder: tüm kareler galeri sayfasında açılır, tek tek indirilebilir. Linkin çalışması için Cloudinary → Settings → Security bölümünde <b>"Resource list"</b> kısıtını bir kez kaldırman gerekir.</div>
+          </div>
         </div>
 
         <div class="grp">
@@ -775,6 +781,7 @@ var mode=null,shots=[],shotsEnh=[],timer=null;
 function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
   mode=m;shots=[];shotsEnh=[];
+  filt="dogal";aiShots=[];aiSel=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;copies=1;chips();
   go("shoot");
   $("#shootTitle").textContent=m.name;
   $("#fileThumb").hidden=true;$("#fileBtn").hidden=true;
@@ -1137,7 +1144,7 @@ function layoutFor(id,fo){
   if(f==="kongre")return {t:strip?104:200,b:strip?168:300,s:strip?18:40,solid:true};
   if(f==="kenar") return {t:strip?18:56,b:strip?150:300,s:strip?18:56,solid:true};
   if(f==="bant")  return {t:0,b:strip?150:(id==="tek"?0:300),s:strip?18:40,solid:true};
-  return {t:0,b:0,s:strip?18:0,solid:false};
+  return {t:0,b:(f==="png"&&strip)?140:0,s:strip?18:0,solid:false};
 }
 /* alt bant: başlık + tarih/alt satır + logolar */
 function drawFooter(x,bx,by,bw,bh,small,dark){
@@ -1209,7 +1216,14 @@ function composeOn(x,id,sh){
       if(f==="kongre")drawTopBand(x,sx0,0,sw,lay.t,true);
       var gap=12,cellW=sw-2*pad,cellH=(ih-gap*3-(f==="kenar"?pad:0))/4;
       for(var i=0;i<4;i++)cover(x,sh[i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
-      if(lay.b>0)drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
+      if(lay.b>0&&(f!=="png"||S.pngText)){
+        if(f==="png"){
+          var gs=x.createLinearGradient(0,H-lay.b-40,0,H);
+          gs.addColorStop(0,"rgba(10,8,7,0)");gs.addColorStop(1,"rgba(10,8,7,.65)");
+          x.fillStyle=gs;x.fillRect(sx0,H-lay.b-40,sw,lay.b+40);
+        }
+        drawFooter(x,sx0,H-lay.b,sw,lay.b,true,(f==="png")?"#F6F0E6":S.bandFg);
+      }
     }
     x.strokeStyle="rgba(255,255,255,.30)";x.setLineDash([10,12]);x.lineWidth=2;
     x.beginPath();x.moveTo(W/2,20);x.lineTo(W/2,H-20);x.stroke();x.setLineDash([]);
@@ -1546,10 +1560,10 @@ function fillAdmin(){
   ovNote();drawPreviews();
   tg($("#tgAi"),S.aiOn);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
   buildStyleRows();refreshProfUI();renderLib();
-  tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;
+  tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.7 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.9 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1758,7 +1772,15 @@ var maskCache=new WeakMap(),bgImgCache={};
 function bgComposite(shot,bgUrl){
   var pm=maskCache.get(shot)?Promise.resolve(maskCache.get(shot)):segMask(shot).then(function(m){
     var mc=document.createElement("canvas");mc.width=shot.width;mc.height=shot.height;
-    mc.getContext("2d").drawImage(m,0,0,mc.width,mc.height);
+    var mx=mc.getContext("2d");
+    mx.filter="blur(2px)";mx.drawImage(m,0,0,mc.width,mc.height);mx.filter="none";
+    var im=mx.getImageData(0,0,mc.width,mc.height),d=im.data,i,a,t;
+    for(i=3;i<d.length;i+=4){
+      a=d[i];
+      t=(a-70)/100; t=t<0?0:t>1?1:t;
+      d[i]=Math.round(t*t*(3-2*t)*255);
+    }
+    mx.putImageData(im,0,0);
     maskCache.set(shot,mc);return mc;
   });
   var pb=bgImgCache[bgUrl]?Promise.resolve(bgImgCache[bgUrl]):new Promise(function(res,rej){
@@ -1768,7 +1790,7 @@ function bgComposite(shot,bgUrl){
     var mask=a[0],bg=a[1],w=shot.width,h=shot.height;
     var person=document.createElement("canvas");person.width=w;person.height=h;
     var px=person.getContext("2d");
-    px.filter="blur(3px)";px.drawImage(mask,0,0,w,h);px.filter="none";
+    px.filter="blur(1.5px)";px.drawImage(mask,0,0,w,h);px.filter="none";
     px.globalCompositeOperation="source-in";
     px.drawImage(shot,0,0,w,h);
     var out=document.createElement("canvas");out.width=w;out.height=h;
@@ -1863,11 +1885,21 @@ function applyBg(rec){
 
 /* ---------- QR dijital teslim (Cloudinary) ---------- */
 function cldReady(){return !!(S.cldName&&S.cldPreset)}
+function evSlug(){
+  var s=(S.profName||S.evt||"etkinlik").toString().toLowerCase();
+  try{s=s.normalize("NFD").replace(/[\u0300-\u036f]/g,"");}catch(e){}
+  s=s.replace(/\u0131/g,"i").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  if(s.length>40)s=s.slice(0,40).replace(/-+$/,"");
+  return s||"etkinlik";
+}
 function uploadPhoto(dataUrl,tag){
   return fetch(dataUrl).then(function(r){return r.blob()}).then(function(blob){
     var fd=new FormData();
     fd.append("file",blob,(tag||"foto")+".jpg");
     fd.append("upload_preset",S.cldPreset);
+    var slug=evSlug();
+    fd.append("folder","booth/"+slug);
+    fd.append("tags","booth,"+slug);
     var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},45000);
     return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/image/upload",
       {method:"POST",body:fd,signal:ctrl.signal})
@@ -2004,8 +2036,22 @@ function buildStyleRows(){
     w.appendChild(d);
   });
 }
-$("#fCldName").addEventListener("input",function(){S.cldName=this.value.trim();save()});
-$("#fCldPreset").addEventListener("input",function(){S.cldPreset=this.value.trim();save()});
+function galLink(){
+  var base=location.href.split(/[?#]/)[0].replace(/[^\/]*$/,"");
+  return base+"gallery.html?c="+encodeURIComponent(S.cldName||"")+"&e="+encodeURIComponent(evSlug())+"&n="+encodeURIComponent(S.profName||S.evt||"");
+}
+function updGalLink(){var el=$("#fGalLink");if(el)el.value=cldReady()?galLink():"Önce Cloudinary alanlarını doldur"}
+$("#galCopyBtn").onclick=function(){
+  var b=this,v=$("#fGalLink").value||"";
+  function doNote(t){b.textContent=t;setTimeout(function(){b.textContent="Linki kopyala"},1600)}
+  if(v.indexOf("http")!==0){doNote("Link hazır değil");return}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(function(){doNote("Kopyalandı ✓")},function(){doNote("Kopyalanamadı")});
+  else{$("#fGalLink").select();try{document.execCommand("copy");doNote("Kopyalandı ✓")}catch(e){doNote("Kopyalanamadı")}}
+};
+$("#fEvt").addEventListener("input",updGalLink);
+$("#fProfName").addEventListener("input",updGalLink);
+$("#fCldName").addEventListener("input",function(){S.cldName=this.value.trim();save();updGalLink()});
+$("#fCldPreset").addEventListener("input",function(){S.cldPreset=this.value.trim();save();updGalLink()});
 $("#cldTestBtn").onclick=function(){
   if(!cldReady()){$("#cldNote").textContent="Önce iki alanı da doldur.";return}
   $("#cldNote").textContent="Test ediliyor…";
@@ -2073,6 +2119,7 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
+window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays};
 })();
 </script>
 
