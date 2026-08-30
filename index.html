@@ -1637,7 +1637,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="Prototip v0.15 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="Prototip v0.16 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1967,6 +1967,8 @@ function buildBgStrip(){
   if(!wrap)return;
   libAll(function(list){
     var bgs=list.filter(function(r){return r.kind==="bg"});
+    /* "tek_" ile başlayan fonlar yalnız Tek Kare modunda görünür */
+    if(mode&&mode.id!=="tek")bgs=bgs.filter(function(r){return !/^tek[_-]/i.test(r.name)});
     /* AI uygulanmışsa fon seçimi kapalı — karışık sonuç olmasın (çerçeve ve filtre serbest) */
     if(!S.bgOn||!bgs.length||!shotsEnh[0]||aiShots.some(Boolean)){wrap.hidden=true;return}
     wrap.hidden=false;strip.innerHTML="";
