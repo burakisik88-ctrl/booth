@@ -243,6 +243,8 @@ h1 em{font-style:italic;color:var(--amber)}
 
 #printArea{display:none}
 @page{size:100mm 150mm;margin:0}
+.kvkkNote{margin-top:14px;font:500 12px var(--ui);color:var(--muted);letter-spacing:.02em}
+.simBadge{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:6;background:var(--ember);color:#fff;font:700 12px var(--ui);letter-spacing:.06em;padding:7px 16px;border-radius:999px}
 #guideBox{position:absolute;inset:0;pointer-events:none;z-index:5}
 #guideBox i{position:absolute;left:50%;top:5%;transform:translateX(-50%);width:34%;height:88%;
   border:3px dashed rgba(246,240,230,.5);border-radius:120px 120px 26px 26px}
@@ -274,8 +276,10 @@ h1 em{font-style:italic;color:var(--amber)}
       <div class="evtd" id="evtDate"></div>
       <div style="height:10px"></div>
       <button class="btn lg wide" id="startBtn">BAŞLAMAK İÇİN DOKUN</button>
-      <div class="hint"><span class="pulse"></span><span>Fotoğrafın 12 saniyede elinde</span></div>
+      <div class="hint"><span class="pulse"></span><span>Anında bas, telefonuna gönder</span></div>
+      <div class="kvkkNote" id="kvkkNote" hidden>Fotoğraflar dijital teslim için buluta yüklenir.</div>
     </div>
+    <div class="simBadge" id="simBadge" hidden>BASKI: SİMÜLASYON (kağıt çıkmaz)</div>
     <button class="gear" id="gearBtn" aria-label="Yönetici paneli">⚙</button>
   </section>
 
@@ -582,9 +586,9 @@ h1 em{font-style:italic;color:var(--amber)}
 
         <div class="grp">
           <h3>AI Dönüşüm</h3>
-          <div class="sw"><div class="t">Misafire açık<div class="note">Tek Kare modunda görünür</div></div><div class="tg" id="tgAi"><i></i></div></div>
+          <div class="sw"><div class="t">Misafire açık<div class="note">Tüm modlarda görünür (tek/şerit/dörtlü)</div></div><div class="tg" id="tgAi"><i></i></div></div>
           <div class="sw"><div class="t">İnce rötuş<div class="note">AI üretimlerde profesyonel dokunuş: iyi ışık, temiz cilt, hafif fit duruş — abartısız, kişi kendisi kalır</div></div><div class="tg" id="tgFlatter"><i></i></div></div>
-          <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="text" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
+          <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="password" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
           <div class="lbl" style="margin-top:6px">AI Dönüşüm stilleri</div>
           <div id="styleList" style="display:flex;flex-direction:column;gap:10px"></div>
           <div class="lbl" style="margin-top:14px">AI Sahne / Mekân — kendi arka planını yükle, AI kişiyi giydirip o sahneye yerleştirir</div>
@@ -685,13 +689,20 @@ function go(name){
   var el=$("#s-"+name); if(!el)return;
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on")});
   el.classList.add("on"); cur=name; resetIdle();
-  if(name==="attract"){applyBrand();stopSeq();}
+  if(name==="attract"){applyBrand();stopSeq();clearGuestData();}
+  if(name==="mode"){try{buildModes()}catch(e){}}
   if(name==="admin"){fillAdmin();}
   if(name==="gallery"){drawGallery();}
 }
 document.addEventListener("click",function(e){
   var b=e.target.closest("[data-go]"); if(b){go(b.getAttribute("data-go"));}
 });
+/* misafir gizliliği: attract'e dönünce önceki misafirin görselini/verisini temizle */
+function clearGuestData(){
+  aiGen++;
+  ["#previewImg","#emergeImg","#aiImg"].forEach(function(s){var el=$(s);if(el)el.removeAttribute("src");});
+  shots=[];shotsEnh=[];aiShots=[];aiSel=[];aiDone=[];aiForce=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;composed="";
+}
 
 /* ---------- film grain ---------- */
 (function(){
@@ -770,7 +781,7 @@ function setFileMode(){
   var st=$("#s-attract .stage");
   if(!st.querySelector(".banner")){
     var d=document.createElement("div");d.className="banner";
-    d.innerHTML="<span>Canlı kamera bu önizlemede kapalı — Claude sayfayı çerçeve içinde açtığı için tarayıcı izin sormuyor. Akışı denemen için cihazın kendi kamera uygulaması açılacak: her karede <b>FOTOĞRAF ÇEK</b> butonuna bas.</span>";
+    d.innerHTML="<span>Canlı kamera kapalı — cihazın kamerası kullanılacak: her karede <b>FOTOĞRAF ÇEK</b> butonuna bas.</span>";
     st.appendChild(d);
   }
 }
@@ -820,10 +831,11 @@ function buildModes(){
   var w=$("#modeCards");w.innerHTML="";
   MODES.forEach(function(m){
     var b=document.createElement("button");b.className="card";
+    var shotN=(m.id==="serit"&&S.serit8)?8:m.shots;
     var t='<div class="thumb" style="grid-template-columns:'+(m.id==="kare4"?"1fr 1fr":"1fr")+
       ';grid-template-rows:'+(m.id==="tek"?"1fr":m.id==="serit"?"repeat(4,1fr)":"1fr 1fr")+'">'+
       new Array(m.shots+1).join("<i></i>")+'</div>';
-    b.innerHTML=t+'<div class="cn">'+m.name+'</div><div class="shots">'+m.shots+' çekim</div><div class="cd">'+m.desc+'</div>';
+    b.innerHTML=t+'<div class="cn">'+m.name+'</div><div class="shots">'+shotN+' çekim</div><div class="cd">'+m.desc+'</div>';
     b.onclick=function(){beginSeq(m)};
     w.appendChild(b);
   });
@@ -836,7 +848,8 @@ function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
   mode=m;shots=[];shotsEnh=[];
   if(m.id==="serit")m.shots=S.serit8?8:4;
-  filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;chips();
+  filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;
+  aiGen++;aiCache=new Map();aiBgCache=new Map();capTry=0;chips();
   go("shoot");
   $("#shootTitle").textContent=m.name;
   $("#fileThumb").hidden=true;$("#fileBtn").hidden=true;
@@ -862,11 +875,13 @@ function next(){
     else{cd.className="count go";cd.textContent="";capture();}
   })();
 }
+var capTry=0;
 function capture(){
+  var vw=cam.videoWidth,vh=cam.videoHeight;
+  if(!vw){ capTry++; if(capTry<15){timer=setTimeout(capture,300);return;} capTry=0; camError("Kamera görüntüsü gelmedi. Sayfayı yenile.");return }
+  capTry=0;
   var f=$("#flash");f.classList.remove("fire");void f.offsetWidth;f.classList.add("fire");
   shutter();
-  var vw=cam.videoWidth,vh=cam.videoHeight;
-  if(!vw){camError("Kamera görüntüsü gelmedi. Sayfayı yenile.");return}
   var target=(mode.id==="serit")?4/3:3/4;
   var sw=vw,sh=vw/target;
   if(sh>vh){sh=vh;sw=vh*target;}
@@ -1114,8 +1129,10 @@ function buildFilterStrip(){
   var w=$("#filterStrip");if(!w)return;
   w.innerHTML="";
   var list=visibleFilters();
-  w.parentElement.style.display=(S.filterMode==="kapali")?"none":"";
-  if(S.filterMode==="kapali")return;
+  /* AI uygulanmışsa filtre şeridi gizli — yanlışlıkla dokunup AI sonucunu silmesin */
+  var aiActive=aiShots.some(Boolean);
+  w.parentElement.style.display=(S.filterMode==="kapali"||aiActive)?"none":"";
+  if(S.filterMode==="kapali"||aiActive)return;
   var src=(shotsBg&&shotsBg[0])||shotsEnh[0];if(!src)return;
   var small=document.createElement("canvas");small.width=84;small.height=112;
   var sx=small.getContext("2d");
@@ -1257,7 +1274,7 @@ function showReview(){
   compose();buildFilterStrip();buildBgStrip();buildFrameStrip();
   var aiReady=!!(S.aiOn&&S.aiKey);
   $("#aiBtn").hidden=!(aiReady&&S.aiStyles.some(function(st){return st.on}));
-  $("#aiSceneBtn").hidden=!(aiReady&&S.aiScenes&&S.aiScenes.some(function(st){return st.on}));
+  $("#aiSceneBtn").hidden=!(aiReady&&((S.aiScenes&&S.aiScenes.some(function(st){return st.on}))||hasSceneImgs));
   go("review");
 }
 var gFrame=null,gFrameId=null,gStd=false;
@@ -1320,7 +1337,7 @@ function compose(){
   var c=document.createElement("canvas");c.width=W;c.height=H;
   var x=c.getContext("2d");
   composeOn(x,mode.id,currentShots());
-  composed=c.toDataURL("image/jpeg",.92);
+  composed=c.toDataURL("image/jpeg",.95);
   $("#previewImg").src=composed;
   $("#emergeImg").src=composed;
   $("#aiBadge").hidden=!aiShots.some(function(x){return !!x});
@@ -1343,13 +1360,14 @@ function aiState(st){
   $("#aiRes").hidden=st!=="res";
   var o=$("#aiOther");if(o)o.textContent=(aiMode==="scene")?"Başka sahne dene":"Başka stil dene";
 }
-var aiSel=[],aiCell=0,aiDone=[],aiForce=[],lastTekStyle=null,aiMode="style";
+var aiSel=[],aiCell=0,aiDone=[],aiForce=[],lastTekStyle=null,aiMode="style",aiGen=0;
 function aiList(){return aiMode==="scene"?S.aiScenes:S.aiStyles}
 function multiMode(){return mode&&mode.shots>1}
 function openAi(m){
   aiMode=(m==="scene")?"scene":"style";
   var tt=document.querySelector("#s-ai .topbar .t");if(tt)tt.textContent=(aiMode==="scene")?"AI Sahne / Mekân":"AI Dönüşüm";
-  aiSel=shotsEnh.map(function(){return null});aiCell=0;aiDone=[];aiForce=[];lastTekStyle=null;
+  /* aiDone/lastTekStyle KORUNUR (üretilmiş kareler tekrar ücret yakmasın); sadece bekleyen seçim sıfırlanır */
+  aiSel=shotsEnh.map(function(){return null});aiCell=0;aiForce=[];
   if(aiMode==="scene"){
     /* önce yüklediğin arka plan görsellerini (aiscene) al, hazır sahnelerle birleştir */
     libAll(function(list){
@@ -1423,15 +1441,18 @@ $("#aiGo").onclick=function(){
     jobs.push({i:i,st:st,force:force});
   });
   if(!jobs.length){filt="dogal";compose();buildFilterStrip();go("review");return}
+  var myGen=aiGen;
   aiState("work");
   var done=0,fail=0;
   $("#aiMsg").textContent="0/"+jobs.length+" görsel üretildi…";
   Promise.all(jobs.map(function(j){
     return aiStyled(shotsEnh[j.i],j.st,j.force).then(function(c){
       aiShots[j.i]=c;aiDone[j.i]=j.st.id;aiForce[j.i]=false;done++;
-      $("#aiMsg").textContent=done+"/"+jobs.length+" görsel üretildi…";
+      if(myGen===aiGen)$("#aiMsg").textContent=done+"/"+jobs.length+" görsel üretildi…";
     }).catch(function(e){fail++;aiForce[j.i]=false;});
   })).then(function(){
+    /* misafir ekrandan ayrıldıysa/yeni oturum başladıysa geç gelen sonucu uygulama */
+    if(myGen!==aiGen||cur!=="ai")return;
     /* yarım kalsa bile misafir devam eder: hazır kareler uygulanır */
     filt="dogal";compose();buildFilterStrip();buildBgStrip();go("review");
     if(fail){
@@ -1447,20 +1468,23 @@ $("#aiBtn").onclick=function(){openAi("style")};
 $("#aiSceneBtn").onclick=function(){openAi("scene")};
 $("#aiClose").onclick=function(){go("review")};
 $("#aiOther").onclick=function(){aiState("pick")};
-$("#aiNorm").onclick=function(){aiShots=[];aiDone=[];aiForce=[];compose();buildBgStrip();go("review")};
+$("#aiNorm").onclick=function(){aiShots=[];aiDone=[];aiForce=[];compose();buildFilterStrip();buildBgStrip();go("review")};
 $("#aiUse").onclick=function(){filt="dogal";compose();buildFilterStrip();buildBgStrip();go("review")};
 var aiResult=null;
 function runStyle(st){
   if(!shotsEnh[0])return;
   var force=(lastTekStyle===st.id&&!!aiResult); /* aynı stili tekrar istemek = yeniden üret */
+  var myGen=aiGen;
   aiState("work");
   $("#aiMsg").textContent="\""+st.n+"\" hazırlanıyor — 15-20 saniye sürebilir…";
   aiStyled(shotsEnh[0],st,force).then(function(c){
+    if(myGen!==aiGen||cur!=="ai")return; /* geç gelen sonucu uygulama */
     lastTekStyle=st.id;
     aiResult=c;aiShots=[c];
     $("#aiImg").src=c.toDataURL("image/jpeg",.9);
     aiState("res");
   }).catch(function(err){
+    if(myGen!==aiGen||cur!=="ai")return;
     aiState("pick");
     var m=(err&&err.message)||"bilinmeyen hata";
     var g=$("#aiGrid");
@@ -1533,7 +1557,7 @@ function aiTransform(src,st){
       return geminiImage([
         {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
         {inline_data:{mime_type:"image/jpeg",data:toB64(bgim,1408)}},
-        {text:"Create a realistic photograph: place the person from the FIRST image into the scene of the SECOND image. Keep the SECOND image as the background EXACTLY as provided — do not redraw, replace or distort that background. CRITICAL — the person's FACE and HEAD must be an exact, faithful copy of the first image: identical facial features and proportions, same nose, eyes, eyebrows, beard shape, hairline, age and skin tone. Do NOT beautify, slim, smooth, age or restyle the face in any way — treat the face as a locked reference to reproduce precisely. You may change ONLY their clothing (dress them appropriately for this setting"+(st.p?(": "+st.p):"")+") and give them a natural, believable standing pose that fits, well framed. Integrate them realistically with matching lighting, shadows, perspective and scale so it looks like a genuine photo actually taken there, never a flat cut-out. Photorealistic, high quality."}
+        {text:"Create a realistic photograph: place the person from the FIRST image into the scene of the SECOND image. Keep the SECOND image as the background EXACTLY as provided — do not redraw, replace or distort that background. Frame the person as a natural WAIST-UP (half-body) portrait in the foreground, so the face is comfortably large and detailed. Use CORRECT, natural human body proportions — the head must be normal-sized relative to the body, never enlarged, shrunk or distorted; the body must never look small under a big head. The FACE must be an exact, sharp, high-detail copy of the first image (identical features and proportions, same nose, eyes, eyebrows, beard shape, hairline, age and skin tone), instantly recognizable; do NOT beautify, slim, smooth, age, blur, enlarge or restyle the face or head. Change ONLY their clothing (dress them appropriately for this setting"+(st.p?(": "+st.p):"")+") and give them a natural, believable pose. Integrate realistically with matching lighting, shadows, perspective and scale so it looks like a genuine photo actually taken there, never a flat cut-out. Photorealistic, high quality."}
       ],1200,1600);
     });
   }
@@ -1541,7 +1565,7 @@ function aiTransform(src,st){
   var tail;
   if(aiMode==="scene"){
     /* SAHNE: yüz sabit; kıyafet + doğal poz + gerçek yerleşim ÜRETİLİR */
-    tail=" Keep this person's FACE and identity exactly and instantly recognizable — same gender, age, skin tone, facial hair and hairstyle, and a similar body build. You MAY dress them appropriately for the scene and give them a natural, relaxed, believable pose and a well-framed half or full-body composition that fits the setting. Integrate them realistically with matching lighting, shadows, perspective and depth of field so it looks like a genuine photograph actually taken there — never a flat cut-out pasted on top. Photorealistic, high quality.";
+    tail=" Frame the person as a natural WAIST-UP (half-body) portrait so the face is comfortably large and detailed, with CORRECT natural human proportions — the head must be normal-sized relative to the body, never enlarged or distorted. Keep this person's FACE exact, sharp and instantly recognizable — same features, gender, age, skin tone, facial hair and hairline; do NOT beautify, blur or resize the head. You MAY dress them appropriately for the scene and give them a natural, relaxed pose. Integrate realistically with matching lighting, shadows and perspective so it looks like a genuine photograph actually taken there — never a flat cut-out pasted on top. Photorealistic, high quality.";
   } else {
     /* STİL: pozu ve kadrajı koru, sadece stil/karakter değişir */
     tail=" Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Keep the face detailed and crisp even if it is small in the frame. Replace the entire background consistently with the style. High quality rendering.";
@@ -1620,7 +1644,7 @@ function openDB(){
       if(!d.objectStoreNames.contains("profiles"))d.createObjectStore("profiles",{keyPath:"id"});
       if(!d.objectStoreNames.contains("lib"))d.createObjectStore("lib",{keyPath:"id"});
     };
-    rq.onsuccess=function(e){db=e.target.result;loadOverlays();res(db)};
+    rq.onsuccess=function(e){db=e.target.result;loadOverlays();try{refreshSceneImgFlag()}catch(e2){}res(db)};
     rq.onerror=function(){res(null)};
   });
 }
@@ -1703,7 +1727,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.23 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.25 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1716,12 +1740,19 @@ $("#tgGuide").onclick=function(){S.guide=!S.guide;tg(this,S.guide);save()};
 $("#tgFlatter").onclick=function(){S.flatter=!(S.flatter!==false);tg(this,S.flatter);save()};
 $("#fBgMode").addEventListener("change",function(){S.bgMode=this.value;save()});
 $("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save()};
+/* logoyu localStorage şişmesin diye küçült (uzun kenar 480px, PNG şeffaflık korunur) */
+function downscaleLogo(file){
+  return readFileDataUrl(file).then(loadImg).then(function(im){
+    var mx=480,sc=Math.min(1,mx/Math.max(im.width,im.height));
+    var c=document.createElement("canvas");c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+    c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+    return c.toDataURL("image/png");
+  });
+}
 $("#logoBtn").onclick=function(){$("#logoFile").click()};
 $("#logoFile").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
-  var r=new FileReader();
-  r.onload=function(){S.logo=r.result;save();loadLogo();$("#logoPrev").src=S.logo;$("#logoPrev").style.display="block"};
-  r.readAsDataURL(f);
+  downscaleLogo(f).then(function(u){S.logo=u;save();loadLogo();$("#logoPrev").src=S.logo;$("#logoPrev").style.display="block"});
 });
 $("#logoClr").onclick=function(){S.logo="";logoImg=null;save();$("#logoPrev").style.display="none"};
 
@@ -1734,10 +1765,8 @@ $("#fEnh").addEventListener("change",function(){S.enh=this.value;save()});
 $("#logo2Btn").onclick=function(){$("#logo2File").click()};
 $("#logo2File").addEventListener("change",function(){
   var f=this.files&&this.files[0];if(!f)return;
-  var r=new FileReader();
-  r.onload=function(){S.logo2=r.result;save();loadLogo().then(drawPreviews);
-    $("#logo2Prev").src=S.logo2;$("#logo2Prev").style.display="block"};
-  r.readAsDataURL(f);
+  downscaleLogo(f).then(function(u){S.logo2=u;save();loadLogo().then(drawPreviews);
+    $("#logo2Prev").src=S.logo2;$("#logo2Prev").style.display="block"});
 });
 $("#logo2Clr").onclick=function(){S.logo2="";logoImg2=null;save();$("#logo2Prev").style.display="none";drawPreviews()};
 $("#ovBtn").onclick=function(){$("#ovFile").click()};
@@ -1813,7 +1842,7 @@ $("#testPrint").onclick=function(){
   bars.forEach(function(col,i){x.fillStyle=col;x.fillRect(0,i*(H/6),W,H/6)});
   x.fillStyle="#F6F0E6";x.font="600 40px Figtree,sans-serif";x.textAlign="center";
   x.fillText("10 × 15 KENARLIKSIZ TEST",W/2,H-90);
-  composed=c.toDataURL("image/jpeg",.92);copies=1;$("#emergeImg").src=composed;
+  composed=c.toDataURL("image/jpeg",.95);copies=1;$("#emergeImg").src=composed;
   var pa=$("#printArea");pa.innerHTML="";var im=new Image();im.src=composed;pa.appendChild(im);
   setTimeout(function(){try{window.print()}catch(e){}},400);
 };
@@ -1830,7 +1859,7 @@ function libAll(cb){
 }
 function libPut(rec,cb){ if(!db)return; try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").put(rec);tx.oncomplete=function(){cb&&cb()}}catch(e){} }
 function libDel(id,cb){ if(!db)return; try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").delete(id);tx.oncomplete=function(){cb&&cb()}}catch(e){} }
-function readFileDataUrl(file){return new Promise(function(res){var r=new FileReader();r.onload=function(){res(r.result)};r.readAsDataURL(file)})}
+function readFileDataUrl(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result)};r.onerror=function(){rej(new Error("dosya okunamadı"))};r.readAsDataURL(file)})}
 function renderLib(){
   libAll(function(list){
     var fr=$("#libFrList"),bg=$("#libBgList");
@@ -1882,6 +1911,7 @@ var segInst=null,segLoadP=null,segBusyQ=Promise.resolve();
 function loadSeg(){
   if(segLoadP)return segLoadP;
   segLoadP=new Promise(function(res,rej){
+    function fail(e){segLoadP=null;rej(e);} /* başarısız yüklemeyi önbelleğe alma — sonra tekrar denenebilsin */
     function init(){
       try{
         var si=new SelfieSegmentation({locateFile:function(f){
@@ -1889,13 +1919,13 @@ function loadSeg(){
         }});
         si.setOptions({modelSelection:1});
         segInst=si;res(si);
-      }catch(e){rej(e)}
+      }catch(e){fail(e)}
     }
     if(window.SelfieSegmentation)return init();
     var sc=document.createElement("script");
     sc.src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js";
     sc.onload=init;
-    sc.onerror=function(){rej(new Error("model yüklenemedi"))};
+    sc.onerror=function(){fail(new Error("model yüklenemedi"))};
     document.head.appendChild(sc);
   });
   return segLoadP;
@@ -1956,7 +1986,8 @@ function chromaComposite(shot,bgUrl){
     var im=sx.getImageData(0,0,w,h),d=im.data;
     function med(px){px.sort(function(a,b){return a-b});return px[px.length>>1]}
     var rs=[],gs=[],bs=[],P=24;
-    [[2,2],[w-P-2,2]].forEach(function(o){
+    /* dört köşeden örnekle — gradyanlı/dengesiz fonlarda daha sağlam */
+    [[2,2],[w-P-2,2],[2,h-P-2],[w-P-2,h-P-2]].forEach(function(o){
       for(var y=0;y<P;y++)for(var x=0;x<P;x++){
         var i=((o[1]+y)*w+(o[0]+x))*4;rs.push(d[i]);gs.push(d[i+1]);bs.push(d[i+2]);
       }
@@ -2120,14 +2151,14 @@ function evSlug(){
   if(s.length>40)s=s.slice(0,40).replace(/-+$/,"");
   return s||"etkinlik";
 }
-function uploadPhoto(dataUrl,tag){
+function uploadPhoto(dataUrl,tag,isTest){
   return fetch(dataUrl).then(function(r){return r.blob()}).then(function(blob){
     var fd=new FormData();
     fd.append("file",blob,(tag||"foto")+".jpg");
     fd.append("upload_preset",S.cldPreset);
-    var slug=evSlug();
+    var slug=isTest?"_test":evSlug();
     fd.append("folder","booth/"+slug);
-    fd.append("tags","booth,"+slug);
+    fd.append("tags",slug); /* sadece etkinlik slug'ı — ortak "booth" etiketi yok (galeri gizliliği) */
     var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},45000);
     return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/image/upload",
       {method:"POST",body:fd,signal:ctrl.signal})
@@ -2299,10 +2330,13 @@ function buildSceneRows(){
     w.appendChild(d);
   });
 }
+var hasSceneImgs=false;
+function refreshSceneImgFlag(){libAll(function(list){hasSceneImgs=list.some(function(r){return r.kind==="aiscene"})})}
 function buildSceneImgRows(){
   var w=$("#sceneImgList");if(!w)return;
   libAll(function(list){
     var scenes=list.filter(function(r){return r.kind==="aiscene"});
+    hasSceneImgs=scenes.length>0;
     w.innerHTML="";
     if(!scenes.length){var e=document.createElement("div");e.className="note";e.textContent="Henüz arka plan görseli yok.";w.appendChild(e);}
     scenes.forEach(function(r){
@@ -2345,8 +2379,8 @@ $("#cldTestBtn").onclick=function(){
   x.fillStyle="#171310";x.font="600 34px Figtree,sans-serif";x.textAlign="center";
   x.fillText("TEST",150,230);
   var t0=Date.now();
-  uploadPhoto(c.toDataURL("image/jpeg",.9),"test").then(function(url){
-    $("#cldNote").textContent="Çalıştı ✓ ("+Math.round((Date.now()-t0)/1000)+" sn). QR teslimi hazır. Test adresi: "+url;
+  uploadPhoto(c.toDataURL("image/jpeg",.9),"test",true).then(function(url){
+    $("#cldNote").textContent="Çalıştı ✓ ("+Math.round((Date.now()-t0)/1000)+" sn). QR teslimi hazır. (Test görseli ayrı klasöre gitti, müşteri galerisine düşmez.)";
   }).catch(function(e){
     $("#cldNote").textContent="Olmadı: "+((e&&e.message)||"hata")+". Cloud name ve preset adını kontrol et (preset UNSIGNED olmalı).";
   });
@@ -2375,6 +2409,8 @@ function applyBrand(){
   $("#evtName").textContent=S.evt||"";
   $("#evtDate").textContent=S.date||"";
   document.title=(S.brand||"Booth")+" Booth";
+  var sb=$("#simBadge");if(sb)sb.hidden=!!S.realPrint;      /* baskı kapalıysa operatör görsün */
+  var kv=$("#kvkkNote");if(kv)kv.hidden=!cldReady();        /* bulut yüklemesi varsa bilgilendir */
 }
 $("#startBtn").onclick=function(){
   if(actx&&actx.state==="suspended")actx.resume();
