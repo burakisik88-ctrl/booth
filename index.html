@@ -314,6 +314,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="pwrap"><div class="print"><div class="badge" id="aiBadge" hidden>✨ AI</div><img id="previewImg" alt="Baskı önizlemesi"></div></div>
         <div class="opts">
           <button class="btn ghost" id="aiBtn" hidden>✨ AI Dönüşüm</button>
+          <button class="btn ghost" id="aiSceneBtn" hidden>🏛 AI Sahne / Mekân</button>
           <div id="frWrap" hidden><div class="lbl">Çerçeve</div><div class="fstrip" id="frStrip"></div></div>
           <div id="bgWrap" hidden><div class="lbl">Arka Plan</div><div class="fstrip" id="bgStrip"></div><div class="bgbusy" id="bgBusy" hidden><i></i><span>Arka plan uygulanıyor…</span></div></div>
           <div><div class="lbl">Filtre</div><div class="fstrip" id="filterStrip"></div></div>
@@ -584,7 +585,11 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="sw"><div class="t">Misafire açık<div class="note">Tek Kare modunda görünür</div></div><div class="tg" id="tgAi"><i></i></div></div>
           <div class="sw"><div class="t">İnce rötuş<div class="note">AI üretimlerde profesyonel dokunuş: iyi ışık, temiz cilt, hafif fit duruş — abartısız, kişi kendisi kalır</div></div><div class="tg" id="tgFlatter"><i></i></div></div>
           <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="text" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
+          <div class="lbl" style="margin-top:6px">AI Dönüşüm stilleri</div>
           <div id="styleList" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div class="lbl" style="margin-top:14px">AI Sahne / Mekân (kişiyi kıyafetiyle o mekâna koyar)</div>
+          <div id="sceneList" style="display:flex;flex-direction:column;gap:10px"></div>
+          <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="sceneAddBtn">Sahne ekle</button></div>
           <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="aiTestBtn">Anahtarı test et</button></div>
           <input type="file" id="aiTestFile" accept="image/*" hidden>
           <div class="note" id="aiTestNote">Görsel başına ücret servis sağlayıcıya ödenir. Girişe "fotoğrafınız yapay zekâ ile işlenebilir" bilgilendirmesi koymayı unutma.</div>
@@ -638,10 +643,19 @@ var DEFSTYLES=[
  {id:"sci",e:"\u{1F9EA}",n:"Dahi Bilim İnsanı",on:true,p:"Transform this person into a brilliant eccentric scientist in a vintage physics laboratory: lab coat, chalkboard full of equations behind them, glowing apparatus, dramatic warm lighting. Keep the same face clearly recognizable, same pose and framing."},
  {id:"astro",e:"\u{1F680}",n:"Astronot",on:true,p:"Transform this person into an astronaut on the moon surface: detailed space suit with the helmet visor open showing their face, Earth visible in the black sky behind. Keep the same face clearly recognizable, same pose and framing."}
 ];
+/* AI SAHNE / MEKAN — kişiyi kıyafetiyle o mekâna, orada çekilmiş gibi koyar (kostüm değiştirmez) */
+var DEFSCENES=[
+ {id:"anit",e:"\u{1F3DB}\u{FE0F}",n:"Anıtkabir önü",on:true,p:"Place this exact person naturally standing in front of Anıtkabir mausoleum in Ankara on a bright clear day, as if photographed there on location. Keep their OWN clothing exactly as in the input, their exact face, body and identity unchanged. Realistic daylight, correct perspective and shadows, photorealistic."},
+ {id:"bogaz",e:"\u{1F309}",n:"İstanbul Boğazı",on:true,p:"Place this exact person naturally on the Istanbul Bosphorus shore with the bridge and sea behind, golden afternoon light, as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Realistic perspective and lighting, photorealistic."},
+ {id:"kapadokya",e:"\u{1F388}",n:"Kapadokya",on:true,p:"Place this exact person naturally in Cappadocia at sunrise with hot-air balloons and fairy chimneys behind, as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Warm sunrise light, realistic perspective, photorealistic."},
+ {id:"gala",e:"\u{1F3AC}",n:"Kırmızı Halı",on:true,p:"Place this exact person naturally on a glamorous red-carpet event with step-and-repeat wall and camera flashes behind, as if photographed there. Keep their OWN clothing, exact face, body and identity unchanged. Cinematic event lighting, realistic perspective, photorealistic."},
+ {id:"kongre",e:"\u{1F3A4}",n:"Kongre Sahnesi",on:true,p:"Place this exact person naturally on a modern conference/congress stage with stage lights and a large screen behind, as if photographed at the event. Keep their OWN clothing, exact face, body and identity unchanged. Realistic stage lighting and perspective, photorealistic."},
+ {id:"kar",e:"\u{2744}\u{FE0F}",n:"Kar Manzarası",on:true,p:"Place this exact person naturally in a snowy mountain landscape with soft winter light, as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Realistic winter lighting and perspective, photorealistic."}
+];
 var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.08.2026",
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
-  enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,flatter:true,
+  enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,aiScenes:DEFSCENES,flatter:true,
   bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"cihaz",guide:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
@@ -651,6 +665,12 @@ DEFSTYLES.forEach(function(d){
   var s=null;for(var i2=0;i2<S.aiStyles.length;i2++)if(S.aiStyles[i2].id===d.id)s=S.aiStyles[i2];
   if(!s)S.aiStyles.push(JSON.parse(JSON.stringify(d)));
   else if(!s.cust){if(s.p!==d.p)s.p=d.p;if(d.v)s.v=d.v;}
+});
+if(!S.aiScenes||!S.aiScenes.length)S.aiScenes=JSON.parse(JSON.stringify(DEFSCENES));
+DEFSCENES.forEach(function(d){
+  var s=null;for(var i3=0;i3<S.aiScenes.length;i3++)if(S.aiScenes[i3].id===d.id)s=S.aiScenes[i3];
+  if(!s)S.aiScenes.push(JSON.parse(JSON.stringify(d)));
+  else if(!s.cust&&s.p!==d.p)s.p=d.p;
 });
 function save(){try{localStorage.setItem("booth.v1",JSON.stringify(S));}catch(e){}}
 
@@ -1230,7 +1250,9 @@ function placeGrid(x,sh,cols,rows,cx0,cy0,cw,chh,ar){
 var composed="";
 function showReview(){
   compose();buildFilterStrip();buildBgStrip();buildFrameStrip();
-  $("#aiBtn").hidden=!(S.aiOn&&S.aiKey&&S.aiStyles.some(function(st){return st.on}));
+  var aiReady=!!(S.aiOn&&S.aiKey);
+  $("#aiBtn").hidden=!(aiReady&&S.aiStyles.some(function(st){return st.on}));
+  $("#aiSceneBtn").hidden=!(aiReady&&S.aiScenes&&S.aiScenes.some(function(st){return st.on}));
   go("review");
 }
 var gFrame=null,gFrameId=null,gStd=false;
@@ -1314,13 +1336,17 @@ function aiState(st){
   $("#aiPick").hidden=st!=="pick";
   $("#aiWork").hidden=st!=="work";
   $("#aiRes").hidden=st!=="res";
+  var o=$("#aiOther");if(o)o.textContent=(aiMode==="scene")?"Başka sahne dene":"Başka stil dene";
 }
-var aiSel=[],aiCell=0,aiDone=[],aiForce=[],lastTekStyle=null;
+var aiSel=[],aiCell=0,aiDone=[],aiForce=[],lastTekStyle=null,aiMode="style";
+function aiList(){return aiMode==="scene"?S.aiScenes:S.aiStyles}
 function multiMode(){return mode&&mode.shots>1}
-function openAi(){
-  aiSel=shotsEnh.map(function(){return null});aiCell=0;
+function openAi(m){
+  aiMode=(m==="scene")?"scene":"style";
+  var tt=document.querySelector("#s-ai .topbar .t");if(tt)tt.textContent=(aiMode==="scene")?"AI Sahne / Mekân":"AI Dönüşüm";
+  aiSel=shotsEnh.map(function(){return null});aiCell=0;aiDone=[];aiForce=[];lastTekStyle=null;
   var g=$("#aiGrid");g.innerHTML="";
-  S.aiStyles.filter(function(st){return st.on}).forEach(function(st){
+  aiList().filter(function(st){return st.on}).forEach(function(st){
     var b=document.createElement("button");b.className="aicard";b.dataset.sid=st.id;
     b.innerHTML="<b>"+st.e+"</b><span>"+st.n+"</span>";
     b.onclick=function(){
@@ -1340,7 +1366,9 @@ function openAi(){
   });
   $("#aiShotRow").hidden=!multiMode();
   $("#aiMultiRow").hidden=!multiMode();
-  $("#aiPickTitle").textContent=multiMode()?"Kareye dokun, sonra stilini seç":"Bir stil seç";
+  $("#aiPreset").hidden=(aiMode==="scene"); /* Zaman Tüneli sadece stillerde */
+  var lbl=(aiMode==="scene")?"sahne":"stil";
+  $("#aiPickTitle").textContent=multiMode()?("Kareye dokun, sonra "+lbl+" seç"):("Bir "+lbl+" seç");
   if(multiMode())drawAiShots();
   aiState("pick");go("ai");
 }
@@ -1397,7 +1425,8 @@ $("#aiGo").onclick=function(){
     }
   });
 };
-$("#aiBtn").onclick=openAi;
+$("#aiBtn").onclick=function(){openAi("style")};
+$("#aiSceneBtn").onclick=function(){openAi("scene")};
 $("#aiClose").onclick=function(){go("review")};
 $("#aiOther").onclick=function(){aiState("pick")};
 $("#aiNorm").onclick=function(){aiShots=[];aiDone=[];aiForce=[];compose();buildBgStrip();go("review")};
@@ -1633,11 +1662,11 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
-  buildStyleRows();refreshProfUI();renderLib();
+  buildStyleRows();buildSceneRows();refreshProfUI();renderLib();
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.15 · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.20 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2181,6 +2210,11 @@ $("#profSel").addEventListener("change",function(){
 $("#tgAi").onclick=function(){S.aiOn=!S.aiOn;tg(this,S.aiOn);save()};
 $("#fAiKey").addEventListener("input",function(){S.aiKey=this.value.trim();save()});
 $("#fFilterMode").addEventListener("change",function(){S.filterMode=this.value;save()});
+$("#sceneAddBtn").onclick=function(){
+  S.aiScenes.push({id:"s"+Date.now().toString(36),e:"\u{1F4CD}",n:"Yeni sahne",on:true,cust:true,
+    p:"Place this exact person naturally at [MEKÂNI BURAYA YAZ], as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Realistic lighting and perspective, photorealistic."});
+  save();buildSceneRows();
+};
 function buildStyleRows(){
   var w=$("#styleList");if(!w)return;
   w.innerHTML="";
@@ -2192,6 +2226,25 @@ function buildStyleRows(){
     var nm=document.createElement("input");nm.type="text";nm.value=st.n;
     nm.addEventListener("input",function(){st.n=nm.value;save()});
     r1.appendChild(t);r1.appendChild(nm);
+    var ta=document.createElement("textarea");ta.value=st.p;
+    ta.addEventListener("input",function(){st.p=ta.value;st.cust=true;save()});
+    d.appendChild(r1);d.appendChild(ta);
+    w.appendChild(d);
+  });
+}
+function buildSceneRows(){
+  var w=$("#sceneList");if(!w)return;
+  w.innerHTML="";
+  S.aiScenes.forEach(function(st,idx){
+    var d=document.createElement("div");d.className="stylerow";
+    var r1=document.createElement("div");r1.className="r1";
+    var t=document.createElement("div");t.className="tg"+(st.on?" on":"");t.innerHTML="<i></i>";
+    t.onclick=function(){st.on=!st.on;t.classList.toggle("on",st.on);save()};
+    var nm=document.createElement("input");nm.type="text";nm.value=st.n;
+    nm.addEventListener("input",function(){st.n=nm.value;save()});
+    var del=document.createElement("button");del.className="btn ghost mini";del.textContent="Sil";
+    del.onclick=function(){S.aiScenes.splice(idx,1);save();buildSceneRows()};
+    r1.appendChild(t);r1.appendChild(nm);r1.appendChild(del);
     var ta=document.createElement("textarea");ta.value=st.p;
     ta.addEventListener("input",function(){st.p=ta.value;st.cust=true;save()});
     d.appendChild(r1);d.appendChild(ta);
