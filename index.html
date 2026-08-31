@@ -587,7 +587,12 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="text" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
           <div class="lbl" style="margin-top:6px">AI Dönüşüm stilleri</div>
           <div id="styleList" style="display:flex;flex-direction:column;gap:10px"></div>
-          <div class="lbl" style="margin-top:14px">AI Sahne / Mekân (kişiyi kıyafetiyle o mekâna koyar)</div>
+          <div class="lbl" style="margin-top:14px">AI Sahne / Mekân — kendi arka planını yükle, AI kişiyi giydirip o sahneye yerleştirir</div>
+          <div id="sceneImgList" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="sceneImgBtn">Arka plan görseli yükle</button></div>
+          <input type="file" id="sceneImgFile" accept="image/*" multiple hidden>
+          <div class="note">Yüklediğin görsel arka plan AYNEN korunur; AI sadece kişiyi mekâna uygun kıyafet ve doğal pozla yerleştirir. Her görselin altındaki kutuya kıyafet/poz tarifi yazabilirsin.</div>
+          <div class="lbl" style="margin-top:14px">Hazır sahneler (arka planı AI üretir)</div>
           <div id="sceneList" style="display:flex;flex-direction:column;gap:10px"></div>
           <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="sceneAddBtn">Sahne ekle</button></div>
           <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="aiTestBtn">Anahtarı test et</button></div>
@@ -1345,14 +1350,27 @@ function openAi(m){
   aiMode=(m==="scene")?"scene":"style";
   var tt=document.querySelector("#s-ai .topbar .t");if(tt)tt.textContent=(aiMode==="scene")?"AI Sahne / Mekân":"AI Dönüşüm";
   aiSel=shotsEnh.map(function(){return null});aiCell=0;aiDone=[];aiForce=[];lastTekStyle=null;
+  if(aiMode==="scene"){
+    /* önce yüklediğin arka plan görsellerini (aiscene) al, hazır sahnelerle birleştir */
+    libAll(function(list){
+      var imgs=list.filter(function(r){return r.kind==="aiscene"}).map(function(r){
+        return {id:r.id,e:"\u{1F5BC}\u{FE0F}",n:r.name,on:true,p:r.p||"",img:r.dataUrl};
+      });
+      var txt=S.aiScenes.filter(function(st){return st.on});
+      buildAiGrid(imgs.concat(txt));
+    });
+  } else {
+    buildAiGrid(S.aiStyles.filter(function(st){return st.on}));
+  }
+}
+function buildAiGrid(items){
   var g=$("#aiGrid");g.innerHTML="";
-  aiList().filter(function(st){return st.on}).forEach(function(st){
+  items.forEach(function(st){
     var b=document.createElement("button");b.className="aicard";b.dataset.sid=st.id;
     b.innerHTML="<b>"+st.e+"</b><span>"+st.n+"</span>";
     b.onclick=function(){
       if(!multiMode()){runStyle(st);return}
       if(aiDone[aiCell]===st.id){
-        /* üretilmiş karenin stiline dokunuş = yeniden üret (↻); tekrar dokunuş = vazgeç */
         aiForce[aiCell]=!aiForce[aiCell];
         aiSel[aiCell]=st;drawAiShots();return;
       }
@@ -1452,6 +1470,7 @@ function runStyle(st){
     setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},6000);
   });
 }
+function loadImg(url){return new Promise(function(res,rej){var im=new Image();im.onload=function(){res(im)};im.onerror=function(){rej(new Error("görsel okunamadı"))};im.src=url;})}
 function toB64(img,max){
   var sc=max/Math.max(img.width,img.height);if(sc>1)sc=1;
   var c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
@@ -1507,8 +1526,18 @@ function aiStyled(src,st,force){
   return aiTransform(src,st).then(function(c){cc[st.id]=c;aiCache.set(src,cc);return c});
 }
 function aiTransform(src,st){
-  var extra=(st.v&&st.v.length)?(" Hero concept for this image: "+st.v[Math.floor(Math.random()*st.v.length)]+".") : "";
   var ret=S.flatter?" Render the person at their best, like a professional photographer would: flattering studio-quality light, smooth healthy skin, confident posture, a subtly fit look — very natural, never exaggerated.":"";
+  /* AI SAHNE — kendi yüklediğin arka plan görseli: arka planı AYNEN koru, kişiyi giydir+poz ver */
+  if(aiMode==="scene"&&st.img){
+    return loadImg(st.img).then(function(bgim){
+      return geminiImage([
+        {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
+        {inline_data:{mime_type:"image/jpeg",data:toB64(bgim,1408)}},
+        {text:"Create a realistic photograph: place the person from the FIRST image into the scene of the SECOND image. Keep the SECOND image as the background EXACTLY as provided — do not redraw, replace or distort that background. CRITICAL — the person's FACE and HEAD must be an exact, faithful copy of the first image: identical facial features and proportions, same nose, eyes, eyebrows, beard shape, hairline, age and skin tone. Do NOT beautify, slim, smooth, age or restyle the face in any way — treat the face as a locked reference to reproduce precisely. You may change ONLY their clothing (dress them appropriately for this setting"+(st.p?(": "+st.p):"")+") and give them a natural, believable standing pose that fits, well framed. Integrate them realistically with matching lighting, shadows, perspective and scale so it looks like a genuine photo actually taken there, never a flat cut-out. Photorealistic, high quality."}
+      ],1200,1600);
+    });
+  }
+  var extra=(st.v&&st.v.length)?(" Hero concept for this image: "+st.v[Math.floor(Math.random()*st.v.length)]+".") : "";
   var tail;
   if(aiMode==="scene"){
     /* SAHNE: yüz sabit; kıyafet + doğal poz + gerçek yerleşim ÜRETİLİR */
@@ -1670,11 +1699,11 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
-  buildStyleRows();buildSceneRows();refreshProfUI();renderLib();
+  buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.21 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.23 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2220,9 +2249,20 @@ $("#fAiKey").addEventListener("input",function(){S.aiKey=this.value.trim();save(
 $("#fFilterMode").addEventListener("change",function(){S.filterMode=this.value;save()});
 $("#sceneAddBtn").onclick=function(){
   S.aiScenes.push({id:"s"+Date.now().toString(36),e:"\u{1F4CD}",n:"Yeni sahne",on:true,cust:true,
-    p:"Place this exact person naturally at [MEKÂNI BURAYA YAZ], as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Realistic lighting and perspective, photorealistic."});
+    p:"A realistic photograph taken at [MEKÂNI BURAYA YAZ]. Dress the person appropriately for the setting, in a natural relaxed pose."});
   save();buildSceneRows();
 };
+$("#sceneImgBtn").onclick=function(){$("#sceneImgFile").click()};
+$("#sceneImgFile").addEventListener("change",function(){
+  var fs=[].slice.call(this.files||[]);this.value="";
+  (function next3(i){
+    if(i>=fs.length){buildSceneImgRows();return}
+    readFileDataUrl(fs[i]).then(function(u){
+      libPut({id:"asc"+Date.now().toString(36)+i,kind:"aiscene",name:fs[i].name.replace(/\.[^.]+$/,""),dataUrl:u,
+        p:"smart attire appropriate to the setting, a natural relaxed pose"},function(){next3(i+1)});
+    });
+  })(0);
+});
 function buildStyleRows(){
   var w=$("#styleList");if(!w)return;
   w.innerHTML="";
@@ -2257,6 +2297,28 @@ function buildSceneRows(){
     ta.addEventListener("input",function(){st.p=ta.value;st.cust=true;save()});
     d.appendChild(r1);d.appendChild(ta);
     w.appendChild(d);
+  });
+}
+function buildSceneImgRows(){
+  var w=$("#sceneImgList");if(!w)return;
+  libAll(function(list){
+    var scenes=list.filter(function(r){return r.kind==="aiscene"});
+    w.innerHTML="";
+    if(!scenes.length){var e=document.createElement("div");e.className="note";e.textContent="Henüz arka plan görseli yok.";w.appendChild(e);}
+    scenes.forEach(function(r){
+      var d=document.createElement("div");d.className="librow";
+      var im=new Image();im.src=r.dataUrl;d.appendChild(im);
+      var col=document.createElement("div");col.style.cssText="flex:1;display:flex;flex-direction:column;gap:6px";
+      var nm=document.createElement("input");nm.type="text";nm.value=r.name;
+      nm.addEventListener("input",function(){r.name=nm.value;libPut(r)});
+      var ta=document.createElement("textarea");ta.value=r.p||"";ta.placeholder="kıyafet/poz tarifi (ör. şık takım elbise, saygın duruş)";
+      ta.addEventListener("input",function(){r.p=ta.value;libPut(r)});
+      col.appendChild(nm);col.appendChild(ta);d.appendChild(col);
+      var del=document.createElement("button");del.className="btn ghost mini";del.textContent="Sil";
+      del.onclick=function(){libDel(r.id,buildSceneImgRows)};
+      d.appendChild(del);
+      w.appendChild(d);
+    });
   });
 }
 function galLink(){
