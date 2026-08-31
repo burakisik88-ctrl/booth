@@ -572,6 +572,16 @@ h1 em{font-style:italic;color:var(--amber)}
         </div>
 
         <div class="grp">
+          <h3>Ayarları başka cihaza taşı (ortak / tablet)</h3>
+          <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap">
+            <button class="btn ghost mini" id="cfgExportBtn">Dışa aktar (kod üret)</button>
+            <button class="btn ghost mini" id="cfgImportBtn">İçe aktar (kod yapıştır)</button>
+          </div>
+          <textarea id="cfgBox" placeholder="Kod burada görünür / buraya yapıştır" style="width:100%;min-height:70px;margin-top:8px;font-family:monospace;font-size:11px"></textarea>
+          <div class="note" id="cfgNote">Tüm ayarlar (AI anahtarı, Cloudinary, etkinlik, stiller, sahneler) tek koda çıkar. Ortağın "İçe aktar"a yapıştırıp uygular. Bu kod API anahtarını içerir — yalnız güvendiğin kişiye gönder. (Yüklediğin çerçeve/fon görselleri koda girmez, onları ayrı gönder.)</div>
+        </div>
+
+        <div class="grp">
           <h3>Dijital Teslim (QR)</h3>
           <div class="fld"><div class="lbl">Cloudinary cloud name</div><input type="text" id="fCldName" placeholder="ör. dxy12abcd" autocomplete="off"></div>
           <div class="fld"><div class="lbl">Upload preset (unsigned)</div><input type="text" id="fCldPreset" placeholder="ör. booth_unsigned" autocomplete="off"></div>
@@ -1727,7 +1737,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.25 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.26 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2371,6 +2381,26 @@ $("#fEvt").addEventListener("input",updGalLink);
 $("#fProfName").addEventListener("input",updGalLink);
 $("#fCldName").addEventListener("input",function(){S.cldName=this.value.trim();save();updGalLink()});
 $("#fCldPreset").addEventListener("input",function(){S.cldPreset=this.value.trim();save();updGalLink()});
+/* ---------- ayar dışa/içe aktarma (ortak/tablet kurulumu) ---------- */
+$("#cfgExportBtn").onclick=function(){
+  try{
+    var code=btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+    $("#cfgBox").value=code;$("#cfgBox").select();
+    try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(code).catch(function(){});}catch(e){}
+    $("#cfgNote").textContent="Kod hazır ve kopyalandı ✓ — WhatsApp'tan ortağına gönder. (API anahtarı içerir, yalnız güvendiğin kişiye.)";
+  }catch(e){$("#cfgNote").textContent="Kod üretilemedi: "+((e&&e.message)||"hata")}
+};
+$("#cfgImportBtn").onclick=function(){
+  var code=($("#cfgBox").value||"").trim();
+  if(!code){$("#cfgNote").textContent="Önce kutuya kodu yapıştır.";return}
+  try{
+    var obj=JSON.parse(decodeURIComponent(escape(atob(code))));
+    if(!obj||typeof obj!=="object")throw new Error("geçersiz kod");
+    Object.assign(S,obj);save();
+    $("#cfgNote").textContent="Uygulandı ✓ — sayfa yenileniyor…";
+    setTimeout(function(){location.reload()},700);
+  }catch(e){$("#cfgNote").textContent="Kod okunamadı — eksik/bozuk olabilir. Tekrar kopyalayıp yapıştır."}
+};
 $("#cldTestBtn").onclick=function(){
   if(!cldReady()){$("#cldNote").textContent="Önce iki alanı da doldur.";return}
   $("#cldNote").textContent="Test ediliyor…";
