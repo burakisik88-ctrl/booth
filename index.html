@@ -645,12 +645,12 @@ var DEFSTYLES=[
 ];
 /* AI SAHNE / MEKAN — kişiyi kıyafetiyle o mekâna, orada çekilmiş gibi koyar (kostüm değiştirmez) */
 var DEFSCENES=[
- {id:"anit",e:"\u{1F3DB}\u{FE0F}",n:"Anıtkabir önü",on:true,p:"Place this exact person naturally standing in front of Anıtkabir mausoleum in Ankara on a bright clear day, as if photographed there on location. Keep their OWN clothing exactly as in the input, their exact face, body and identity unchanged. Realistic daylight, correct perspective and shadows, photorealistic."},
- {id:"bogaz",e:"\u{1F309}",n:"İstanbul Boğazı",on:true,p:"Place this exact person naturally on the Istanbul Bosphorus shore with the bridge and sea behind, golden afternoon light, as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Realistic perspective and lighting, photorealistic."},
- {id:"kapadokya",e:"\u{1F388}",n:"Kapadokya",on:true,p:"Place this exact person naturally in Cappadocia at sunrise with hot-air balloons and fairy chimneys behind, as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Warm sunrise light, realistic perspective, photorealistic."},
- {id:"gala",e:"\u{1F3AC}",n:"Kırmızı Halı",on:true,p:"Place this exact person naturally on a glamorous red-carpet event with step-and-repeat wall and camera flashes behind, as if photographed there. Keep their OWN clothing, exact face, body and identity unchanged. Cinematic event lighting, realistic perspective, photorealistic."},
- {id:"kongre",e:"\u{1F3A4}",n:"Kongre Sahnesi",on:true,p:"Place this exact person naturally on a modern conference/congress stage with stage lights and a large screen behind, as if photographed at the event. Keep their OWN clothing, exact face, body and identity unchanged. Realistic stage lighting and perspective, photorealistic."},
- {id:"kar",e:"\u{2744}\u{FE0F}",n:"Kar Manzarası",on:true,p:"Place this exact person naturally in a snowy mountain landscape with soft winter light, as if photographed there on location. Keep their OWN clothing, exact face, body and identity unchanged. Realistic winter lighting and perspective, photorealistic."}
+ {id:"anit",e:"\u{1F3DB}\u{FE0F}",n:"Anıtkabir önü",on:true,p:"A realistic photograph taken in front of Anıtkabir mausoleum in Ankara on a bright clear day. Dress the person in respectful, smart attire (dark trousers with a clean shirt or a light blazer) suited to the setting, standing in a natural, dignified pose."},
+ {id:"bogaz",e:"\u{1F309}",n:"İstanbul Boğazı",on:true,p:"A realistic photograph taken on the Istanbul Bosphorus shore with the bridge and sea behind, warm golden afternoon light. Dress the person in smart-casual summer clothing, in a relaxed natural pose."},
+ {id:"kapadokya",e:"\u{1F388}",n:"Kapadokya",on:true,p:"A realistic travel photograph taken in Cappadocia at sunrise with hot-air balloons and fairy chimneys behind. Dress the person in casual outdoor travel clothing with a light jacket, in a relaxed natural pose."},
+ {id:"gala",e:"\u{1F3AC}",n:"Kırmızı Halı",on:true,p:"A realistic photograph taken on a glamorous red-carpet event with a step-and-repeat wall and camera flashes behind. Dress the person in elegant evening formal wear appropriate to them, in a confident natural pose."},
+ {id:"kongre",e:"\u{1F3A4}",n:"Kongre Sahnesi",on:true,p:"A realistic photograph taken on a modern conference/congress stage with stage lights and a large screen behind. Dress the person in professional business attire (a suit), in a confident natural pose."},
+ {id:"kar",e:"\u{2744}\u{FE0F}",n:"Kar Manzarası",on:true,p:"A realistic photograph taken in a snowy mountain landscape with soft winter light. Dress the person in a warm, stylish winter coat, in a relaxed natural pose."}
 ];
 var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.08.2026",
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
@@ -1509,9 +1509,17 @@ function aiStyled(src,st,force){
 function aiTransform(src,st){
   var extra=(st.v&&st.v.length)?(" Hero concept for this image: "+st.v[Math.floor(Math.random()*st.v.length)]+".") : "";
   var ret=S.flatter?" Render the person at their best, like a professional photographer would: flattering studio-quality light, smooth healthy skin, confident posture, a subtly fit look — very natural, never exaggerated.":"";
+  var tail;
+  if(aiMode==="scene"){
+    /* SAHNE: yüz sabit; kıyafet + doğal poz + gerçek yerleşim ÜRETİLİR */
+    tail=" Keep this person's FACE and identity exactly and instantly recognizable — same gender, age, skin tone, facial hair and hairstyle, and a similar body build. You MAY dress them appropriately for the scene and give them a natural, relaxed, believable pose and a well-framed half or full-body composition that fits the setting. Integrate them realistically with matching lighting, shadows, perspective and depth of field so it looks like a genuine photograph actually taken there — never a flat cut-out pasted on top. Photorealistic, high quality.";
+  } else {
+    /* STİL: pozu ve kadrajı koru, sadece stil/karakter değişir */
+    tail=" Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Keep the face detailed and crisp even if it is small in the frame. Replace the entire background consistently with the style. High quality rendering.";
+  }
   return geminiImage([
     {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
-    {text:st.p+extra+" Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Keep the face detailed and crisp even if it is small in the frame. Replace the entire background consistently with the style."+ret+" High quality rendering."}
+    {text:st.p+extra+tail+ret}
   ],src.width,src.height);
 }
 function aiBgComposite(shot,bgUrl){
@@ -1666,7 +1674,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.20 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.21 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
