@@ -574,11 +574,16 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="grp">
           <h3>Ayarları başka cihaza taşı (ortak / tablet)</h3>
           <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap">
-            <button class="btn ghost mini" id="cfgExportBtn">Dışa aktar (kod üret)</button>
-            <button class="btn ghost mini" id="cfgImportBtn">İçe aktar (kod yapıştır)</button>
+            <button class="btn gold mini" id="cfgFileBtn">Dosya indir (görseller DAHİL)</button>
+            <button class="btn gold mini" id="cfgFileImpBtn">Dosyadan yükle</button>
           </div>
+          <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn ghost mini" id="cfgExportBtn">Kod üret (sadece ayarlar)</button>
+            <button class="btn ghost mini" id="cfgImportBtn">Kodu içe aktar</button>
+          </div>
+          <input type="file" id="cfgFile" accept=".json,application/json" hidden>
           <textarea id="cfgBox" placeholder="Kod burada görünür / buraya yapıştır" style="width:100%;min-height:70px;margin-top:8px;font-family:monospace;font-size:11px"></textarea>
-          <div class="note" id="cfgNote">Tüm ayarlar (AI anahtarı, Cloudinary, etkinlik, stiller, sahneler) tek koda çıkar. Ortağın "İçe aktar"a yapıştırıp uygular. Bu kod API anahtarını içerir — yalnız güvendiğin kişiye gönder. (Yüklediğin çerçeve/fon görselleri koda girmez, onları ayrı gönder.)</div>
+          <div class="note" id="cfgNote">Ortak/tablet kurulumu için <b>Dosya indir</b>'i kullan: ayarlar + çerçeveler + fonlar + AI sahne görselleri + profiller tek dosyada taşınır. Kod ise sadece ayarları taşır (görseller girmez). İkisi de API anahtarını içerir — yalnız güvendiğin kişiye gönder. Gerçek baskı ayarı, karşı cihazda yazıcı olmayabileceği için kapalı gelir.</div>
         </div>
 
         <div class="grp">
@@ -1737,7 +1742,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.26 · AI Sahne · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.27 · Tam Taşıma · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2390,17 +2395,90 @@ $("#cfgExportBtn").onclick=function(){
     $("#cfgNote").textContent="Kod hazır ve kopyalandı ✓ — WhatsApp'tan ortağına gönder. (API anahtarı içerir, yalnız güvendiğin kişiye.)";
   }catch(e){$("#cfgNote").textContent="Kod üretilemedi: "+((e&&e.message)||"hata")}
 };
+/* içe aktarmada cihaza özel alanlar taşınmaz:
+   realPrint → karşı cihazda yazıcı yoktur, gerçek baskı açık gelirse "yazdırma çalışmıyor" sanılır;
+   sayaçlar → bu cihazın istatistiği sıfırdan başlar */
+function applyImport(obj){
+  var o={};for(var k in obj)if(Object.prototype.hasOwnProperty.call(obj,k))o[k]=obj[k];
+  delete o.realPrint;delete o.shots;delete o.prints;delete o.sheets;
+  Object.assign(S,o);save();
+}
 $("#cfgImportBtn").onclick=function(){
   var code=($("#cfgBox").value||"").trim();
   if(!code){$("#cfgNote").textContent="Önce kutuya kodu yapıştır.";return}
   try{
     var obj=JSON.parse(decodeURIComponent(escape(atob(code))));
     if(!obj||typeof obj!=="object")throw new Error("geçersiz kod");
-    Object.assign(S,obj);save();
+    applyImport(obj);
     $("#cfgNote").textContent="Uygulandı ✓ — sayfa yenileniyor…";
     setTimeout(function(){location.reload()},700);
   }catch(e){$("#cfgNote").textContent="Kod okunamadı — eksik/bozuk olabilir. Tekrar kopyalayıp yapıştır."}
 };
+/* ---- dosya ile TAM taşıma: ayarlar + kütüphane görselleri + overlay'ler + profiller ---- */
+function assetsAll(cb){
+  if(!db)return cb({});
+  var out={};
+  try{
+    db.transaction("assets","readonly").objectStore("assets").openCursor().onsuccess=function(e){
+      var c=e.target.result;
+      if(c){out[String(c.key)]=c.value;c.continue()}else cb(out);
+    };
+  }catch(e){cb({})}
+}
+$("#cfgFileBtn").onclick=function(){
+  $("#cfgNote").textContent="Paket hazırlanıyor…";
+  libAll(function(lib){assetsAll(function(as){profAll(function(pr){
+    try{
+      var pkg={obskura:1,v:27,t:Date.now(),S:S,lib:lib,assets:as,profiles:pr};
+      var blob=new Blob([JSON.stringify(pkg)],{type:"application/json"});
+      var a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download="obskura-tasima-"+new Date().toISOString().slice(0,10)+".json";
+      document.body.appendChild(a);a.click();
+      setTimeout(function(){try{URL.revokeObjectURL(a.href)}catch(e){}if(a.parentNode)a.parentNode.removeChild(a)},4000);
+      var mb=Math.round(blob.size/1024/102.4)/10;
+      $("#cfgNote").textContent="Dosya indirildi ("+mb+" MB) — ayarlar, çerçeveler, fonlar, AI sahne görselleri ve profiller içinde. Ortağına gönder; o \"Dosyadan yükle\" ile açsın. (API anahtarı içerir, yalnız güvendiğin kişiye.)";
+    }catch(e){$("#cfgNote").textContent="Dosya üretilemedi: "+((e&&e.message)||"hata")}
+  })})});
+};
+$("#cfgFileImpBtn").onclick=function(){$("#cfgFile").click()};
+$("#cfgFile").addEventListener("change",function(){
+  var f=this.files&&this.files[0];this.value="";
+  if(!f)return;
+  $("#cfgNote").textContent="Dosya okunuyor…";
+  var rd=new FileReader();
+  rd.onerror=function(){$("#cfgNote").textContent="Dosya okunamadı."};
+  rd.onload=function(){
+    try{
+      var pkg=JSON.parse(rd.result);
+      if(!pkg||pkg.obskura!==1||!pkg.S||typeof pkg.S!=="object")throw new Error("bu bir OBSKURA taşıma dosyası değil");
+      applyImport(pkg.S);
+      var lib=Array.isArray(pkg.lib)?pkg.lib:[],as=(pkg.assets&&typeof pkg.assets==="object")?pkg.assets:{},pr=Array.isArray(pkg.profiles)?pkg.profiles:[];
+      var jobs=0,done=0,fired=false;
+      function fin(){
+        done++;
+        if(done>=jobs&&!fired){
+          fired=true;
+          $("#cfgNote").textContent="Her şey yüklendi ✓ — sayfa yenileniyor…";
+          setTimeout(function(){location.reload()},800);
+        }
+      }
+      if(db){
+        jobs=3;
+        try{var tx1=db.transaction("lib","readwrite"),st1=tx1.objectStore("lib");
+          lib.forEach(function(rec){if(rec&&rec.id)try{st1.put(rec)}catch(e){}});
+          tx1.oncomplete=fin;tx1.onerror=fin;tx1.onabort=fin;}catch(e){fin()}
+        try{var tx2=db.transaction("assets","readwrite"),st2=tx2.objectStore("assets");
+          Object.keys(as).forEach(function(k){try{st2.put(as[k],k)}catch(e){}});
+          tx2.oncomplete=fin;tx2.onerror=fin;tx2.onabort=fin;}catch(e){fin()}
+        try{var tx3=db.transaction("profiles","readwrite"),st3=tx3.objectStore("profiles");
+          pr.forEach(function(rec){if(rec&&rec.id)try{st3.put(rec)}catch(e){}});
+          tx3.oncomplete=fin;tx3.onerror=fin;tx3.onabort=fin;}catch(e){fin()}
+      }else{jobs=1;fin()}
+    }catch(e){$("#cfgNote").textContent="Dosya okunamadı: "+((e&&e.message)||"geçersiz")}
+  };
+  rd.readAsText(f);
+});
 $("#cldTestBtn").onclick=function(){
   if(!cldReady()){$("#cldNote").textContent="Önce iki alanı da doldur.";return}
   $("#cldNote").textContent="Test ediliyor…";
@@ -2470,7 +2548,7 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
-window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,_chroma:chromaComposite};
+window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite};
 })();
 </script>
 
