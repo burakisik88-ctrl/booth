@@ -1576,14 +1576,14 @@ function aiTransform(src,st){
       ],1200,1600);
     });
   }
-  var extra=(st.v&&st.v.length)?(" Hero concept for this image: "+st.v[Math.floor(Math.random()*st.v.length)]+".") : "";
+  var extra=(st.v&&st.v.length)?(" Costume and theme concept to apply to THIS SAME person (not a new character): "+st.v[Math.floor(Math.random()*st.v.length)]+".") : "";
   var tail;
   if(aiMode==="scene"){
     /* SAHNE: yüz sabit; kıyafet + doğal poz + gerçek yerleşim ÜRETİLİR */
-    tail=" Frame the person as a natural WAIST-UP (half-body) portrait so the face is comfortably large and detailed, with CORRECT natural human proportions — the head must be normal-sized relative to the body, never enlarged or distorted. Keep this person's FACE exact, sharp and instantly recognizable — same features, gender, age, skin tone, facial hair and hairline; do NOT beautify, blur or resize the head. You MAY dress them appropriately for the scene and give them a natural, relaxed pose. Integrate realistically with matching lighting, shadows and perspective so it looks like a genuine photograph actually taken there — never a flat cut-out pasted on top. Photorealistic, high quality.";
+    tail=" Frame the person as a natural WAIST-UP (half-body) portrait so the face is comfortably large and detailed, with CORRECT natural human proportions — the head must be normal-sized relative to the body, never enlarged or distorted. Keep this person's FACE exact, sharp and instantly recognizable — same features, gender, age, skin tone, facial hair and hairline; do NOT beautify, blur or resize the head. You MAY dress them appropriately for the scene and give them a natural, relaxed pose; hands must look natural with correct fingers. Integrate realistically with matching lighting, shadows and perspective so it looks like a genuine photograph actually taken there — never a flat cut-out pasted on top. Render the whole image like a REAL photo from a modern high-end camera: neutral realistic colors and clean detail — never sepia, vintage tint, heavy grain or an illustrated/CGI look. Photorealistic, high quality.";
   } else {
     /* STİL: pozu ve kadrajı koru, sadece stil/karakter değişir */
-    tail=" Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Keep the face detailed and crisp even if it is small in the frame. Replace the entire background consistently with the style. High quality rendering.";
+    tail=" STRICT: the final image must contain EXACTLY ONE person — this same person transformed. NEVER add a second figure, duplicate, twin, clone, reflection-person or any other people; exactly one face in the image. Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Keep the face detailed and crisp even if it is small in the frame. Replace the entire background consistently with the style. High quality rendering.";
   }
   return geminiImage([
     {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
@@ -1598,7 +1598,7 @@ function aiBgComposite(shot,bgUrl){
     return geminiImage([
       {inline_data:{mime_type:"image/jpeg",data:toB64(shot,1408)}},
       {inline_data:{mime_type:"image/jpeg",data:toB64(bg,1024)}},
-      {text:"Take the person from the first image and place them naturally into the scene from the second image as the new background. Keep the person's face, hair, body, pose, clothing and expression EXACTLY the same — do not beautify, redraw or alter them; preserve the facial detail pixel-faithfully even if the face is small in the frame (full-body shot). Blend the edges cleanly, especially the hair. Match the scene's lighting, colors and perspective so it looks like one real photograph, and keep the scene's elements BEHIND the person — nothing from the background may overlap or cover any part of the person. Keep the same framing and camera angle as the first image. Output only the final photo."}
+      {text:"Cut the person out of the first image EXACTLY as they appear and place them in front of the scene from the second image as the new background. STRICT rules: reproduce ONLY what is visible of the person in the first image — identical crop, pose, body, clothing (or lack of clothing), hair and expression. NEVER invent, extend or complete anything that is not visible in the first image: no added legs, torso, arms, clothing or accessories. If the first image shows the person from the chest up, the result also shows them from the chest up — do NOT turn it into a full-body shot. Do not slim, reshape, beautify or redraw the person; keep the face pixel-faithful and sharp. Keep the EXACT same framing, zoom and camera angle as the first image; the background scene simply fills the area around the person, scaled believably, and nothing from the background may overlap or cover the person. Blend the cut edges cleanly, especially the hair, and match the scene's lighting and colors so it looks like one real photograph. Output only the final photo."}
     ],shot.width,shot.height);
   });
 }
@@ -1742,7 +1742,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.27 · Tam Taşıma · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.28 · Sıkı Kesim · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
