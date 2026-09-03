@@ -255,7 +255,7 @@ h1 em{font-style:italic;color:var(--amber)}
   html,body{background:#fff!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important;overflow:visible!important}
   #app,.grain,.vig{display:none!important}
   #printArea{display:block!important;position:static!important;margin:0!important;padding:0!important}
-  #printArea img{width:100mm;height:150mm;display:block;margin:0!important;break-after:page;page-break-after:always}
+  #printArea img{width:100mm;height:150mm;object-fit:contain;background:#fff;display:block;margin:0!important;break-after:page;page-break-after:always}
   #printArea img:last-child{break-after:auto;page-break-after:auto}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -350,6 +350,7 @@ h1 em{font-style:italic;color:var(--amber)}
       <div class="eyebrow">Hazır</div>
       <h1>Telefonuna <em>al</em></h1>
       <div class="qr"><canvas id="qrCanvas" width="480" height="480"></canvas></div>
+      <div class="lede" id="qrSwap" style="display:none"></div>
       <div class="lede">Kamerayı karekoda tut, fotoğrafın telefonuna insin.</div>
       <div class="row">
         <button class="btn" id="againBtn">Yeniden çek</button>
@@ -532,13 +533,22 @@ h1 em{font-style:italic;color:var(--amber)}
         </div>
 
         <div class="grp">
+          <h3>Paket Yükleme — hepsini tek seferde at</h3>
+          <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap">
+            <button class="btn gold mini" id="bulkBtn">Dosyaları seç (çoklu)</button>
+          </div>
+          <input type="file" id="bulkFile" accept="image/*" multiple hidden>
+          <div class="note" id="bulkNote">Dosya adına göre otomatik yerine gider: <b>cerceve-tek-…</b> / <b>cerceve-serit-…</b> / <b>cerceve-kare-…</b> → çerçeve kütüphanesi, <b>fon-…</b> → arka plan fonu, <b>mekan-…</b> → AI Sahne görseli. Öneksiz dosyalarda: şeffaf PNG → tek kare çerçevesi, diğerleri → fon sayılır.</div>
+        </div>
+
+        <div class="grp">
           <h3>Kütüphane — kendi çerçeve ve arka planların</h3>
           <div class="fld"><div class="lbl">Çerçeve yükle (PNG, 1200×1800, şeffaf zemin)</div>
             <div class="row2">
               <div class="fld"><select id="libFrMode"><option value="tek">Tek Kare</option><option value="serit">Çift Şerit</option><option value="kare4">Dörtlü</option></select></div>
               <button class="btn ghost mini" id="libFrBtn">Çerçeve ekle</button>
             </div>
-            <input type="file" id="libFrFile" accept="image/png,image/webp" hidden>
+            <input type="file" id="libFrFile" accept="image/png,image/webp" multiple hidden>
           </div>
           <div id="libFrList" style="display:flex;flex-direction:column;gap:8px"></div>
           <div class="note">"Kullan" dediğin çerçeve o düzenin aktif çerçevesi olur ve çerçeve tipi otomatik "Yüklenen PNG"ye geçer.</div>
@@ -716,7 +726,7 @@ document.addEventListener("click",function(e){
 function clearGuestData(){
   aiGen++;
   ["#previewImg","#emergeImg","#aiImg"].forEach(function(s){var el=$(s);if(el)el.removeAttribute("src");});
-  shots=[];shotsEnh=[];aiShots=[];aiSel=[];aiDone=[];aiForce=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;composed="";
+  shots=[];shotsEnh=[];aiShots=[];aiSel=[];aiDone=[];aiForce=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;composed="";storyComposed="";
 }
 
 /* ---------- film grain ---------- */
@@ -840,7 +850,8 @@ $("#shotFile").addEventListener("change",function(){
 var MODES=[
   {id:"tek",name:"Tek Kare",desc:"Tek fotoğraf, tam sayfa baskı.",shots:1,cells:[[1]]},
   {id:"serit",name:"Çift Şerit",desc:"Dört kare, iki eş şerit. Kes, biri sende biri onda.",shots:4,cells:[[1],[1],[1],[1]]},
-  {id:"kare4",name:"Dörtlü",desc:"Dört kare tek sayfada.",shots:4,cells:[[1,1],[1,1]]}
+  {id:"kare4",name:"Dörtlü",desc:"Dört kare tek sayfada.",shots:4,cells:[[1,1],[1,1]]},
+  {id:"insta",name:"Instagram",desc:"Tek çekim — post + story, QR ile telefonuna.",shots:1,cells:[[1]]}
 ];
 function buildModes(){
   var w=$("#modeCards");w.innerHTML="";
@@ -848,7 +859,7 @@ function buildModes(){
     var b=document.createElement("button");b.className="card";
     var shotN=(m.id==="serit"&&S.serit8)?8:m.shots;
     var t='<div class="thumb" style="grid-template-columns:'+(m.id==="kare4"?"1fr 1fr":"1fr")+
-      ';grid-template-rows:'+(m.id==="tek"?"1fr":m.id==="serit"?"repeat(4,1fr)":"1fr 1fr")+'">'+
+      ';grid-template-rows:'+((m.id==="tek"||m.id==="insta")?"1fr":m.id==="serit"?"repeat(4,1fr)":"1fr 1fr")+'">'+
       new Array(m.shots+1).join("<i></i>")+'</div>';
     b.innerHTML=t+'<div class="cn">'+m.name+'</div><div class="shots">'+shotN+' çekim</div><div class="cd">'+m.desc+'</div>';
     b.onclick=function(){beginSeq(m)};
@@ -863,7 +874,7 @@ function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
   mode=m;shots=[];shotsEnh=[];
   if(m.id==="serit")m.shots=S.serit8?8:4;
-  filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;
+  filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;storyComposed="";
   aiGen++;aiCache=new Map();aiBgCache=new Map();aiCutCache=new Map();capTry=0;chips();
   go("shoot");
   $("#shootTitle").textContent=m.name;
@@ -1348,7 +1359,34 @@ function composeOn(x,id,sh){
     }
   }
 }
+/* INSTAGRAM modu: aynı çekimden post (4:5) + story (9:16) üretir; köşede zarif marka bandı */
+var storyComposed="";
+function instaCanvas(img,w,h){
+  var c=document.createElement("canvas");c.width=w;c.height=h;
+  var x=c.getContext("2d");
+  x.fillStyle="#12100E";x.fillRect(0,0,w,h);
+  cover(x,img,0,0,w,h);
+  var g=x.createLinearGradient(0,h-250,0,h);
+  g.addColorStop(0,"rgba(10,8,7,0)");g.addColorStop(1,"rgba(10,8,7,.74)");
+  x.fillStyle=g;x.fillRect(0,h-250,w,250);
+  var pad=44,by=h-pad,tx=pad;
+  if(logoImg){var lh=82,lw=lh*logoImg.width/logoImg.height;x.drawImage(logoImg,pad,by-lh,lw,lh);tx=pad+lw+26;}
+  x.textAlign="left";x.fillStyle="#F6F0E6";
+  x.font="600 40px Figtree,sans-serif";
+  x.fillText((S.evt||"").trim(),tx,by-42);
+  x.font="500 29px Figtree,sans-serif";x.fillStyle="rgba(246,240,230,.85)";
+  x.fillText(((S.tag||S.sub)||"").trim(),tx,by-2);
+  return c;
+}
+function composeInsta(){
+  var sh=currentShots();
+  if(!sh[0])return;
+  composed=instaCanvas(sh[0],1080,1350).toDataURL("image/jpeg",.93);
+  storyComposed=instaCanvas(sh[0],1080,1920).toDataURL("image/jpeg",.93);
+  $("#previewImg").src=composed;
+}
 function compose(){
+  if(mode&&mode.id==="insta"){composeInsta();return}
   var c=document.createElement("canvas");c.width=W;c.height=H;
   var x=c.getContext("2d");
   composeOn(x,mode.id,currentShots());
@@ -1748,7 +1786,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.29 · Tek Kesim · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.30 · Instagram · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1907,11 +1945,45 @@ function renderLib(){
 }
 $("#libFrBtn").onclick=function(){$("#libFrFile").click()};
 $("#libFrFile").addEventListener("change",function(){
-  var f=this.files&&this.files[0];this.value="";if(!f)return;
+  var fs=[].slice.call(this.files||[]);this.value="";
   var mode2=$("#libFrMode").value;
-  readFileDataUrl(f).then(function(u){
-    libPut({id:Date.now().toString(36),kind:"frame",mode:mode2,name:f.name.replace(/\.[^.]+$/,""),dataUrl:u},renderLib);
-  });
+  (function nf(i){
+    if(i>=fs.length){renderLib();return}
+    readFileDataUrl(fs[i]).then(function(u){
+      libPut({id:Date.now().toString(36)+i,kind:"frame",mode:mode2,name:fs[i].name.replace(/\.[^.]+$/,""),dataUrl:u},function(){nf(i+1)});
+    });
+  })(0);
+});
+/* ---- Paket Yükleme: dosya adı önekine göre otomatik dağıtım ---- */
+$("#bulkBtn").onclick=function(){$("#bulkFile").click()};
+$("#bulkFile").addEventListener("change",function(){
+  var fs=[].slice.call(this.files||[]);this.value="";
+  if(!fs.length)return;
+  var say={frame:0,bg:0,aiscene:0};
+  $("#bulkNote").textContent="Yükleniyor… ("+fs.length+" dosya)";
+  (function nb(i){
+    if(i>=fs.length){
+      renderLib();buildSceneImgRows();refreshSceneImgFlag();
+      $("#bulkNote").textContent="Yüklendi ✓ — "+say.frame+" çerçeve, "+say.bg+" fon, "+say.aiscene+" AI mekânı. (Kütüphane listelerinden kontrol edebilirsin.)";
+      return;
+    }
+    var f=fs[i],nm=(f.name||"").toLowerCase(),rec=null;
+    var base=f.name.replace(/\.[^.]+$/,"").replace(/^(cerceve|çerçeve)-(tek|serit|şerit|kare4?)-/i,"").replace(/^(fon|bg|arka)-/i,"").replace(/^(mekan|mekân|sahne)-/i,"");
+    var m=nm.match(/^(cerceve|çerçeve)-(tek|serit|şerit|kare4?)-/);
+    if(m){
+      var md=(m[2]==="şerit"||m[2]==="serit")?"serit":(m[2].indexOf("kare")===0?"kare4":"tek");
+      rec={kind:"frame",mode:md};
+    }
+    else if(/^(fon|bg|arka)-/.test(nm))rec={kind:"bg"};
+    else if(/^(mekan|mekân|sahne)-/.test(nm))rec={kind:"aiscene",p:""};
+    else if(/\.(png|webp)$/.test(nm))rec={kind:"frame",mode:"tek"};
+    else rec={kind:"bg"};
+    readFileDataUrl(f).then(function(u){
+      rec.id="blk"+Date.now().toString(36)+i;rec.name=base;rec.dataUrl=u;
+      say[rec.kind]++;
+      libPut(rec,function(){nb(i+1)});
+    }).catch(function(){nb(i+1)});
+  })(0);
 });
 $("#libBgBtn").onclick=function(){$("#libBgFile").click()};
 $("#libBgFile").addEventListener("change",function(){
@@ -2206,6 +2278,24 @@ function deliverQR(){
   }
   qrMessage(["Fotoğraf yükleniyor…","birkaç saniye"]);
   var myCode=Date.now().toString(36);
+  var sw=$("#qrSwap");if(sw){sw.style.display="none";sw.textContent=""}
+  /* INSTAGRAM: post + story birlikte yüklenir; karekoda dokununca ikisi arasında geçilir */
+  if(mode&&mode.id==="insta"&&storyComposed){
+    Promise.all([uploadPhoto(composed,myCode+"-post"),uploadPhoto(storyComposed,myCode+"-story")]).then(function(us){
+      lastUrl=us[0];
+      var urls={post:us[0],story:us[1]},curq="post";
+      function drawSel(){
+        drawQR(urls[curq]);
+        if(sw){sw.style.display="block";sw.textContent=curq==="post"?"Bu kod: POST (4:5) — Story için karekoda dokun":"Bu kod: STORY (9:16) — Post için karekoda dokun"}
+      }
+      $("#qrCanvas").onclick=function(){curq=(curq==="post")?"story":"post";drawSel()};
+      drawSel();
+    }).catch(function(e){
+      qrMessage(["Yüklenemedi: "+((e&&e.message)||"hata"),"Tekrar denemek için","karekod alanına dokun."]);
+      $("#qrCanvas").onclick=function(){deliverQR()};
+    });
+    return;
+  }
   uploadPhoto(composed,myCode).then(function(url){
     lastUrl=url;drawQR(url);
     $("#qrCanvas").onclick=null;
