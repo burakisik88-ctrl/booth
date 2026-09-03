@@ -1383,10 +1383,12 @@ function composeInsta(){
   if(!sh[0])return;
   composed=instaCanvas(sh[0],1080,1350).toDataURL("image/jpeg",.93);
   storyComposed=instaCanvas(sh[0],1080,1920).toDataURL("image/jpeg",.93);
+  var pw=document.querySelector(".pwrap");if(pw)pw.style.aspectRatio="4/5";
   $("#previewImg").src=composed;
 }
 function compose(){
   if(mode&&mode.id==="insta"){composeInsta();return}
+  var pw0=document.querySelector(".pwrap");if(pw0)pw0.style.aspectRatio="";
   var c=document.createElement("canvas");c.width=W;c.height=H;
   var x=c.getContext("2d");
   composeOn(x,mode.id,currentShots());
@@ -1615,22 +1617,24 @@ function aiTransform(src,st){
       return geminiImage([
         {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
         {inline_data:{mime_type:"image/jpeg",data:toB64(bgim,1408)}},
-        {text:"Create a realistic photograph: place the person from the FIRST image into the scene of the SECOND image. Keep the SECOND image as the background EXACTLY as provided — do not redraw, replace or distort that background. Frame the person as a natural WAIST-UP (half-body) portrait in the foreground, so the face is comfortably large and detailed. Use CORRECT, natural human body proportions — the head must be normal-sized relative to the body, never enlarged, shrunk or distorted; the body must never look small under a big head. The FACE must be an exact, sharp, high-detail copy of the first image (identical features and proportions, same nose, eyes, eyebrows, beard shape, hairline, age and skin tone), instantly recognizable; do NOT beautify, slim, smooth, age, blur, enlarge or restyle the face or head. "+giydir+" Integrate realistically with matching lighting, shadows, perspective and scale so it looks like a genuine photo actually taken there, never a flat cut-out. Photorealistic, high quality."}
+        {text:"Create a realistic photograph: place the person from the FIRST image into the scene of the SECOND image. Keep the SECOND image as the background EXACTLY as provided — do not redraw, replace or distort that background. Frame the person as a natural WAIST-UP (half-body) portrait in the foreground, so the face is comfortably large and detailed. Use CORRECT, natural human body proportions — the head must be normal-sized relative to the body, never enlarged, shrunk or distorted; the body must never look small under a big head. The FACE must be an exact, sharp, high-detail copy of the first image (identical features and proportions, same nose, eyes, eyebrows, beard shape, hairline, age and skin tone), instantly recognizable; do NOT beautify, slim, smooth, age, blur, enlarge or restyle the face or head. "+giydir+" NEVER make the person look heavier, wider, older or shorter than in their photo. Integrate realistically with matching lighting, shadows, perspective and scale so it looks like a genuine photo actually taken there, never a flat cut-out. Photorealistic, high quality."}
       ],1200,1600);
     });
   }
   var extra=(st.v&&st.v.length)?(" Costume and theme concept to apply to THIS SAME person (not a new character): "+st.v[Math.floor(Math.random()*st.v.length)]+".") : "";
-  var tail;
   if(aiMode==="scene"){
-    /* SAHNE: yüz sabit; kıyafet + doğal poz + gerçek yerleşim ÜRETİLİR */
-    tail=" Frame the person as a natural WAIST-UP (half-body) portrait so the face is comfortably large and detailed, with CORRECT natural human proportions — the head must be normal-sized relative to the body, never enlarged or distorted. Keep this person's FACE exact, sharp and instantly recognizable — same features, gender, age, skin tone, facial hair and hairline; do NOT beautify, blur or resize the head. Keep their OWN clothing exactly as in the photo unless the scene description explicitly asks for specific attire — congress and event guests are already well dressed. Give them a natural, relaxed pose; hands must look natural with correct fingers. Integrate realistically with matching lighting, shadows and perspective so it looks like a genuine photograph actually taken there — never a flat cut-out pasted on top. Render the whole image like a REAL photo from a modern high-end camera: neutral realistic colors and clean detail — never sepia, vintage tint, heavy grain or an illustrated/CGI look. Photorealistic, high quality.";
-  } else {
-    /* STİL: pozu ve kadrajı koru, sadece stil/karakter değişir */
-    tail=" STRICT: the final image must contain EXACTLY ONE person — this same person transformed. NEVER add a second figure, duplicate, twin, clone, reflection-person or any other people; exactly one face in the image. Preserve the person's exact identity: same gender presentation, age, skin tone, body type, facial hair and facial features — the result must be instantly recognizable as this exact person. Keep the same camera framing, pose and orientation as the input photo. Keep the face detailed and crisp even if it is small in the frame. Replace the entire background consistently with the style. High quality rendering.";
+    /* SAHNE: yüz sabit; gerçek yerleşim; kıyafet ancak sahne isterse değişir */
+    var tail=" Frame the person as a natural WAIST-UP (half-body) portrait so the face is comfortably large and detailed, with CORRECT natural human proportions — the head must be normal-sized relative to the body, never enlarged or distorted. Keep this person's FACE exact, sharp and instantly recognizable — same features, gender, age, skin tone, facial hair and hairline; do NOT beautify, blur or resize the head. NEVER make the person look heavier, wider, older or shorter than in their photo — match their real body, or show them very slightly fitter, never the opposite. Keep their OWN clothing exactly as in the photo unless the scene description explicitly asks for specific attire — congress and event guests are already well dressed. Give them a natural, relaxed pose; hands must look natural with correct fingers. Integrate realistically with matching lighting, shadows and perspective so it looks like a genuine photograph actually taken there — never a flat cut-out pasted on top. Render the whole image like a REAL photo from a modern high-end camera: neutral realistic colors and clean detail — never sepia, vintage tint, heavy grain or an illustrated/CGI look. Photorealistic, high quality.";
+    return geminiImage([
+      {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
+      {text:st.p+extra+tail+ret}
+    ],src.width,src.height);
   }
+  /* STİL: kimlik EN BAŞTA — benzerlik her şeyden önce gelir */
+  var ident="TOP PRIORITY — LIKENESS: the result must be INSTANTLY recognizable as the exact person in this photo. Copy their real face faithfully: same face shape, same hairline, same beard/mustache shape and density, same eye, nose and mouth shape, same skin tone, same age, same body type. Do NOT idealize, slim, rejuvenate or beautify the face or body beyond the photo, and do NOT swap in a generic handsome face. The image must contain EXACTLY ONE person — never a second figure, duplicate or clone; exactly one face. Keep the same camera framing, pose and orientation as the input photo; keep the face detailed and crisp. NOW apply this transformation to that same person: ";
   return geminiImage([
     {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
-    {text:st.p+extra+tail+ret}
+    {text:ident+st.p+extra+" Replace the entire background consistently with the style. High quality rendering."+ret}
   ],src.width,src.height);
 }
 /* TEK KESİM: AI kişiyi BİR KEZ düz yeşile çıkarır; fonlar sonra yerel chroma ile ücretsiz uygulanır.
@@ -1786,7 +1790,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.30 · Instagram · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.31 · İnce Ayar · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2191,41 +2195,42 @@ function applyBg(rec){
   var bm=S.bgMode||((S.bgAi!==false)?"ai":"cihaz");
   var useAi=bm==="ai"&&!!(S.aiOn&&S.aiKey);
   var bsp=document.querySelector("#bgBusy span");
+  /* AI modu: kaba önizleme YOK — misafir kötü kesimi hiç görmez, AI kesim bitince tek seferde gelir */
+  if(useAi){
+    var kesikVar=mine.every(function(c){return aiCutCache.has(c)});
+    if(bsp)bsp.textContent=kesikVar?"Fon uygulanıyor…":"AI kişiyi kesiyor… (tek seferlik, 10-15 sn)";
+    Promise.all(mine.map(function(c){
+      var cc=aiBgCache.get(c)||{};
+      if(cc[rec.dataUrl])return Promise.resolve(cc[rec.dataUrl]);
+      return aiCutout(c).then(function(cut){return chromaComposite(cut,rec.dataUrl)}).then(function(out){
+        cc[rec.dataUrl]=out;aiBgCache.set(c,cc);return out;
+      });
+    })).then(function(outs){
+      if(bgSel!==rec.id)return;
+      shotsBg=outs;
+      $("#bgBusy").hidden=true;
+      compose();
+    }).catch(function(e){
+      $("#bgBusy").hidden=true;
+      if(bgSel!==rec.id)return;
+      bgSel=null;shotsBg=null;
+      var wrap=$("#bgWrap");
+      var d=document.createElement("div");d.className="err";
+      d.textContent="AI kesim yapılamadı: "+((e&&e.message)||"hata")+" — tekrar dene; olmazsa panelden \"Cihazda kes\" moduna geç.";
+      wrap.appendChild(d);setTimeout(function(){if(d.parentNode)d.parentNode.removeChild(d)},7000);
+      buildBgStrip();compose();
+    });
+    return;
+  }
   if(bsp)bsp.textContent="Arka plan uygulanıyor…";
-  /* 1. adım: anında ücretsiz birleştirme (chroma / cihaz kesimi; önbellekte AI sonucu varsa direkt o) */
   Promise.all(mine.map(function(c){
-    var cc=aiBgCache.get(c);
-    if(cc&&cc[rec.dataUrl])return Promise.resolve(cc[rec.dataUrl]);
     if(bm==="chroma")return chromaComposite(c,rec.dataUrl).catch(function(){return bgComposite(c,rec.dataUrl).catch(function(){return c})});
     return bgComposite(c,rec.dataUrl).catch(function(){return c});
   })).then(function(outs){
     if(bgSel!==rec.id)return;
-    shotsBg=outs; /* AI'lı kareler korunur: aiShots hücre bazında önceliklidir, silinmez */
+    shotsBg=outs;
     $("#bgBusy").hidden=true;
     compose();
-    /* 2. adım: misafir bu fonda kaldıysa AI temiz birleştirme (önbelleğe yazılır) */
-    if(!useAi)return;
-    var eksik=mine.some(function(c){var cc=aiBgCache.get(c);return !(cc&&cc[rec.dataUrl])});
-    if(!eksik)return;
-    setTimeout(function(){
-      if(bgSel!==rec.id)return;
-      $("#bgBusy").hidden=false;
-      var kesikVar=mine.every(function(c){return aiCutCache.has(c)});
-      if(bsp)bsp.textContent=kesikVar?"Kesim hazır, fon uygulanıyor…":"AI kişiyi kesiyor… (tek seferlik, 10-15 sn)";
-      Promise.all(mine.map(function(c){
-        var cc=aiBgCache.get(c)||{};
-        if(cc[rec.dataUrl])return Promise.resolve(cc[rec.dataUrl]);
-        /* AI kesimi (önbellekli, kare başına 1 kez) + yerel chroma birleştirme */
-        return aiCutout(c).then(function(cut){return chromaComposite(cut,rec.dataUrl)}).then(function(out){
-          cc[rec.dataUrl]=out;aiBgCache.set(c,cc);return out;
-        }).catch(function(){return null});
-      })).then(function(outs2){
-        $("#bgBusy").hidden=true;
-        if(bgSel!==rec.id)return;
-        shotsBg=shotsBg.map(function(o,i){return outs2[i]||o});
-        compose();
-      });
-    },1800);
   }).catch(function(e){
     $("#bgBusy").hidden=true;
     bgSel=null;shotsBg=null;
