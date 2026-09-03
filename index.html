@@ -1645,7 +1645,7 @@ function aiCutout(shot){
   if(p)return p;
   p=geminiImage([
     {inline_data:{mime_type:"image/jpeg",data:toB64(shot,1408)}},
-    {text:"Re-output this exact photograph with ONE change only: replace the entire background with a SOLID, uniform, pure green screen (RGB 0,255,0) covering everything behind the person, edge to edge. The person must remain PIXEL-IDENTICAL to the input: identical crop and framing (if they are visible from the waist up, the output is also waist up), identical pose, clothing or lack of it, body shape, face and hair including loose strands. NEVER invent, extend, complete, slim, beautify or redraw any part of the person — no added legs, torso, arms or clothing that is not visible in the input. The green area must be perfectly flat: no shadows, gradients, objects or text. Output only the image."}
+    {text:"Re-output this exact photograph with ONE change only: replace the entire background with a SOLID, uniform, pure green screen (RGB 0,255,0). The green must cover EVERY pixel that is not the person — all four corners and all image borders included; absolutely NO leftover room, wall, window, furniture or any other background element may remain anywhere. The person must remain PIXEL-IDENTICAL to the input: identical crop and framing (if they are visible from the waist up, the output is also waist up), identical pose, clothing or lack of it, body shape, face and hair including loose strands. NEVER invent, extend, complete, slim, beautify or redraw any part of the person — no added legs, torso, arms or clothing that is not visible in the input. The green area must be perfectly flat: no shadows, gradients, objects or text. Output only the image."}
   ],shot.width,shot.height).catch(function(e){aiCutCache.delete(shot);throw e});
   aiCutCache.set(shot,p);
   return p;
@@ -1790,7 +1790,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.32 · Çerçeve Paylaşımı · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.33 · Yeşil Kilit · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2072,15 +2072,48 @@ function bgComposite(shot,bgUrl){
   });
 }
 /* yeşil perde / düz renk zemin anahtarı — köşelerden fon rengini öğrenir, ücretsiz keser */
-function chromaComposite(shot,bgUrl){
-  var pb=bgImgCache[bgUrl]?Promise.resolve(bgImgCache[bgUrl]):new Promise(function(res,rej){
+/* kişiyi verilen anahtar renge göre söker; üst/yan kenar halkasındaki opak oranı da (junk) ölçer */
+function keyPerson(shot,kr,kg,kb,lowSat){
+  var w=shot.width,h=shot.height;
+  var sc=document.createElement("canvas");sc.width=w;sc.height=h;
+  var sx=sc.getContext("2d");sx.drawImage(shot,0,0);
+  var im=sx.getImageData(0,0,w,h),d=im.data;
+  var kcb=128-0.168736*kr-0.331264*kg+0.5*kb, kcr=128+0.5*kr-0.418688*kg-0.081312*kb;
+  var kY=0.299*kr+0.587*kg+0.114*kb;
+  var t1=lowSat?16:9, t2=lowSat?40:26;
+  var greenish=(kg>kr+12&&kg>kb+12);
+  for(var i=0;i<d.length;i+=4){
+    var r=d[i],g=d[i+1],b=d[i+2];
+    var cb=128-0.168736*r-0.331264*g+0.5*b, cr=128+0.5*r-0.418688*g-0.081312*b;
+    var dist=Math.sqrt((cb-kcb)*(cb-kcb)+(cr-kcr)*(cr-kcr));
+    if(lowSat){
+      var Y=0.299*r+0.587*g+0.114*b;
+      var dl=Math.abs(Y-kY)*0.45;
+      dist=Math.max(dist,dl);
+    }
+    var a=(dist-t1)/(t2-t1);a=a<0?0:a>1?1:a;a=a*a*(3-2*a);
+    if(greenish&&a>0&&a<1){var m=(r+b)/2;if(g>m)d[i+1]=Math.round(g*a+m*(1-a));}
+    d[i+3]=Math.round(a*255);
+  }
+  sx.putImageData(im,0,0);
+  /* junk: üst + sol + sağ kenar halkası (alt %20 hariç — kişi alta değebilir) */
+  var ring=Math.max(6,Math.round(w*0.06)),op=0,tot=0,ymax=Math.round(h*0.8);
+  function samp(x,y){var A=d[(y*w+x)*4+3];tot++;if(A>200)op++;}
+  for(var y2=0;y2<ymax;y2++){for(var x2=0;x2<ring;x2++)samp(x2,y2);for(var x3=w-ring;x3<w;x3++)samp(x3,y2);}
+  for(var y3=0;y3<ring;y3++)for(var x4=ring;x4<w-ring;x4++)samp(x4,y3);
+  return {c:sc,junk:tot?op/tot:0};
+}
+function loadBgImg(bgUrl){
+  return bgImgCache[bgUrl]?Promise.resolve(bgImgCache[bgUrl]):new Promise(function(res,rej){
     var im=new Image();im.onload=function(){bgImgCache[bgUrl]=im;res(im)};im.onerror=function(){rej(new Error("fon okunamadı"))};im.src=bgUrl;
   });
-  return pb.then(function(bg){
+}
+function chromaComposite(shot,bgUrl){
+  return loadBgImg(bgUrl).then(function(bg){
     var w=shot.width,h=shot.height;
     var sc=document.createElement("canvas");sc.width=w;sc.height=h;
     var sx=sc.getContext("2d");sx.drawImage(shot,0,0);
-    var im=sx.getImageData(0,0,w,h),d=im.data;
+    var d=sx.getImageData(0,0,w,h).data;
     function med(px){px.sort(function(a,b){return a-b});return px[px.length>>1]}
     var rs=[],gs=[],bs=[],P=24;
     /* dört köşeden örnekle — gradyanlı/dengesiz fonlarda daha sağlam */
@@ -2090,30 +2123,33 @@ function chromaComposite(shot,bgUrl){
       }
     });
     var kr=med(rs),kg=med(gs),kb=med(bs);
-    var kcb=128-0.168736*kr-0.331264*kg+0.5*kb, kcr=128+0.5*kr-0.418688*kg-0.081312*kb;
-    var kY=0.299*kr+0.587*kg+0.114*kb;
-    var satK=Math.sqrt((kcb-128)*(kcb-128)+(kcr-128)*(kcr-128));
-    var lowSat=satK<18; /* beyaz/siyah/gri duvar */
-    var t1=lowSat?16:9, t2=lowSat?40:26;
-    var greenish=(kg>kr+12&&kg>kb+12);
-    for(var i=0;i<d.length;i+=4){
-      var r=d[i],g=d[i+1],b=d[i+2];
-      var cb=128-0.168736*r-0.331264*g+0.5*b, cr=128+0.5*r-0.418688*g-0.081312*b;
-      var dist=Math.sqrt((cb-kcb)*(cb-kcb)+(cr-kcr)*(cr-kcr));
-      if(lowSat){
-        var Y=0.299*r+0.587*g+0.114*b;
-        var dl=Math.abs(Y-kY)*0.45;
-        dist=Math.max(dist,dl);
-      }
-      var a=(dist-t1)/(t2-t1);a=a<0?0:a>1?1:a;a=a*a*(3-2*a);
-      if(greenish&&a>0&&a<1){var m=(r+b)/2;if(g>m)d[i+1]=Math.round(g*a+m*(1-a));}
-      d[i+3]=Math.round(a*255);
-    }
-    sx.putImageData(im,0,0);
+    var satK=Math.sqrt(Math.pow((128-0.168736*kr-0.331264*kg+0.5*kb)-128,2)+Math.pow((128+0.5*kr-0.418688*kg-0.081312*kb)-128,2));
+    var kp=keyPerson(shot,kr,kg,kb,satK<18);
     var out=document.createElement("canvas");out.width=w;out.height=h;
     var ox=out.getContext("2d");
     cover(ox,bg,0,0,w,h);
-    ox.drawImage(sc,0,0);
+    ox.drawImage(kp.c,0,0);
+    return out;
+  });
+}
+/* AI kesimi birleştirme: anahtar SABİT saf yeşil (tahmin yok).
+   Kesimde oda artığı kalmışsa (kenarlarda opak >%10) o kare bozuktur → cihaz kesimine düşülür. */
+function aiCutComposite(orig,cut,bgUrl){
+  return loadBgImg(bgUrl).then(function(bg){
+    var kp=keyPerson(cut,0,255,0,false);
+    if(kp.junk>0.10){
+      return bgComposite(orig,bgUrl).catch(function(){
+        var w=cut.width,h=cut.height;
+        var out=document.createElement("canvas");out.width=w;out.height=h;
+        var ox=out.getContext("2d");cover(ox,bg,0,0,w,h);ox.drawImage(kp.c,0,0);
+        return out;
+      });
+    }
+    var w=cut.width,h=cut.height;
+    var out=document.createElement("canvas");out.width=w;out.height=h;
+    var ox=out.getContext("2d");
+    cover(ox,bg,0,0,w,h);
+    ox.drawImage(kp.c,0,0);
     return out;
   });
 }
@@ -2204,7 +2240,7 @@ function applyBg(rec){
     Promise.all(mine.map(function(c){
       var cc=aiBgCache.get(c)||{};
       if(cc[rec.dataUrl])return Promise.resolve(cc[rec.dataUrl]);
-      return aiCutout(c).then(function(cut){return chromaComposite(cut,rec.dataUrl)}).then(function(out){
+      return aiCutout(c).then(function(cut){return aiCutComposite(c,cut,rec.dataUrl)}).then(function(out){
         cc[rec.dataUrl]=out;aiBgCache.set(c,cc);return out;
       });
     })).then(function(outs){
@@ -2653,7 +2689,7 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
-window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite};
+window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite};
 })();
 </script>
 
