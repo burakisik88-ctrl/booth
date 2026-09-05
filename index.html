@@ -630,6 +630,12 @@ h1 em{font-style:italic;color:var(--amber)}
         </div>
 
         <div class="grp">
+          <h3>Baskı Kurtarma</h3>
+          <button class="btn gold" id="rePrintBtn">SON BASKIYI TEKRAR BAS</button>
+          <div class="note" id="rePrintNote">Yazıcı sıkışırsa: dişli → 1234 → bu buton. Son basılan kare aynen yeniden basılır, misafire tekrar poz verdirmeye gerek kalmaz. Daha eski kareler için "Galeriyi aç" — dokunduğun kare yeniden basılır.</div>
+        </div>
+
+        <div class="grp">
           <h3>Kayıtlar</h3>
           <button class="btn ghost" data-go="gallery">Galeriyi aç</button>
           <button class="btn ghost" id="resetCnt">Sayaçları sıfırla</button>
@@ -1657,7 +1663,9 @@ function aiCutout(shot){
 
 /* ---------- baskı ---------- */
 $("#printBtn").onclick=function(){doPrint()};
+var lastPrinted="";
 function doPrint(){
+  lastPrinted=composed;
   go("printing");
   var ms=Math.max(3000,copies*4000),t0=Date.now(),bar=$("#progBar");
   $("#printNote").textContent=S.realPrint?"Yazıcı çalışıyor, kağıdı bekle.":"Simülasyon modu — kağıt harcanmıyor.";
@@ -1794,7 +1802,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.34 · Çoklu Baskı · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.35 · Baskı Kurtarma · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1897,7 +1905,30 @@ $("#enhFile").addEventListener("change",function(){
   });
 });
 
-$("#resetCnt").onclick=function(){S.shots=S.prints=S.sheets=0;save();fillAdmin()};
+/* sayaç sıfırlama: yanlışlıkla tek dokunuşla silinmesin — iki adımlı onay */
+var cntArm=null;
+$("#resetCnt").onclick=function(){
+  var b=this;
+  if(cntArm){clearTimeout(cntArm);cntArm=null;S.shots=S.prints=S.sheets=0;save();fillAdmin();b.textContent="Sıfırlandı ✓";setTimeout(function(){b.textContent="Sayaçları sıfırla"},1500);return}
+  b.textContent="Emin misin? SIFIRLA";
+  cntArm=setTimeout(function(){cntArm=null;b.textContent="Sayaçları sıfırla"},3500);
+};
+/* baskı kurtarma: son basılan kareyi (sayfa yenilendiyse galerideki en yeniyi) aynen yeniden bas */
+function sonKare(cb){
+  if(lastPrinted)return cb(lastPrinted);
+  if(!db)return cb(null);
+  try{
+    db.transaction("shots","readonly").objectStore("shots").openCursor(null,"prev").onsuccess=function(e){
+      var c=e.target.result;cb(c?c.value.d:null);
+    };
+  }catch(e){cb(null)}
+}
+$("#rePrintBtn").onclick=function(){
+  sonKare(function(d){
+    if(!d){$("#rePrintNote").textContent="Henüz basılmış kare yok.";return}
+    composed=d;copies=1;$("#emergeImg").src=d;doPrint();
+  });
+};
 $("#wipe").onclick=function(){
   if(!db)return;try{db.transaction("shots","readwrite").objectStore("shots").clear()}catch(e){}
   drawGallery();
