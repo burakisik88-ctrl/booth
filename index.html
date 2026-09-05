@@ -1399,12 +1399,16 @@ function compose(){
 }
 
 /* ---------- review kontrolleri ---------- */
+var MAXCOPY=10;
 function chips(){
   var c=$("#copyChips");c.innerHTML="";
-  [1,2,3].forEach(function(n){
-    var b=document.createElement("button");b.className="chip num"+(copies===n?" on":"");b.textContent=n;
-    b.onclick=function(){copies=n;chips();};c.appendChild(b);
-  });
+  function mk(t,fn,on){
+    var b=document.createElement("button");b.className="chip num"+(on?" on":"");b.textContent=t;
+    b.onclick=fn;c.appendChild(b);return b;
+  }
+  mk("−",function(){if(copies>1){copies--;chips()}},false);
+  mk(copies+" adet",function(){},true);
+  mk("+",function(){if(copies<MAXCOPY){copies++;chips()}},false);
 }
 $("#retakeBtn").onclick=function(){shots=[];shotsEnh=[];filt="dogal";aiShots=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;copies=1;chips();beginSeq(mode)};
 
@@ -1790,7 +1794,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.33 · Yeşil Kilit · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.34 · Çoklu Baskı · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
