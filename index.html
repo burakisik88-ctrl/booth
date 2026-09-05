@@ -251,6 +251,9 @@ h1 em{font-style:italic;color:var(--amber)}
 #guideBox span{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);
   font:600 15px var(--ui);color:rgba(246,240,230,.9);background:rgba(18,16,14,.55);
   padding:8px 14px;border-radius:999px;white-space:nowrap}
+/* Sayfa 10×15 cm KENARSIZ: A4 ortasında pul gibi foto + üstbilgi/altbilgi yazıları biter,
+   foto kâğıdı uçtan uca doldurur */
+@page{size:100mm 150mm;margin:0}
 @media print{
   html,body{background:#fff!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important;overflow:visible!important}
   #app,.grain,.vig{display:none!important}
@@ -1802,7 +1805,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.35 · Baskı Kurtarma · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.36 · Kenarsız Sayfa · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
