@@ -587,16 +587,20 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="grp">
           <h3>Ayarları başka cihaza taşı (ortak / tablet)</h3>
           <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap">
-            <button class="btn gold mini" id="cfgFileBtn">Dosya indir (görseller DAHİL)</button>
-            <button class="btn gold mini" id="cfgFileImpBtn">Dosyadan yükle</button>
+            <button class="btn gold mini" id="cldSendBtn">Buluta gönder (kod üret)</button>
+            <button class="btn gold mini" id="cldGetBtn">Buluttan yükle (koddan)</button>
+          </div>
+          <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn ghost mini" id="cfgFileBtn">Dosya indir (görseller DAHİL)</button>
+            <button class="btn ghost mini" id="cfgFileImpBtn">Dosyadan yükle</button>
           </div>
           <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-top:8px">
             <button class="btn ghost mini" id="cfgExportBtn">Kod üret (sadece ayarlar)</button>
             <button class="btn ghost mini" id="cfgImportBtn">Kodu içe aktar</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,application/json" hidden>
-          <textarea id="cfgBox" placeholder="Kod burada görünür / buraya yapıştır" style="width:100%;min-height:70px;margin-top:8px;font-family:monospace;font-size:11px"></textarea>
-          <div class="note" id="cfgNote">Ortak/tablet kurulumu için <b>Dosya indir</b>'i kullan: ayarlar + çerçeveler + fonlar + AI sahne görselleri + profiller tek dosyada taşınır. Kod ise sadece ayarları taşır (görseller girmez). İkisi de API anahtarını içerir — yalnız güvendiğin kişiye gönder. Gerçek baskı ayarı, karşı cihazda yazıcı olmayabileceği için kapalı gelir.</div>
+          <textarea id="cfgBox" placeholder="Kurulum kodu burada görünür / buraya yapıştır" style="width:100%;min-height:70px;margin-top:8px;font-family:monospace;font-size:11px"></textarea>
+          <div class="note" id="cfgNote">En kolay yol <b>Bulut</b>: "Buluta gönder" tüm kurulumu (ayarlar + çerçeveler + fonlar + AI sahneler + profiller) şifreleyip kendi Cloudinary hesabına yükler ve kısa bir <b>kurulum kodu</b> verir. Karşı cihazda (telefon dahil) linki aç → dişli → kodu yapıştır → "Buluttan yükle" — dosya taşımak yok. Dosya yöntemi, internetin zayıf olduğu durumlar için yedek. Kod ve dosya API anahtarını içerir — yalnız güvendiğin kişiye gönder. Gerçek baskı karşı cihazda kapalı gelir.</div>
         </div>
 
         <div class="grp">
@@ -1805,7 +1809,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.36 · Kenarsız Sayfa · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.37 · Bulut Kurulum · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2604,11 +2608,15 @@ function assetsAll(cb){
     };
   }catch(e){cb({})}
 }
+function buildPkg(cb){
+  libAll(function(lib){assetsAll(function(as){profAll(function(pr){
+    cb({obskura:1,v:37,t:Date.now(),S:S,lib:lib,assets:as,profiles:pr});
+  })})});
+}
 $("#cfgFileBtn").onclick=function(){
   $("#cfgNote").textContent="Paket hazırlanıyor…";
-  libAll(function(lib){assetsAll(function(as){profAll(function(pr){
+  buildPkg(function(pkg){
     try{
-      var pkg={obskura:1,v:27,t:Date.now(),S:S,lib:lib,assets:as,profiles:pr};
       var blob=new Blob([JSON.stringify(pkg)],{type:"application/json"});
       var a=document.createElement("a");
       a.href=URL.createObjectURL(blob);
@@ -2618,9 +2626,36 @@ $("#cfgFileBtn").onclick=function(){
       var mb=Math.round(blob.size/1024/102.4)/10;
       $("#cfgNote").textContent="Dosya indirildi ("+mb+" MB) — ayarlar, çerçeveler, fonlar, AI sahne görselleri ve profiller içinde. Ortağına gönder; o \"Dosyadan yükle\" ile açsın. (API anahtarı içerir, yalnız güvendiğin kişiye.)";
     }catch(e){$("#cfgNote").textContent="Dosya üretilemedi: "+((e&&e.message)||"hata")}
-  })})});
+  });
 };
 $("#cfgFileImpBtn").onclick=function(){$("#cfgFile").click()};
+/* pkg'i cihaza uygular: ayarlar + kütüphane + asset + profiller; bitince sayfayı yeniler */
+function importPkg(pkg){
+  if(!pkg||pkg.obskura!==1||!pkg.S||typeof pkg.S!=="object")throw new Error("bu bir OBSKURA taşıma paketi değil");
+  applyImport(pkg.S);
+  var lib=Array.isArray(pkg.lib)?pkg.lib:[],as=(pkg.assets&&typeof pkg.assets==="object")?pkg.assets:{},pr=Array.isArray(pkg.profiles)?pkg.profiles:[];
+  var jobs=0,done=0,fired=false;
+  function fin(){
+    done++;
+    if(done>=jobs&&!fired){
+      fired=true;
+      $("#cfgNote").textContent="Her şey yüklendi ✓ — sayfa yenileniyor…";
+      setTimeout(function(){location.reload()},800);
+    }
+  }
+  if(db){
+    jobs=3;
+    try{var tx1=db.transaction("lib","readwrite"),st1=tx1.objectStore("lib");
+      lib.forEach(function(rec){if(rec&&rec.id)try{st1.put(rec)}catch(e){}});
+      tx1.oncomplete=fin;tx1.onerror=fin;tx1.onabort=fin;}catch(e){fin()}
+    try{var tx2=db.transaction("assets","readwrite"),st2=tx2.objectStore("assets");
+      Object.keys(as).forEach(function(k){try{st2.put(as[k],k)}catch(e){}});
+      tx2.oncomplete=fin;tx2.onerror=fin;tx2.onabort=fin;}catch(e){fin()}
+    try{var tx3=db.transaction("profiles","readwrite"),st3=tx3.objectStore("profiles");
+      pr.forEach(function(rec){if(rec&&rec.id)try{st3.put(rec)}catch(e){}});
+      tx3.oncomplete=fin;tx3.onerror=fin;tx3.onabort=fin;}catch(e){fin()}
+  }else{jobs=1;fin()}
+}
 $("#cfgFile").addEventListener("change",function(){
   var f=this.files&&this.files[0];this.value="";
   if(!f)return;
@@ -2628,36 +2663,157 @@ $("#cfgFile").addEventListener("change",function(){
   var rd=new FileReader();
   rd.onerror=function(){$("#cfgNote").textContent="Dosya okunamadı."};
   rd.onload=function(){
-    try{
-      var pkg=JSON.parse(rd.result);
-      if(!pkg||pkg.obskura!==1||!pkg.S||typeof pkg.S!=="object")throw new Error("bu bir OBSKURA taşıma dosyası değil");
-      applyImport(pkg.S);
-      var lib=Array.isArray(pkg.lib)?pkg.lib:[],as=(pkg.assets&&typeof pkg.assets==="object")?pkg.assets:{},pr=Array.isArray(pkg.profiles)?pkg.profiles:[];
-      var jobs=0,done=0,fired=false;
-      function fin(){
-        done++;
-        if(done>=jobs&&!fired){
-          fired=true;
-          $("#cfgNote").textContent="Her şey yüklendi ✓ — sayfa yenileniyor…";
-          setTimeout(function(){location.reload()},800);
-        }
-      }
-      if(db){
-        jobs=3;
-        try{var tx1=db.transaction("lib","readwrite"),st1=tx1.objectStore("lib");
-          lib.forEach(function(rec){if(rec&&rec.id)try{st1.put(rec)}catch(e){}});
-          tx1.oncomplete=fin;tx1.onerror=fin;tx1.onabort=fin;}catch(e){fin()}
-        try{var tx2=db.transaction("assets","readwrite"),st2=tx2.objectStore("assets");
-          Object.keys(as).forEach(function(k){try{st2.put(as[k],k)}catch(e){}});
-          tx2.oncomplete=fin;tx2.onerror=fin;tx2.onabort=fin;}catch(e){fin()}
-        try{var tx3=db.transaction("profiles","readwrite"),st3=tx3.objectStore("profiles");
-          pr.forEach(function(rec){if(rec&&rec.id)try{st3.put(rec)}catch(e){}});
-          tx3.oncomplete=fin;tx3.onerror=fin;tx3.onabort=fin;}catch(e){fin()}
-      }else{jobs=1;fin()}
-    }catch(e){$("#cfgNote").textContent="Dosya okunamadı: "+((e&&e.message)||"geçersiz")}
+    try{importPkg(JSON.parse(rd.result))}
+    catch(e){$("#cfgNote").textContent="Dosya okunamadı: "+((e&&e.message)||"geçersiz")}
   };
   rd.readAsText(f);
 });
+/* ---------- BULUT KURULUM: görseller Cloudinary'ye, paket şifreli, taşıma tek kodla ---------- */
+function b64u(buf){var u=new Uint8Array(buf),s="";for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function b64uDec(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";var bin=atob(s),u=new Uint8Array(bin.length);for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return u}
+function shaStr(s){return crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)).then(function(b){return b64u(b)})}
+function isImgData(s){return typeof s==="string"&&s.length>2000&&s.slice(0,11)==="data:image/"}
+function eachString(o,fn){
+  if(typeof o==="string"){fn(o);return}
+  if(Array.isArray(o)){for(var i=0;i<o.length;i++)eachString(o[i],fn);return}
+  if(o&&typeof o==="object"){for(var k in o)if(Object.prototype.hasOwnProperty.call(o,k))eachString(o[k],fn)}
+}
+function mapDeep(o,fn){
+  if(typeof o==="string")return fn(o);
+  if(Array.isArray(o)){var a=new Array(o.length);for(var i=0;i<o.length;i++)a[i]=mapDeep(o[i],fn);return a}
+  if(o&&typeof o==="object"){var r={};for(var k in o)if(Object.prototype.hasOwnProperty.call(o,k))r[k]=mapDeep(o[k],fn);return r}
+  return o;
+}
+function upCache(){try{return JSON.parse(localStorage.getItem("obskura.cldup")||"{}")}catch(e){return {}}}
+function saveUpCache(c){try{localStorage.setItem("obskura.cldup",JSON.stringify(c))}catch(e){}}
+function runPool(items,worker,onStep){
+  var idx=0,done=0,out=new Array(items.length),stop=false;
+  function chain(){
+    if(stop||idx>=items.length)return Promise.resolve();
+    var i=idx++;
+    return worker(items[i]).then(function(v){out[i]=v;done++;if(onStep)onStep(done,items.length);return chain()});
+  }
+  var ch=[];for(var c=0;c<3&&c<items.length;c++)ch.push(chain());
+  return Promise.all(ch).then(function(){return out}).catch(function(e){stop=true;throw e});
+}
+function cldUpSetup(dataUrl){
+  return fetch(dataUrl).then(function(r){return r.blob()}).then(function(blob){
+    var fd=new FormData();
+    fd.append("file",blob,"g");
+    fd.append("upload_preset",S.cldPreset);
+    fd.append("folder","obskura-setup");
+    var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},60000);
+    return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/image/upload",{method:"POST",body:fd,signal:ctrl.signal})
+      .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("görsel yüklenemedi ("+r.status+")");return r.json()})
+      .then(function(j){if(!j.secure_url)throw new Error("adres dönmedi");return j.secure_url})
+      .catch(function(e){clearTimeout(tmo);if(e.name==="AbortError")throw new Error("görsel yükleme zaman aşımı");throw e});
+  });
+}
+function cldUpRaw(blob){
+  var fd=new FormData();
+  fd.append("file",blob,"pkg");
+  fd.append("upload_preset",S.cldPreset);
+  fd.append("folder","obskura-setup");
+  var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},60000);
+  return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/raw/upload",{method:"POST",body:fd,signal:ctrl.signal})
+    .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("paket yüklenemedi ("+r.status+")");return r.json()})
+    .then(function(j){if(!j.public_id||!j.version)throw new Error("paket adresi dönmedi");return j})
+    .catch(function(e){clearTimeout(tmo);if(e.name==="AbortError")throw new Error("paket yükleme zaman aşımı");throw e});
+}
+function dlDataUrl(url){
+  var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},60000);
+  return fetch(url,{signal:ctrl.signal})
+    .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("görsel inemedi ("+r.status+")");return r.blob()})
+    .then(function(b){return new Promise(function(res,rej){
+      var rd=new FileReader();rd.onload=function(){res(rd.result)};rd.onerror=function(){rej(new Error("görsel okunamadı"))};rd.readAsDataURL(b);
+    })})
+    .catch(function(e){clearTimeout(tmo);if(e.name==="AbortError")throw new Error("görsel indirme zaman aşımı");throw e});
+}
+function encPkg(str){
+  var key=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  return crypto.subtle.importKey("raw",key,"AES-GCM",false,["encrypt"]).then(function(k){
+    return crypto.subtle.encrypt({name:"AES-GCM",iv:iv},k,new TextEncoder().encode(str));
+  }).then(function(ct){
+    var out=new Uint8Array(12+ct.byteLength);out.set(iv,0);out.set(new Uint8Array(ct),12);
+    return {blob:new Blob([out],{type:"application/octet-stream"}),key:b64u(key.buffer)};
+  });
+}
+function decPkg(buf,keyB64){
+  var u=new Uint8Array(buf);
+  if(u.length<13)throw new Error("paket bozuk");
+  var iv=u.slice(0,12),ct=u.slice(12);
+  return crypto.subtle.importKey("raw",b64uDec(keyB64),"AES-GCM",false,["decrypt"]).then(function(k){
+    return crypto.subtle.decrypt({name:"AES-GCM",iv:iv},k,ct);
+  }).then(function(pt){return new TextDecoder().decode(pt)})
+  .catch(function(e){if(e instanceof Error&&e.message==="paket bozuk")throw e;throw new Error("şifre çözülemedi — kod eksik/yanlış kopyalanmış olabilir")});
+}
+$("#cldSendBtn").onclick=function(){
+  if(!cldReady()){$("#cfgNote").textContent="Önce aşağıdaki Dijital Teslim (QR) bölümünde Cloudinary alanlarını doldur — bulut taşıma o hesabı kullanır.";return}
+  if(!(window.crypto&&crypto.subtle)){$("#cfgNote").textContent="Bu tarayıcı şifrelemeyi desteklemiyor — dosya yöntemini kullan.";return}
+  var btn=this;btn.disabled=true;
+  $("#cfgNote").textContent="Paket hazırlanıyor…";
+  buildPkg(function(pkg){
+    var seen={},imgs=[];
+    eachString(pkg,function(s){if(isImgData(s)&&!seen[s]){seen[s]=true;imgs.push(s)}});
+    runPool(imgs,function(s){
+      return shaStr(s).then(function(h){
+        var c=upCache();
+        if(c[h])return {s:s,u:c[h]};
+        return cldUpSetup(s).catch(function(){return cldUpSetup(s)}).then(function(u){
+          var c2=upCache();c2[h]=u;saveUpCache(c2);return {s:s,u:u};
+        });
+      });
+    },function(d,t){$("#cfgNote").textContent="Görseller buluta yükleniyor "+d+"/"+t+"… (ilk sefer uzun sürer, sonrakiler hızlı)"})
+    .then(function(pairs){
+      var map={};pairs.forEach(function(p){map[p.s]=p.u});
+      var manifest=mapDeep(pkg,function(s){return map[s]?("@@CLD@@"+map[s]):s});
+      $("#cfgNote").textContent="Paket şifreleniyor…";
+      return encPkg(JSON.stringify(manifest));
+    })
+    .then(function(enc){
+      $("#cfgNote").textContent="Paket buluta gönderiliyor…";
+      return cldUpRaw(enc.blob).catch(function(){return cldUpRaw(enc.blob)}).then(function(j){return {j:j,key:enc.key}});
+    })
+    .then(function(r){
+      var code="OBSK1."+S.cldName+"."+r.j.public_id+"."+r.j.version+"."+r.key;
+      $("#cfgBox").value=code;
+      try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(code).catch(function(){});}catch(e){}
+      $("#cfgNote").textContent="Kurulum kodu hazır ve kopyalandı ✓ — WhatsApp'tan yazı olarak gönder. Karşı cihaz (telefon/tablet/bilgisayar): linki açar → dişli → PIN → kodu kutuya yapıştırır → \"Buluttan yükle\". Kod API anahtarını da taşır — yalnız güvendiğin kişiye.";
+    })
+    .catch(function(e){$("#cfgNote").textContent="Olmadı: "+((e&&e.message)||"hata")+". İnterneti kontrol edip tekrar dene."})
+    .then(function(){btn.disabled=false});
+  });
+};
+$("#cldGetBtn").onclick=function(){
+  var code=($("#cfgBox").value||"").trim();
+  if(!code){$("#cfgNote").textContent="Önce kutuya kurulum kodunu yapıştır.";return}
+  if(code.slice(0,6)!=="OBSK1."){$("#cfgNote").textContent="Bu bir bulut kurulum kodu değil — kod OBSK1 ile başlar. (Eski usül ayar kodu için \"Kodu içe aktar\" butonunu kullan.)";return}
+  if(!(window.crypto&&crypto.subtle)){$("#cfgNote").textContent="Bu tarayıcı şifrelemeyi desteklemiyor — dosya yöntemini kullan.";return}
+  var p=code.split(".");
+  if(p.length!==5||!p[1]||!p[2]||!p[3]||!p[4]){$("#cfgNote").textContent="Kod eksik görünüyor — tamamını kopyaladığından emin ol.";return}
+  var cloud=p[1],pid=p[2],ver=p[3],key=p[4],btn=this;
+  btn.disabled=true;
+  $("#cfgNote").textContent="Paket buluttan alınıyor…";
+  var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},60000);
+  fetch("https://res.cloudinary.com/"+encodeURIComponent(cloud)+"/raw/upload/v"+encodeURIComponent(ver)+"/"+pid,{signal:ctrl.signal})
+    .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("paket bulunamadı ("+r.status+") — kod yanlış olabilir");return r.arrayBuffer()})
+    .then(function(buf){return decPkg(buf,key)})
+    .then(function(str){
+      var manifest=JSON.parse(str);
+      var seen={},marks=[];
+      eachString(manifest,function(s){if(typeof s==="string"&&s.slice(0,7)==="@@CLD@@"&&!seen[s]){seen[s]=true;marks.push(s)}});
+      return runPool(marks,function(m){
+        var u=m.slice(7);
+        return dlDataUrl(u).catch(function(){return dlDataUrl(u)}).then(function(d){return {m:m,d:d}});
+      },function(d,t){$("#cfgNote").textContent="Görseller iniyor "+d+"/"+t+"…"})
+      .then(function(pairs){
+        var map={};pairs.forEach(function(x){map[x.m]=x.d});
+        return mapDeep(manifest,function(s){return map[s]||s});
+      });
+    })
+    .then(function(pkg){$("#cfgNote").textContent="Cihaza yazılıyor…";importPkg(pkg)})
+    .catch(function(e){clearTimeout(tmo);$("#cfgNote").textContent="Olmadı: "+((e&&e.message)||"hata");btn.disabled=false});
+};
 $("#cldTestBtn").onclick=function(){
   if(!cldReady()){$("#cldNote").textContent="Önce iki alanı da doldur.";return}
   $("#cldNote").textContent="Test ediliyor…";
@@ -2727,7 +2883,7 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
-window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite};
+window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut};
 })();
 </script>
 
