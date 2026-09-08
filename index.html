@@ -322,6 +322,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="opts">
           <button class="btn ghost" id="aiBtn" hidden>✨ AI Dönüşüm</button>
           <button class="btn ghost" id="aiSceneBtn" hidden>🏛 AI Sahne / Mekân</button>
+          <div class="note" id="aiWhy" hidden style="margin:-4px 0 4px"></div>
           <div id="frWrap" hidden><div class="lbl">Çerçeve</div><div class="fstrip" id="frStrip"></div></div>
           <div id="bgWrap" hidden><div class="lbl">Arka Plan</div><div class="fstrip" id="bgStrip"></div><div class="bgbusy" id="bgBusy" hidden><i></i><span>Arka plan uygulanıyor…</span></div></div>
           <div><div class="lbl">Filtre</div><div class="fstrip" id="filterStrip"></div></div>
@@ -421,6 +422,10 @@ h1 em{font-style:italic;color:var(--amber)}
           <div><b id="stShots">0</b><span>Çekim</span></div>
           <div><b id="stPrints">0</b><span>Baskı</span></div>
           <div><b id="stSheets">0</b><span>Kağıt</span></div>
+        </div>
+        <div class="grp" id="durumGrp">
+          <h3>Bu cihazda ne var</h3>
+          <div class="note" id="durumNote">yükleniyor…</div>
         </div>
 
         <div class="grp">
@@ -1322,6 +1327,15 @@ function showReview(){
   var aiReady=!!(S.aiOn&&S.aiKey);
   $("#aiBtn").hidden=!(aiReady&&S.aiStyles.some(function(st){return st.on}));
   $("#aiSceneBtn").hidden=!(aiReady&&((S.aiScenes&&S.aiScenes.some(function(st){return st.on}))||hasSceneImgs));
+  /* AI butonu sessizce kaybolmasın — NEDENİNİ yaz (bu cihazda kurulum eksikse anlaşılsın) */
+  var why=$("#aiWhy");
+  if(why){
+    var msg="";
+    if(!S.aiOn)msg="AI bu cihazda kapalı — panel → Yapay Zekâ bölümünden aç.";
+    else if(!S.aiKey)msg="AI anahtarı bu cihazda yok — bu tarayıcıya kurulum yüklenmemiş. Panel → \"Buluttan yükle\" ile kurulum kodunu gir.";
+    else if(!S.aiStyles.some(function(st){return st.on}))msg="Panelde açık AI stili kalmamış.";
+    why.textContent=msg;why.hidden=!msg;
+  }
   go("review");
 }
 var gFrame=null,gFrameId=null,gStd=false;
@@ -1802,6 +1816,38 @@ function drawPin(){
   for(var i=0;i<4;i++)d[i].className=i<pinBuf.length?"f":"";
 }
 function tg(el,val){el.classList.toggle("on",!!val)}
+/* Bu cihazda ne var — kurulum eksikse tahmin ettirmez, yazar */
+function tarayiciAdi(){
+  var u=navigator.userAgent;
+  if(/CriOS/.test(u))return "Chrome (iPhone/iPad)";
+  if(/FxiOS/.test(u))return "Firefox (iPhone/iPad)";
+  if(/Edg\//.test(u))return "Edge";
+  if(/OPR\//.test(u))return "Opera";
+  if(/Chrome\//.test(u))return "Chrome";
+  if(/Firefox\//.test(u))return "Firefox";
+  if(/Safari\//.test(u))return "Safari";
+  return "tarayıcı";
+}
+function updDurum(){
+  var el=$("#durumNote");if(!el)return;
+  libAll(function(list){
+    var fr=0,bg=0,sc=0;
+    list.forEach(function(r){if(r.kind==="frame")fr++;else if(r.kind==="bg")bg++;else if(r.kind==="aiscene")sc++;});
+    var ai=!!(S.aiOn&&S.aiKey), qr=cldReady();
+    var stil=S.aiStyles.filter(function(x){return x.on}).length;
+    var eksik=[];
+    if(!ai)eksik.push("AI");
+    if(!qr)eksik.push("QR teslim");
+    if(!fr&&!bg&&!sc)eksik.push("çerçeve/fon kütüphanesi");
+    var t=tarayiciAdi()+" · "+(S.profName||S.evt||"profil yok")+"\n"
+      +"Çerçeve "+fr+" · Fon "+bg+" · AI mekân "+sc+" · Açık AI stili "+stil+"\n"
+      +"AI Dönüşüm: "+(ai?"hazır ✓":"YOK ✗")+"   ·   QR teslim: "+(qr?"hazır ✓":"YOK ✗")
+      +"   ·   Gerçek baskı: "+(S.realPrint?"AÇIK":"simülasyon");
+    if(eksik.length)t+="\n\nBu tarayıcıda eksik: "+eksik.join(", ")+". Kurulum her tarayıcıya ayrı yüklenir — yukarıdaki \"Buluttan yükle\" ile kurulum kodunu gir, hepsi gelsin.";
+    el.textContent=t;
+    el.style.whiteSpace="pre-line";
+  });
+}
 function fillAdmin(){
   $("#fEvt").value=S.evt;$("#fDate").value=S.date;$("#fSub").value=S.sub;
   $("#fBrand").value=S.brand;$("#fTag").value=S.tag;
@@ -1814,11 +1860,11 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
-  buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();
+  buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.38 · Zaman Yolculuğu · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.39 · Cihaz Durumu · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
