@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Fotoğrafın hazır</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#12100E;color:#F6F0E6;font-family:Figtree,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+ min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 16px 28px}
+.wrap{width:100%;max-width:440px;text-align:center}
+.evt{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#F2A93B;margin:0 0 14px;font-weight:600}
+.ph{width:100%;border-radius:14px;overflow:hidden;background:#1c1815;box-shadow:0 18px 48px rgba(0,0,0,.55);min-height:180px;
+ display:flex;align-items:center;justify-content:center}
+.ph img{width:100%;display:block}
+.btn{display:block;width:100%;margin-top:18px;padding:17px 20px;border:0;border-radius:999px;font-size:17px;font-weight:700;
+ background:#F2A93B;color:#171310;cursor:pointer;font-family:inherit}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:#F6F0E6;border:1px solid rgba(246,240,230,.28);font-weight:600;font-size:15px;margin-top:10px}
+.note{font-size:13px;line-height:1.5;color:rgba(246,240,230,.6);margin-top:16px}
+.err{color:#E9A08C}
+.brand{margin-top:22px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:rgba(246,240,230,.32)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="evt" id="evt"></p>
+  <div class="ph"><img id="ph" alt="Fotoğrafın"></div>
+  <button class="btn" id="save">📥 Telefonuma kaydet</button>
+  <button class="btn ghost" id="open">Yeni sekmede aç</button>
+  <p class="note" id="note">Kaydet'e bas — fotoğraf telefonuna iner.</p>
+  <p class="brand">OBSKURA</p>
+</div>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search);
+  var u=q.get("u")||"", evt=q.get("e")||"";
+  var img=document.getElementById("ph"), note=document.getElementById("note");
+  if(evt)document.getElementById("evt").textContent=evt;
+  if(!u||u.indexOf("https://")!==0){
+    note.className="note err";note.textContent="Bağlantı eksik görünüyor. Karekodu tekrar okut.";
+    document.getElementById("save").style.display="none";
+    document.getElementById("open").style.display="none";
+    return;
+  }
+  img.src=u;
+  var ad=(evt?evt.replace(/[^\wçğıöşüÇĞİÖŞÜ ]+/g,"").trim().replace(/\s+/g,"-"):"obskura")+"-"+Date.now().toString(36)+".jpg";
+  function ekle(el){document.body.appendChild(el)}
+  function indirBlob(b){
+    var url=URL.createObjectURL(b), a=document.createElement("a");
+    a.href=url;a.download=ad;ekle(a);a.click();
+    setTimeout(function(){try{URL.revokeObjectURL(url)}catch(e){}if(a.parentNode)a.parentNode.removeChild(a)},4000);
+  }
+  function ekle_flag(){
+    /* Cloudinary'nin kendi indirme bayrağı — son çare */
+    return u.replace("/image/upload/","/image/upload/fl_attachment/");
+  }
+  document.getElementById("open").onclick=function(){window.open(u,"_blank")};
+  document.getElementById("save").onclick=function(){
+    var b=this;b.disabled=true;var eski=b.textContent;b.textContent="Hazırlanıyor…";
+    fetch(u).then(function(r){if(!r.ok)throw new Error("indirilemedi");return r.blob()})
+    .then(function(blob){
+      var file=null;
+      try{file=new File([blob],ad,{type:blob.type||"image/jpeg"})}catch(e){}
+      if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
+        return navigator.share({files:[file]}).then(function(){
+          note.textContent="Açılan menüden “Fotoğraflara Kaydet”’i seç.";
+        }).catch(function(err){
+          if(err&&err.name==="AbortError"){return}
+          indirBlob(blob);note.textContent="Fotoğraf indirildi.";
+        });
+      }
+      indirBlob(blob);
+      note.textContent="Fotoğraf indirildi — telefonunun “İndirilenler” klasöründe.";
+    })
+    .catch(function(){
+      note.className="note";
+      note.textContent="Tarayıcı doğrudan kaydetmedi, indirme sayfası açılıyor. Açılan fotoğrafa basılı tutup “Fotoğrafı kaydet” de.";
+      window.location.href=ekle_flag();
+    })
+    .then(function(){b.disabled=false;b.textContent=eski});
+  };
+})();
+</script>
+</body>
+</html>

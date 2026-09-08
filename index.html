@@ -1787,6 +1787,13 @@ function finish(){
   go("done");autoBack(45);
   deliverQR();
 }
+/* QR ham JPG yerine kendi teslim sayfamıza gider: misafir tek dokunuşla telefonuna kaydeder */
+function fotoSayfa(u){
+  try{
+    var base=location.href.split(/[?#]/)[0].replace(/[^\/]*$/,"");
+    return base+"foto.html?u="+encodeURIComponent(u)+(S.evt?("&e="+encodeURIComponent(String(S.evt).slice(0,60))):"");
+  }catch(e){return u}
+}
 function drawQR(text){
   var cv=$("#qrCanvas"),x=cv.getContext("2d");
   x.fillStyle="#F6F0E6";x.fillRect(0,0,cv.width,cv.height);
@@ -1936,7 +1943,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.42 · Afiş ve Tarih · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.43 · Tek Dokunuş Kaydet · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2501,7 +2508,7 @@ function deliverQR(){
       lastUrl=us[0];
       var urls={post:us[0],story:us[1]},curq="post";
       function drawSel(){
-        drawQR(urls[curq]);
+        drawQR(fotoSayfa(urls[curq]));
         if(sw){sw.style.display="block";sw.textContent=curq==="post"?"Bu kod: POST (4:5) — Story için karekoda dokun":"Bu kod: STORY (9:16) — Post için karekoda dokun"}
       }
       $("#qrCanvas").onclick=function(){curq=(curq==="post")?"story":"post";drawSel()};
@@ -2513,7 +2520,7 @@ function deliverQR(){
     return;
   }
   uploadPhoto(composed,myCode).then(function(url){
-    lastUrl=url;drawQR(url);
+    lastUrl=url;drawQR(fotoSayfa(url));
     $("#qrCanvas").onclick=null;
   }).catch(function(e){
     qrMessage(["Yüklenemedi: "+((e&&e.message)||"hata"),"Tekrar denemek için","karekod alanına dokun."]);
@@ -3028,7 +3035,7 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
-window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut};
+window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut};
 })();
 </script>
 
