@@ -764,7 +764,7 @@ if(!S.aiStyles||!S.aiStyles.length)S.aiStyles=JSON.parse(JSON.stringify(DEFSTYLE
 DEFSTYLES.forEach(function(d){
   var s=null;for(var i2=0;i2<S.aiStyles.length;i2++)if(S.aiStyles[i2].id===d.id)s=S.aiStyles[i2];
   if(!s)S.aiStyles.push(JSON.parse(JSON.stringify(d)));
-  else if(!s.cust){if(s.p!==d.p)s.p=d.p;if(d.v)s.v=d.v;if(d.n)s.n=d.n;if(d.e)s.e=d.e;}
+  else{if(d.gun&&!s.gun){s.gun=true;s.on=false;} if(!s.cust){if(s.p!==d.p)s.p=d.p;if(d.v)s.v=d.v;if(d.n)s.n=d.n;if(d.e)s.e=d.e;}}
 });
 if(!S.aiScenes||!S.aiScenes.length)S.aiScenes=JSON.parse(JSON.stringify(DEFSCENES));
 DEFSCENES.forEach(function(d){
