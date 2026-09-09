@@ -626,6 +626,14 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="sw"><div class="t">Misafire açık<div class="note">Tüm modlarda görünür (tek/şerit/dörtlü)</div></div><div class="tg" id="tgAi"><i></i></div></div>
           <div class="sw"><div class="t">İnce rötuş<div class="note">AI üretimlerde profesyonel dokunuş: iyi ışık, temiz cilt, hafif fit duruş — abartısız, kişi kendisi kalır</div></div><div class="tg" id="tgFlatter"><i></i></div></div>
           <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="password" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
+          <div class="fld"><div class="lbl">AI modeli — kalite / hız / maliyet</div>
+            <select id="fAiModel">
+              <option value="gemini-2.5-flash-image">2.5 Flash — ÖNERİLEN, benzerlikte en iyi · ~8 sn · ~4 kuruş</option>
+              <option value="gemini-3.1-flash-image">3.1 Flash — daha yeni, daha ucuz · ~10 sn · ~3 kuruş</option>
+              <option value="gemini-3-pro-image">Nano Banana Pro — en detaylı ama yavaş · ~45 sn · ~13 kuruş</option>
+            </select>
+            <div class="note">09.09.2026'da üçü de aynı fotoğraf ve aynı promptla denendi: <b>yüz benzerliğinde 2.5 Flash kazandı</b>, o yüzden varsayılan odur. Yeni modeller daha detaylı sahne üretiyor ama yüzü daha çok değiştiriyor. Sahada şüphe duyarsan burada değiştirip aynı kareyi tekrar üret.</div>
+          </div>
           <div class="lbl" style="margin-top:6px">AI Dönüşüm stilleri <b id="stilSay"></b></div>
           <div class="note">Misafir ekranında açık olanların hepsi birden çıkar — sahada <b>8-12 tanesini açık bırak</b>, kalabalık liste seçimi yavaşlatır. Özel gün stilleri aşağıda ayrı bölümde, kapalı gelir.</div>
           <div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin:6px 0">
@@ -727,7 +735,7 @@ var DEFSTYLES=[
 "in a jewelled chamber surrounded by gold vessels and lotus flowers, soft diffuse light, calm frontal portrait",
 "beneath a linen canopy in a sunlit courtyard, palm shadows falling across the shoulders, relaxed three-quarter pose",
 "at the top of a temple stairway with the desert wind moving the fine linen, heroic low angle, dusty golden air",
-"in a dark hall lit by a single beam falling on the face and gold collar, deep shadows, cinematic close portrait"],p:"Transform this person into an ancient Egyptian monarch in a photorealistic cinematic portrait — a pharaoh if the person is a man, a queen in the manner of Nefertiti or Cleopatra if a woman. COMPOSITION: a close waist-up portrait, the person filling most of the frame, face large, sharp and unmistakable. Regalia worn CORRECTLY: for a king, the striped blue-and-gold nemes headcloth properly covering the hair and framing the face, falling in two wide pleated lappets down over the chest, with a golden cobra centred on the forehead band; for a queen, an ornate gold and lapis crown or a golden vulture headdress over long braided hair. Both wear a broad usekh collar of gold, turquoise and carnelian over finely pleated white linen, with heavy gold armbands and subtle kohl eye definition. Real skin texture, crisp jewellery detail — a genuine photograph, never an illustration, never a costume-shop look. Keep the person\'s own face, jawline and skin tone exactly as they are and NEVER make the face rounder, wider or heavier than in the photo. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+"in a dark hall lit by a single beam falling on the face and gold collar, deep shadows, cinematic close portrait"],p:"FIRST determine the gender of the person in the photo, then keep it: a MAN becomes a male pharaoh with a male body and male features (never a queen, never feminine styling); a WOMAN becomes a queen in the manner of Nefertiti or Cleopatra. Transform this person into that ancient Egyptian monarch in a photorealistic cinematic portrait. COMPOSITION: a close waist-up portrait, the person filling most of the frame, face large, sharp and unmistakable. Regalia worn CORRECTLY: for a king, the striped blue-and-gold nemes headcloth properly covering the hair and framing the face, falling in two wide pleated lappets down over the chest, with a golden cobra centred on the forehead band; for a queen, an ornate gold and lapis crown or a golden vulture headdress over long braided hair. Both wear a broad usekh collar of gold, turquoise and carnelian over finely pleated white linen, with heavy gold armbands and subtle kohl eye definition. Real skin texture, crisp jewellery detail — a genuine photograph, never an illustration, never a costume-shop look. Keep the person\'s own face, jawline and skin tone exactly as they are and NEVER make the face rounder, wider or heavier than in the photo. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
  {id:"ozelkuv",e:"\u{1F396}\u{FE0F}",n:"Özel Kuvvetler",on:true,v:[
 "standing on a rocky mountain ridge at first light, mist in the valley below, low-angle heroic three-quarter view",
 "at a dusty desert outpost with a helicopter blurred far behind, warm backlight, calm frontal portrait",
@@ -778,7 +786,7 @@ var DEFSCENES=[
 var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.08.2026",
   sub:"@yopievents",logo:"",logo2:"",count:3,single:"tam",mirror:true,sound:true,realPrint:false,
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
-  enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",profId:"",profName:"",aiStyles:DEFSTYLES,aiScenes:DEFSCENES,flatter:true,
+  enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",aiModel:"gemini-2.5-flash-image",profId:"",profName:"",aiStyles:DEFSTYLES,aiScenes:DEFSCENES,flatter:true,
   bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"cihaz",guide:false,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
@@ -1692,7 +1700,7 @@ function geminiImage(parts,outW,outH){
   var body={contents:[{parts:parts}]};
   var ctrl=new AbortController();
   var tmo=setTimeout(function(){ctrl.abort()},75000);
-  return fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key="+encodeURIComponent(S.aiKey),
+  return fetch("https://generativelanguage.googleapis.com/v1beta/models/"+(S.aiModel||"gemini-2.5-flash-image")+":generateContent?key="+encodeURIComponent(S.aiKey),
     {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),signal:ctrl.signal})
   .then(function(r){
     clearTimeout(tmo);
@@ -1776,10 +1784,10 @@ function aiTransform(src,st){
     ],src.width,src.height);
   }
   /* STİL: kimlik EN BAŞTA — benzerlik her şeyden önce gelir */
-  var ident="TOP PRIORITY — LIKENESS: the result must be INSTANTLY recognizable as the exact person in this photo. Copy their real face faithfully: same face shape, same hairline, same beard/mustache shape and density, same eye, nose and mouth shape, same skin tone, same age, same gender, same body type — never change the person's gender. Do NOT reshape, slim, age, rejuvenate or replace the face, and never swap in a generic handsome face — the bone structure, features and proportions stay exactly theirs. BUT DO present this person at their most attractive within that truth: flattering light on the face, healthy clear skin, bright eyes, good grooming and a confident, appealing pose. The person must always look dignified and good-looking; if the scene is playful, the humour comes from the setting and costume, NEVER from making the person look foolish, ugly or ridiculous. NEVER make the person look heavier, wider, older or shorter than in their photo. Hands, if visible, must look natural with the correct number of fingers. The image must contain EXACTLY ONE person — never a second figure, duplicate or clone; exactly one face. Keep the same camera framing, pose and orientation as the input photo; keep the face detailed and crisp. The period styling below applies to clothing, hair styling, setting and photographic look ONLY — it must never change who this person is. NOW apply this transformation to that same person: ";
+  var ident="CRITICAL — SAME PERSON: keep the EXACT face of the person in this photo. Same face shape and jawline, same eyes, same nose, same mouth, same eyebrows, same hairline, same beard or moustache shape, same skin tone and SAME GENDER. The result must be instantly recognisable as them — never a different person, never a generic good-looking face, never a gender swap. Exactly ONE person, one face, same camera framing and orientation. Do not make them heavier, wider, older or shorter. The styling below changes only clothing, hair styling, setting and photographic look. Now apply it: ";
   return geminiImage([
     {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
-    {text:ident+st.p+extra+yasBlok+" Replace the entire background consistently with the style. High quality rendering."+ret}
+    {text:ident+st.p+extra+yasBlok+" Replace the entire background consistently with the style. High quality rendering."+(st.yas?"":ret)+" FINAL CHECK before you output: the face in the result must be THIS person\'s face from the input photo — same features, same gender. If it looks like someone else, you have failed."}
   ],src.width,src.height).then(function(cv){return st.poster?posterBasligi(cv):cv});
 }
 /* TEK KESİM: AI kişiyi BİR KEZ düz yeşile çıkarır; fonlar sonra yerel chroma ile ücretsiz uygulanır.
@@ -1971,12 +1979,13 @@ function fillAdmin(){
   $("#fFrame").value=S.frame;$("#fTop").value=S.topText;$("#fBot").value=S.botText;
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
+  if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
   tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
   buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.46 · Dönem Yaşı · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.47 · Model ve Kimlik · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -1987,6 +1996,7 @@ $("#tgSound").onclick=function(){S.sound=!S.sound;tg(this,S.sound);save()};
 $("#tgSerit8").onclick=function(){S.serit8=!S.serit8;tg(this,S.serit8);save()};
 $("#tgGuide").onclick=function(){S.guide=!S.guide;tg(this,S.guide);save()};
 $("#tgFlatter").onclick=function(){S.flatter=!(S.flatter!==false);tg(this,S.flatter);save()};
+$("#fAiModel").addEventListener("change",function(){S.aiModel=this.value;save();aiCache=new Map();aiBgCache=new Map();aiCutCache=new Map();});
 $("#stilHepAc").onclick=function(){stilHepsi(true)};
 $("#stilHepKapa").onclick=function(){stilHepsi(false)};
 $("#gunHepAc").onclick=function(){gunHepsi(true)};
