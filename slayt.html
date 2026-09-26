@@ -161,7 +161,15 @@ body.ui{cursor:auto}
         setTimeout(function(){flash.classList.remove("on")},2200);
       }
     };
-    if(im.decode)im.decode().then(goster2).catch(goster2); else {im.onload=goster2;im.onerror=goster2;}
+    /* decode() bazı tarayıcılarda geç/hiç dönmüyor — load, decode ve zaman aşımından
+       hangisi önce gelirse kareyi göster; TV ekranı asla boş kalmasın */
+    var acildi=false;
+    function birKere(){if(acildi)return;acildi=true;goster2()}
+    im.addEventListener("load",birKere);
+    im.addEventListener("error",birKere);
+    if(im.decode)im.decode().then(birKere,birKere);
+    if(im.complete&&im.naturalWidth)birKere();
+    setTimeout(birKere,5000);
   }
 
   function sonraki(){
