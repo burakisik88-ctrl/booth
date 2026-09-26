@@ -427,6 +427,29 @@ h1 em{font-style:italic;color:var(--amber)}
           <h3>Bu cihazda ne var</h3>
           <div class="note" id="durumNote">yükleniyor…</div>
         </div>
+        <div class="grp" id="evGrp">
+          <h3>Etkinlik modu</h3>
+          <div class="sw"><div class="t">Etkinlik başladı<div class="note">Açıkken ayarlar kilitlenir ve sayfa yanlışlıkla kapanmaz — etkinliğin ortasında ayar kayması olmaz</div></div><div class="tg" id="tgEvMode"><i></i></div></div>
+          <div class="fld"><div class="lbl">Bu etkinlik için AI hakkı (kare) — 0 = sınırsız</div><input type="number" id="fAiBudget" min="0" step="10" placeholder="ör. 150"></div>
+          <div class="fld"><div class="lbl">AI kare birim maliyeti (TL) — boş bırakabilirsin</div><input type="text" id="fAiBirim" placeholder="ör. 0,40" autocomplete="off"></div>
+          <div class="note" id="aiUseNote">—</div>
+          <div class="row" style="justify-content:flex-start">
+            <button class="btn ghost mini" id="aiResetBtn">AI sayacını sıfırla</button>
+          </div>
+          <div class="note">Hak dolunca AI butonu misafire kapanır, kabin normal çekim ve baskıya devam eder — etkinlik durmaz.</div>
+        </div>
+
+        <div class="grp" id="pendGrp">
+          <h3>Yazıcı kurtarma</h3>
+          <div class="sw"><div class="t">Yazıcı arızalı — dijital moda geç<div class="note">Açıkken kağıt harcanmaz; her misafir karekodla fotoğrafını alır, baskılar kuyruğa yazılır</div></div><div class="tg" id="tgPrintDown"><i></i></div></div>
+          <div class="note" id="pendNote">Bekleyen baskı yok.</div>
+          <div class="row" style="justify-content:flex-start">
+            <button class="btn mini" id="pendPrintBtn" disabled>Hepsini bas</button>
+            <button class="btn ghost mini" id="pendClearBtn" disabled>Kuyruğu temizle</button>
+          </div>
+          <div class="note">Sahada en sık bozulan şey yazıcıdır (şerit hatası, USB kopması, kartuş kilidi). Bu mod açıkken iş durmaz: misafir elleri boş dönmez, baskılar kaybolmaz.</div>
+        </div>
+
         <div class="grp" id="kontrolGrp">
           <h3>Saha kontrolü</h3>
           <div class="note" id="kontrolSon">Bu cihazda hiç saha kontrolü yapılmadı.</div>
@@ -632,6 +655,13 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="fld" style="margin-top:14px"><div class="lbl">Etkinlik galerisi — iş sonu tek link</div>
             <input type="text" id="fGalLink" readonly onclick="this.select()">
             <div class="row" style="justify-content:flex-start;margin-top:8px"><button class="btn ghost mini" id="galCopyBtn">Linki kopyala</button></div>
+            <div class="lbl" style="margin-top:14px">Canlı slayt (fuaye TV / ikinci ekran)</div>
+            <input type="text" id="fSlaytLink" readonly onclick="this.select()">
+            <div class="row" style="justify-content:flex-start;margin-top:8px">
+              <button class="btn ghost mini" id="slaytCopyBtn">Slayt linkini kopyala</button>
+              <button class="btn ghost mini" id="slaytOpenBtn">Yeni sekmede aç</button>
+            </div>
+            <div class="note">Bu linki fuayedeki TV'ye veya ikinci ekrana tam ekran aç: çekilen kareler anlık akar, köşede galeri karekodu durur. Kabine kuyruk yapan özellik budur. <b>F</b> tuşu tam ekran, <b>boşluk</b> sonraki kare.</div>
             <div class="note">Her çekim, etkinlik (profil) adına göre açılan klasörde toplanır — ör. <b>booth/turk-pediatri-kongresi</b>. İş bitince müşteriye bu tek linki gönder: tüm kareler galeri sayfasında açılır, tek tek indirilebilir. Linkin çalışması için Cloudinary → Settings → Security bölümünde <b>"Resource list"</b> kısıtını bir kez kaldırman gerekir.</div>
           </div>
         </div>
@@ -803,6 +833,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",aiModel:"gemini-2.5-flash-image",profId:"",profName:"",aiStyles:DEFSTYLES,aiScenes:DEFSCENES,flatter:true,
   bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"cihaz",guide:false,
+  evMode:false,evStart:0,aiBudget:0,aiUsed:0,aiBirim:"",printDown:false,printFail:0,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
@@ -1448,14 +1479,16 @@ function placeGrid(x,sh,cols,rows,cx0,cy0,cw,chh,ar){
 var composed="";
 function showReview(){
   compose();buildFilterStrip();buildBgStrip();buildFrameStrip();
-  var aiReady=!!(S.aiOn&&S.aiKey);
+  var aiReady=!!(S.aiOn&&S.aiKey&&aiKalan()>0);
+  $("#printBtn").textContent=S.printDown?"KAREKODLA GÖNDER":"YAZDIR";
   $("#aiBtn").hidden=!(aiReady&&S.aiStyles.some(function(st){return st.on}));
   $("#aiSceneBtn").hidden=!(aiReady&&((S.aiScenes&&S.aiScenes.some(function(st){return st.on}))||hasSceneImgs));
   /* AI butonu sessizce kaybolmasın — NEDENİNİ yaz (bu cihazda kurulum eksikse anlaşılsın) */
   var why=$("#aiWhy");
   if(why){
     var msg="";
-    if(!S.aiOn)msg="AI bu cihazda kapalı — panel → Yapay Zekâ bölümünden aç.";
+    if(S.aiOn&&S.aiKey&&aiKalan()<=0)msg="Bu etkinlik için ayrılan AI hakkı doldu. Çekim ve baskı normal devam ediyor.";
+    else if(!S.aiOn)msg="AI bu cihazda kapalı — panel → Yapay Zekâ bölümünden aç.";
     else if(!S.aiKey)msg="AI anahtarı bu cihazda yok — bu tarayıcıya kurulum yüklenmemiş. Panel → \"Buluttan yükle\" ile kurulum kodunu gir.";
     else if(!S.aiStyles.some(function(st){return st.on}))msg="Panelde açık AI stili kalmamış.";
     why.textContent=msg;why.hidden=!msg;
@@ -1759,7 +1792,10 @@ function posterBasligi(cv){
   }catch(e){}
   return cv;
 }
+function aiKalan(){var b=S.aiBudget|0;return b?Math.max(0,b-(S.aiUsed|0)):Infinity}
 function geminiImage(parts,outW,outH){
+  /* ETKİNLİK BÜTÇESİ — kredi etkinliğin ortasında sessizce bitmesin, kabin klasik modda çalışmaya devam etsin */
+  if(aiKalan()<=0)return Promise.reject(new Error("Bu etkinlik için ayrılan AI hakkı doldu ("+(S.aiBudget|0)+" kare). Kabin normal çekime devam ediyor; panelden hakkı artırabilirsin."));
   var body={contents:[{parts:parts}]};
   var ctrl=new AbortController();
   var tmo=setTimeout(function(){ctrl.abort()},75000);
@@ -1783,6 +1819,8 @@ function geminiImage(parts,outW,outH){
       if(id2&&id2.data){data=id2.data;mt=id2.mime_type||id2.mimeType||mt;break}
     }
     if(!data)throw new Error("servis görsel döndürmedi");
+    S.aiUsed=(S.aiUsed|0)+1;try{localStorage.setItem("booth.aiused",String(S.aiUsed))}catch(e){}save();
+    var ub=$("#aiUseNote");if(ub&&cur==="admin")aiKullanimYaz();
     return new Promise(function(res,rej){
       var im=new Image();
       im.onload=function(){
@@ -1874,25 +1912,40 @@ var lastPrinted="";
 function doPrint(){
   lastPrinted=composed;
   go("printing");
+  var yazicivar=S.realPrint&&!S.printDown;
   var ms=Math.max(3000,copies*4000),t0=Date.now(),bar=$("#progBar");
-  $("#printNote").textContent=S.realPrint?"Yazıcı çalışıyor, kağıdı bekle.":"Simülasyon modu — kağıt harcanmıyor.";
+  $("#printNote").textContent = S.printDown
+      ? "Yazıcı şu an devre dışı. Fotoğrafın karekodla telefonuna gelecek — baskın kayıt altında, yazıcı düzelince alınacak."
+      : (S.realPrint?"Yazıcı çalışıyor, kağıdı bekle.":"Simülasyon modu — kağıt harcanmıyor.");
   var iv=setInterval(function(){
     var p=Math.min(1,(Date.now()-t0)/ms);bar.style.width=(p*100)+"%";
     if(p>=1){clearInterval(iv);finish();}
   },120);
+  /* YAZICI ARIZALI: basma, ama kareyi kuyruğa al — hiçbir baskı kaybolmasın */
+  if(S.printDown){
+    pendPut({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+             t:Date.now(),d:composed,kopya:copies,ev:(S.profName||S.evt||"")},function(){updPend()});
+  }
   /* sayaç: simülasyonda hemen, gerçek baskıda yazdırma penceresi kapandıktan sonra sayılır */
-  if(!S.realPrint){S.prints++;S.sheets+=copies;sayacKaydet();save();}
+  if(!yazicivar){ if(!S.printDown){S.prints++;S.sheets+=copies;sayacKaydet();save();} }
   else{
-    var sayildi=false,kopya=copies;
+    var sayildi=false,kopya=copies,geldi=false;
     function sayacArtir(){if(sayildi)return;sayildi=true;S.prints++;S.sheets+=kopya;sayacKaydet();save();}
     if("onafterprint" in window){
-      var h=function(){window.removeEventListener("afterprint",h);sayacArtir()};
+      var h=function(){window.removeEventListener("afterprint",h);geldi=true;S.printFail=0;save();sayacArtir()};
       window.addEventListener("afterprint",h);
-      setTimeout(sayacArtir,20000); /* pencere hiç kapanmazsa yine de say */
+      setTimeout(function(){
+        if(!geldi){ /* yazdırma penceresi hiç kapanmadı — sessiz yazıcı arızasının tipik izi */
+          S.printFail=(S.printFail|0)+1;save();
+          hataYaz("yazıcı","yazdırma penceresi 20 sn içinde kapanmadı ("+S.printFail+". kez)");
+          if(S.printFail>=3)yaziciUyar();
+        }
+        sayacArtir();
+      },20000);
     }else setTimeout(sayacArtir,3000);
   }
   addToGallery(composed);
-  if(S.realPrint){
+  if(yazicivar){
     var pa=$("#printArea");pa.innerHTML="";
     var bekle=[];
     for(var i=0;i<copies;i++){
@@ -1908,8 +1961,17 @@ function doPrint(){
     setTimeout(yazdir,6000);
   }
 }
+function yaziciUyar(){
+  var st=$("#s-done .stage");if(!st)return;
+  if(st.querySelector(".pwarn"))return;
+  var d=document.createElement("div");d.className="banner pwarn";
+  d.innerHTML="<span><b>Görevliye:</b> yazıcı arka arkaya "+(S.printFail|0)+" kez yanıt vermedi. Panel → <b>Yazıcı Kurtarma</b>'dan dijital moda geç; kareler kuyruğa alınır, yazıcı düzelince topluca basılır.</span>";
+  st.appendChild(d);
+  setTimeout(function(){try{d.remove()}catch(e){}},25000);
+}
 function finish(){
   go("done");autoBack(45);
+  if((S.printFail|0)>=3&&!S.printDown)yaziciUyar();
   deliverQR();
 }
 /* QR ham JPG yerine kendi teslim sayfamıza gider: misafir tek dokunuşla telefonuna kaydeder */
@@ -1945,13 +2007,14 @@ var db=null;
 function openDB(){
   return new Promise(function(res){
     if(!window.indexedDB)return res(null);
-    var rq=indexedDB.open("boothDB",4);
+    var rq=indexedDB.open("boothDB",5);
     rq.onupgradeneeded=function(e){
       var d=e.target.result;
       if(!d.objectStoreNames.contains("shots"))d.createObjectStore("shots",{keyPath:"id",autoIncrement:true});
       if(!d.objectStoreNames.contains("assets"))d.createObjectStore("assets");
       if(!d.objectStoreNames.contains("profiles"))d.createObjectStore("profiles",{keyPath:"id"});
       if(!d.objectStoreNames.contains("lib"))d.createObjectStore("lib",{keyPath:"id"});
+      if(!d.objectStoreNames.contains("pending"))d.createObjectStore("pending",{keyPath:"id"});
     };
     rq.onsuccess=function(e){db=e.target.result;loadOverlays();try{refreshSceneImgFlag()}catch(e2){}res(db)};
     rq.onerror=function(){res(null)};
@@ -1968,6 +2031,65 @@ function addToGallery(data){
       if(over>0){st.openCursor().onsuccess=function(c){var cr=c.target.result;if(cr&&over-->0){cr.delete();cr.continue()}}}
     };
   }catch(e){}
+}
+/* ---------- YAZICI KURTARMA: basılamayan kareler kaybolmaz ---------- */
+function pendPut(rec,cb){
+  if(!db){hataYaz("bekleyen baskı","veritabanı açık değil");cb&&cb(false);return}
+  try{var tx=db.transaction("pending","readwrite");tx.objectStore("pending").put(rec);
+    tx.oncomplete=function(){cb&&cb(true)};
+    tx.onerror=tx.onabort=function(){hataYaz("bekleyen baskı","kaydedilemedi (yer dolu olabilir)");cb&&cb(false)};
+  }catch(e){hataYaz("bekleyen baskı",e&&e.message);cb&&cb(false)}
+}
+function pendAll(cb){
+  if(!db)return cb([]);
+  var out=[];
+  try{
+    db.transaction("pending","readonly").objectStore("pending").openCursor().onsuccess=function(e){
+      var c=e.target.result;if(c){out.push(c.value);c.continue()}else{out.sort(function(a,b){return a.t-b.t});cb(out)}
+    };
+  }catch(e){cb([])}
+}
+function pendDel(id,cb){
+  if(!db){cb&&cb();return}
+  try{var tx=db.transaction("pending","readwrite");tx.objectStore("pending").delete(id);
+    tx.oncomplete=function(){cb&&cb()};tx.onerror=tx.onabort=function(){cb&&cb()};
+  }catch(e){cb&&cb()}
+}
+function pendSay(cb){pendAll(function(l){cb(l.length,l.reduce(function(a,b){return a+(b.kopya||1)},0))})}
+function updPend(){
+  var el=$("#pendNote");if(!el)return;
+  pendSay(function(n,k){
+    el.textContent = n
+      ? (n+" kare basılmayı bekliyor ("+k+" kağıt). Yazıcı düzelince \"Hepsini bas\" de — sıradan çıkacaklar.")
+      : "Bekleyen baskı yok.";
+    var b=$("#pendPrintBtn"),c=$("#pendClearBtn");
+    if(b)b.disabled=!n; if(c)c.disabled=!n;
+  });
+}
+var pendBasiyor=false;
+function pendHepsiniBas(){
+  if(pendBasiyor)return;
+  pendAll(function(list){
+    if(!list.length)return;
+    pendBasiyor=true;
+    var i=0;
+    function sonraki(){
+      if(i>=list.length){pendBasiyor=false;updPend();$("#pendPrintBtn").textContent="Hepsini bas";return}
+      var r=list[i++];
+      $("#pendPrintBtn").textContent="Basılıyor "+i+"/"+list.length;
+      var pa=$("#printArea");pa.innerHTML="";
+      var bekle=[];
+      for(var k=0;k<(r.kopya||1);k++){
+        var im=new Image();im.src=r.d;pa.appendChild(im);
+        bekle.push(im.decode?im.decode().catch(function(){}):new Promise(function(res){im.onload=res;im.onerror=res;setTimeout(res,4000)}));
+      }
+      Promise.all(bekle).then(function(){
+        try{window.print()}catch(e){}
+        pendDel(r.id,function(){updPend();setTimeout(sonraki,1500)});
+      });
+    }
+    sonraki();
+  });
 }
 function drawGallery(){
   var g=$("#galGrid");g.innerHTML="";
@@ -2046,7 +2168,8 @@ function updDurum(){
     var t=tarayiciAdi()+" · "+(S.profName||S.evt||"profil yok")+"\n"
       +"Çerçeve "+fr+" · Fon "+bg+" · AI mekân "+sc+" · Açık AI stili "+stil+"\n"
       +"AI Dönüşüm: "+(ai?"hazır ✓":"YOK ✗")+"   ·   QR teslim: "+(qr?"hazır ✓":"YOK ✗")
-      +"   ·   Gerçek baskı: "+(S.realPrint?"AÇIK":"simülasyon");
+      +"   ·   Gerçek baskı: "+(S.printDown?"YAZICI ARIZALI (dijital mod)":(S.realPrint?"AÇIK":"simülasyon"));
+    if(S.evMode)t="ETKİNLİK MODU AÇIK\n"+t;
     if(eksik.length)t+="\n\nBu tarayıcıda eksik: "+eksik.join(", ")+". Kurulum her tarayıcıya ayrı yüklenir — yukarıdaki \"Buluttan yükle\" ile kurulum kodunu gir, hepsi gelsin.";
     el.textContent=t;
     el.style.whiteSpace="pre-line";
@@ -2189,6 +2312,29 @@ function kBaski(){
     o:"Şu an gerçek yazıcıya basmaz, sadece ekranda gösterir. Etkinlikte panel → \"Gerçek baskı\" AÇIK olmalı."};
   return {m:m+" · gerçek baskı açık"};
 }
+function kYazici(){
+  if(S.printDown)return {ok:false,m:"panelde \"yazıcı arızalı\" açık — kağıt basılmıyor",
+    o:"Yazıcıyı düzelttiysen bu anahtarı kapat, sonra \"Hepsini bas\" ile bekleyenleri al."};
+  if((S.printFail|0)>=3)return {ok:false,m:"son "+(S.printFail|0)+" baskıda yazdırma penceresi kapanmadı",
+    o:"Yazıcı, kablo ve şeridi kontrol et. Düzelmezse \"Yazıcı arızalı\" anahtarını aç — iş durmaz, baskılar kuyruğa yazılır."};
+  if((S.printFail|0)>0)return {uyari:true,m:(S.printFail|0)+" baskıda yazdırma penceresi kapanmadı",
+    o:"Tek seferlikse önemsiz. Tekrarlarsa yazıcı kablosunu değiştir."};
+  return new Promise(function(res){
+    pendSay(function(n,k){
+      if(n)return res({uyari:true,m:n+" kare basılmayı bekliyor ("+k+" kağıt)",o:"Panel → Yazıcı kurtarma → \"Hepsini bas\"."});
+      res({m:"arıza kaydı yok, bekleyen baskı yok"});
+    });
+  });
+}
+function kAiButce(){
+  if(!S.aiOn||!S.aiKey)return {uyari:true,m:"AI kapalı — bütçe kontrolü gereksiz"};
+  var b=S.aiBudget|0,k=S.aiUsed|0;
+  if(!b)return {uyari:true,m:"bu etkinlik için AI hakkı SINIRSIZ ("+k+" kare üretilmiş)",
+    o:"Sınır koymazsan kalabalık bir etkinlikte maliyet kontrolden çıkar. Panel → Etkinlik modu → AI hakkı."};
+  if(k>=b)return {ok:false,m:"hak doldu ("+k+"/"+b+")",o:"AI misafire kapalı. Devam etmesi gerekiyorsa hakkı artır veya sayacı sıfırla."};
+  if(k>=b*0.8)return {uyari:true,m:"hakkın %80'i kullanıldı ("+k+"/"+b+")",o:"Etkinlik sürecekse hakkı şimdiden artır."};
+  return {m:k+"/"+b+" kare kullanıldı"};
+}
 function kUyanik(){
   if(!("wakeLock" in navigator))
     return {uyari:true,m:"tarayıcı ekranı uyanık tutmayı desteklemiyor",
@@ -2280,7 +2426,9 @@ function sahaKontrol(aiDahil){
     ["Kamera",kKamera],
     ["Çerçeve/fon kütüphanesi",kKutuphane],
     ["Baskı kurgusu",kBaski],
+    ["Yazıcı durumu",kYazici],
     ["Ekran uyanık kalma",kUyanik],
+    ["AI bütçesi",kAiButce],
     ["Açık stil sayısı",kStil],
     ["İnternet",kInternet],
     ["Teslim sayfası",kTeslimSayfa],
@@ -2304,6 +2452,42 @@ function sahaKontrol(aiDahil){
   })();
 }
 
+/* ---------- ETKİNLİK MODU: etkinliğin ortasında ayar kaymasın ---------- */
+var EV_KILIT=["#tgPrint","#tgSerit8","#fAiKey","#fAiModel","#fCldName","#fCldPreset","#fBgMode",
+              "#fFilterMode","#fFrame","#fEnh","#libFrFile","#libBgFile","#tupluFile","#sceneImgFile",
+              "#cfgFile","#cldGetBtn","#cfgBox","#stilHepAc","#stilHepKapa","#libFrBtn","#libBgBtn"];
+function evKilit(){
+  var kilit=!!S.evMode;
+  EV_KILIT.forEach(function(sel){
+    var el=$(sel);if(!el)return;
+    el.disabled=kilit; el.style.opacity=kilit?".45":"";
+    el.style.pointerEvents=kilit?"none":"";
+  });
+  var st=$("#stilWrap")||null;
+  var b=$("#evBar");
+  if(!b){
+    b=document.createElement("div");b.id="evBar";b.className="note";
+    b.style.cssText="margin:0 0 12px;border:1px solid rgba(242,169,59,.45);background:rgba(242,169,59,.10);border-radius:10px;padding:10px 12px;color:#F2A93B";
+    var panel=document.querySelector("#s-admin .panel");
+    if(panel)panel.insertBefore(b,panel.firstChild);
+  }
+  b.hidden=!kilit;
+  if(kilit){
+    var dk=S.evStart?Math.round((Date.now()-S.evStart)/60000):0;
+    b.textContent="ETKİNLİK MODU AÇIK"+(dk?(" · "+(dk>=60?(Math.floor(dk/60)+" sa "+(dk%60)+" dk"):(dk+" dk"))):"")
+      +" — ayarlar kilitli, sayfa yanlışlıkla kapanmaz. Değişiklik için önce etkinlik modunu kapat.";
+  }
+}
+function aiKullanimYaz(){
+  var el=$("#aiUseNote");if(!el)return;
+  var k=S.aiUsed|0,b=S.aiBudget|0;
+  var t="Bu etkinlikte üretilen AI kare: "+k+(b?(" / "+b):" (sınırsız)");
+  var birim=parseFloat(String(S.aiBirim||"").replace(",","."));
+  if(birim>0)t+="  ·  yaklaşık "+(k*birim).toFixed(2).replace(".",",")+" TL";
+  if(b&&k>=b)t+="\n\nHAK DOLDU — AI misafire kapandı, kabin normal çalışıyor. Devam etmesi için hakkı artır.";
+  else if(b&&k>=b*0.8)t+="\n\nHakkın %80'i kullanıldı.";
+  el.textContent=t;el.style.whiteSpace="pre-line";
+}
 function fillAdmin(){
   $("#fEvt").value=S.evt;$("#fDate").value=S.date;$("#fSub").value=S.sub;
   $("#fBrand").value=S.brand;$("#fTag").value=S.tag;
@@ -2317,11 +2501,15 @@ function fillAdmin(){
   ovNote();drawPreviews();
   if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
   tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
+  if($("#fAiBudget"))$("#fAiBudget").value=S.aiBudget||"";
+  if($("#fAiBirim"))$("#fAiBirim").value=S.aiBirim||"";
+  tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
+  aiKullanimYaz();updPend();evKilit();
   buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();kontrolYas();hataYaz("","");
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.49 · Saha Kontrolü · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.50 · Etkinlik Modu · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -2340,7 +2528,35 @@ $("#stilHepKapa").onclick=function(){stilHepsi(false)};
 $("#gunHepAc").onclick=function(){gunHepsi(true)};
 $("#gunHepKapa").onclick=function(){gunHepsi(false)};
 $("#fBgMode").addEventListener("change",function(){S.bgMode=this.value;save()});
-$("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save()};
+$("#tgPrint").onclick=function(){S.realPrint=!S.realPrint;tg(this,S.realPrint);save();updDurum()};
+if($("#tgEvMode"))$("#tgEvMode").onclick=function(){
+  S.evMode=!S.evMode;
+  if(S.evMode)S.evStart=Date.now();
+  tg(this,S.evMode);save();evKilit();
+};
+if($("#tgPrintDown"))$("#tgPrintDown").onclick=function(){
+  S.printDown=!S.printDown;tg(this,S.printDown);
+  if(!S.printDown)S.printFail=0;
+  save();updDurum();updPend();
+};
+if($("#fAiBudget"))$("#fAiBudget").addEventListener("input",function(){
+  S.aiBudget=Math.max(0,parseInt(this.value,10)||0);save();aiKullanimYaz();
+});
+if($("#fAiBirim"))$("#fAiBirim").addEventListener("input",function(){S.aiBirim=this.value;save();aiKullanimYaz()});
+if($("#aiResetBtn"))$("#aiResetBtn").onclick=function(){
+  S.aiUsed=0;save();aiKullanimYaz();
+  var b=this;b.textContent="Sıfırlandı ✓";setTimeout(function(){b.textContent="AI sayacını sıfırla"},1500);
+};
+if($("#pendPrintBtn"))$("#pendPrintBtn").onclick=function(){pendHepsiniBas()};
+if($("#pendClearBtn"))$("#pendClearBtn").onclick=function(){
+  var b=this;
+  if(b.dataset.onay!=="1"){b.dataset.onay="1";b.textContent="Emin misin? Tekrar bas";
+    setTimeout(function(){b.dataset.onay="";b.textContent="Kuyruğu temizle"},4000);return}
+  b.dataset.onay="";b.textContent="Kuyruğu temizle";
+  pendAll(function(l){
+    var i=0;(function nx(){if(i>=l.length){updPend();return}pendDel(l[i++].id,nx)})();
+  });
+};
 /* logoyu localStorage şişmesin diye küçült (uzun kenar 480px, PNG şeffaflık korunur) */
 function downscaleLogo(file){
   return readFileDataUrl(file).then(loadImg).then(function(im){
@@ -3128,13 +3344,34 @@ function galLink(){
   var base=location.href.split(/[?#]/)[0].replace(/[^\/]*$/,"");
   return base+"gallery.html?c="+encodeURIComponent(S.cldName||"")+"&e="+encodeURIComponent(evSlug())+"&n="+encodeURIComponent(S.profName||S.evt||"");
 }
-function updGalLink(){var el=$("#fGalLink");if(el)el.value=cldReady()?galLink():"Önce Cloudinary alanlarını doldur"}
+function slaytLink(){
+  var base=location.href.split(/[?#]/)[0].replace(/[^\/]*$/,"");
+  var u=base+"slayt.html?c="+encodeURIComponent(S.cldName||"")+"&e="+encodeURIComponent(evSlug())
+        +"&n="+encodeURIComponent(S.profName||S.evt||"")+"&b="+encodeURIComponent(S.brand||"OBSKURA")
+        +"&g="+encodeURIComponent(galLink());
+  if(S.logo&&S.logo.indexOf("http")===0)u+="&l="+encodeURIComponent(S.logo);
+  return u;
+}
+function updSlaytLink(){var el=$("#fSlaytLink");if(el)el.value=cldReady()?slaytLink():"Önce Cloudinary alanlarını doldur"}
+function updGalLink(){var el=$("#fGalLink");if(el)el.value=cldReady()?galLink():"Önce Cloudinary alanlarını doldur";updSlaytLink();}
 $("#galCopyBtn").onclick=function(){
   var b=this,v=$("#fGalLink").value||"";
   function doNote(t){b.textContent=t;setTimeout(function(){b.textContent="Linki kopyala"},1600)}
   if(v.indexOf("http")!==0){doNote("Link hazır değil");return}
   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(function(){doNote("Kopyalandı ✓")},function(){doNote("Kopyalanamadı")});
   else{$("#fGalLink").select();try{document.execCommand("copy");doNote("Kopyalandı ✓")}catch(e){doNote("Kopyalanamadı")}}
+};
+$("#slaytCopyBtn").onclick=function(){
+  var b=this,v=$("#fSlaytLink").value||"";
+  function doNote(t){b.textContent=t;setTimeout(function(){b.textContent="Slayt linkini kopyala"},1600)}
+  if(v.indexOf("http")!==0){doNote("Link hazır değil");return}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(function(){doNote("Kopyalandı ✓")},function(){doNote("Kopyalanamadı")});
+  else{$("#fSlaytLink").select();try{document.execCommand("copy");doNote("Kopyalandı ✓")}catch(e){doNote("Kopyalanamadı")}}
+};
+$("#slaytOpenBtn").onclick=function(){
+  var v=$("#fSlaytLink").value||"";
+  if(v.indexOf("http")!==0)return;
+  try{window.open(v,"_blank","noopener")}catch(e){}
 };
 $("#fEvt").addEventListener("input",updGalLink);
 $("#fProfName").addEventListener("input",updGalLink);
@@ -3433,6 +3670,10 @@ $("#startBtn").onclick=function(){
 };
 
 /* ---------- boşta kalma + ekran uyanık ---------- */
+window.addEventListener("beforeunload",function(e){
+  if(!S.evMode)return;
+  e.preventDefault();e.returnValue="";return "";
+});
 var idleT=null;
 function resetIdle(){
   clearTimeout(idleT);
@@ -3466,7 +3707,7 @@ function hataYaz(kaynak,msg){
 }
 window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
 window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
-window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 
