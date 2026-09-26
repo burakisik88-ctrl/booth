@@ -427,6 +427,11 @@ h1 em{font-style:italic;color:var(--amber)}
           <h3>Bu cihazda ne var</h3>
           <div class="note" id="durumNote">yükleniyor…</div>
         </div>
+        <div class="grp">
+          <h3>Son hatalar</h3>
+          <div class="note" id="hataNote" style="white-space:pre-line">Bu oturumda hata kaydı yok.</div>
+          <div class="note">Bir şey çalışmadığında önce buraya bak. Boşsa yazılım tarafında sessiz bir hata yok demektir.</div>
+        </div>
 
         <div class="grp">
           <h3>Etkinlik profilleri</h3>
@@ -635,7 +640,7 @@ h1 em{font-style:italic;color:var(--amber)}
             <div class="note">09.09.2026'da üçü de aynı fotoğraf ve aynı promptla denendi: <b>yüz benzerliğinde 2.5 Flash kazandı</b>, o yüzden varsayılan odur. Yeni modeller daha detaylı sahne üretiyor ama yüzü daha çok değiştiriyor. Sahada şüphe duyarsan burada değiştirip aynı kareyi tekrar üret.</div>
           </div>
           <div class="lbl" style="margin-top:6px">AI Dönüşüm stilleri <b id="stilSay"></b></div>
-          <div class="note">Misafir ekranında açık olanların hepsi birden çıkar — sahada <b>8-12 tanesini açık bırak</b>, kalabalık liste seçimi yavaşlatır. Özel gün stilleri aşağıda ayrı bölümde, kapalı gelir.</div>
+          <div class="note"><b>Sahaya altı stille çıkıyoruz.</b> Açık olanlar, yüzü en az değiştirenler: kostüm ve ışık değişiyor, yaş ve yüz yapısı sabit kalıyor. Kapalı olanlar silinmedi — bir etkinlikte denenip tuttuğunu gördükçe aç. Kanıtlanmamış stili misafire açmak, kötü kareyi misafire göstermek demektir. Özel gün stilleri aşağıda ayrı bölümde.</div>
           <div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap;margin:6px 0">
             <button class="btn ghost mini" id="stilHepAc">Tümünü aç</button>
             <button class="btn ghost mini" id="stilHepKapa">Tümünü kapat</button>
@@ -699,32 +704,32 @@ var W=1200,H=1800; // 10x15cm @ ~300dpi
 /* ---------- ayarlar ---------- */
 var DEFSTYLES=[
  {id:"hero",e:"\u{1F9B8}",n:"Süper Kahraman",on:true,p:"Transform this person into an ORIGINAL comic-book superhero with a heroic costume and cape designed to suit this specific person, dramatic city skyline at dusk behind them, dynamic rim lighting. Do NOT copy any existing famous superhero costume, logo or colors. Keep the same face clearly recognizable, same pose and framing.",v:["a cosmic guardian with glowing star energy and a deep blue-gold suit","a storm hero with wind-swept cape and lightning crackling around the fists","a night sentinel in a sleek dark armored suit on a rooftop","a solar champion in radiant golden-red armor at sunrise","a speedster in a streamlined suit with dynamic motion streaks","an ice-powered hero with crystalline armor details and frosty air","a nature-powered hero with a vivid emerald suit and organic patterns"]},
- {id:"y70",yas:24,e:"\u{1F57A}",n:"70'ler Türkiye",on:true,p:"Recreate this photo as an authentic mid-1970s Turkish family-album photograph. Period styling only: 1970s Turkish fashion — wide pointed shirt collars, patterned knitwear, a corduroy or checked jacket for men, softly waved or bouffant hair for women; period-correct thick moustache and sideburns ONLY if the person already has facial hair. Setting: a modest 1970s Turkish home or neighbourhood photo studio — patterned wallpaper or a hand-painted studio backdrop, lace curtains, a wooden sideboard. Shot on warm expired colour negative film with a simple 35mm camera: slightly faded reddish-warm colour cast, gentle low contrast, visible fine grain, soft edge falloff and light vignetting, a few tiny dust specks like an old print. Absolutely no modern objects, no modern eyewear, no phones, no contemporary logos."},
- {id:"y90",yas:23,e:"\u{1F4FC}",n:"90'lar Türkiye",on:true,p:"Recreate this photo as an authentic late-1990s Turkish snapshot straight out of a family album. Period styling: nineties hair (curtain fringe, gelled look or a scrunchie updo), a denim jacket or denim shirt, a plain crew-neck, a tracksuit top or a waistcoat. Setting: an ordinary 1990s Turkish home or neighbourhood — a floral sofa with a crocheted doily, a carpet hung on the wall, tulle curtains, or a bare apartment stairwell. Shot on Kodak Gold 200 in a cheap point-and-shoot with harsh direct on-camera flash: hot flat frontal light on the face, a hard shadow outline on the wall behind, mild red-eye, slightly blown highlights. Warm yellow-orange colour cast, low contrast, clearly visible film grain, and a small orange digital DATE STAMP printed in the bottom-right corner. Absolutely no modern objects, no smartphones, no contemporary logos."},
- {id:"comic",e:"\u{1F4A5}",n:"Çizgi Roman",on:true,p:"Redraw this photo as a bold comic-book illustration with ink outlines, halftone shading and vivid colors. Keep the same face recognizable, same pose and framing."},
- {id:"anim",e:"\u{1F3AC}",n:"3D Animasyon",on:true,p:"Recreate this person as a friendly 3D animated movie character with soft studio lighting and a colorful cheerful background. The character must be instantly recognizable as this exact person: same facial structure, same facial hair, same hairstyle and hair length. Same pose and framing."},
- {id:"oil",e:"\u{1F5BC}",n:"Yağlı Boya",on:true,p:"Repaint this photo as a classical oil painting portrait with visible brush strokes, rich colors and museum lighting. Keep the same face recognizable, same pose and framing."},
- {id:"pop",e:"\u{1F3A8}",n:"Pop Art",on:true,p:"Convert this photo into a pop-art screen-print style portrait with bold flat colors and graphic shapes. Keep the same face recognizable, same pose and framing."},
- {id:"neon",e:"\u{1F303}",n:"Neon Cyberpunk",on:true,p:"Restyle this photo as a cyberpunk portrait in a neon-lit futuristic city, teal and magenta lights, light rain. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y70",yas:24,e:"\u{1F57A}",n:"70'ler Türkiye",on:false,p:"Recreate this photo as an authentic mid-1970s Turkish family-album photograph. Period styling only: 1970s Turkish fashion — wide pointed shirt collars, patterned knitwear, a corduroy or checked jacket for men, softly waved or bouffant hair for women; period-correct thick moustache and sideburns ONLY if the person already has facial hair. Setting: a modest 1970s Turkish home or neighbourhood photo studio — patterned wallpaper or a hand-painted studio backdrop, lace curtains, a wooden sideboard. Shot on warm expired colour negative film with a simple 35mm camera: slightly faded reddish-warm colour cast, gentle low contrast, visible fine grain, soft edge falloff and light vignetting, a few tiny dust specks like an old print. Absolutely no modern objects, no modern eyewear, no phones, no contemporary logos."},
+ {id:"y90",yas:23,e:"\u{1F4FC}",n:"90'lar Türkiye",on:false,p:"Recreate this photo as an authentic late-1990s Turkish snapshot straight out of a family album. Period styling: nineties hair (curtain fringe, gelled look or a scrunchie updo), a denim jacket or denim shirt, a plain crew-neck, a tracksuit top or a waistcoat. Setting: an ordinary 1990s Turkish home or neighbourhood — a floral sofa with a crocheted doily, a carpet hung on the wall, tulle curtains, or a bare apartment stairwell. Shot on Kodak Gold 200 in a cheap point-and-shoot with harsh direct on-camera flash: hot flat frontal light on the face, a hard shadow outline on the wall behind, mild red-eye, slightly blown highlights. Warm yellow-orange colour cast, low contrast, clearly visible film grain, and a small orange digital DATE STAMP printed in the bottom-right corner. Absolutely no modern objects, no smartphones, no contemporary logos."},
+ {id:"comic",e:"\u{1F4A5}",n:"Çizgi Roman",on:false,p:"Redraw this photo as a bold comic-book illustration with ink outlines, halftone shading and vivid colors. Keep the same face recognizable, same pose and framing."},
+ {id:"anim",e:"\u{1F3AC}",n:"3D Animasyon",on:false,p:"Recreate this person as a friendly 3D animated movie character with soft studio lighting and a colorful cheerful background. The character must be instantly recognizable as this exact person: same facial structure, same facial hair, same hairstyle and hair length. Same pose and framing."},
+ {id:"oil",e:"\u{1F5BC}",n:"Yağlı Boya",on:false,p:"Repaint this photo as a classical oil painting portrait with visible brush strokes, rich colors and museum lighting. Keep the same face recognizable, same pose and framing."},
+ {id:"pop",e:"\u{1F3A8}",n:"Pop Art",on:false,p:"Convert this photo into a pop-art screen-print style portrait with bold flat colors and graphic shapes. Keep the same face recognizable, same pose and framing."},
+ {id:"neon",e:"\u{1F303}",n:"Neon Cyberpunk",on:false,p:"Restyle this photo as a cyberpunk portrait in a neon-lit futuristic city, teal and magenta lights, light rain. Keep the same face clearly recognizable, same pose and framing."},
  {id:"noir",e:"\u{1F3A9}",n:"Retro Stüdyo",on:true,p:"Restyle this photo as a 1950s black-and-white Hollywood glamour studio portrait with dramatic soft key light. Keep the person's EXACT pose, body position, hairstyle and body type from the input photo — only change the lighting, tones and backdrop. Keep the same face clearly recognizable, same framing."},
- {id:"royal",e:"\u{1F451}",n:"Kraliyet Portresi",on:true,p:"Transform this person into a regal renaissance royal portrait with ornate attire and a crown, palace background, painterly style. Keep the same face clearly recognizable, same pose and framing."},
- {id:"y20",e:"\u{1F3A9}",n:"1920'ler",on:true,p:"Restyle this photo as an authentic 1920s portrait: elegant twenties fashion, art-deco studio backdrop, warm sepia film tones, soft vintage grain. Keep the same face clearly recognizable, same pose and framing."},
- {id:"y50",e:"\u{1F3B8}",n:"50'ler Rock'n Roll",on:true,p:"Restyle this photo as a 1950s rock'n roll era portrait: fifties fashion and hairstyle, and replace the ENTIRE background with a 1950s American diner interior (checkered floor, jukebox, chrome details) — no trace of the original room. Rich Kodachrome colors. Keep the same face clearly recognizable, same pose and framing."},
- {id:"y80",yas:25,e:"\u{1F4FB}",n:"80'ler Türkiye",on:true,p:"Recreate this photo as an authentic mid-1980s Turkish family photograph. Period styling: big volumised permed or blow-dried hair, shoulder pads, a bold patterned knitted sweater or a boxy blazer; oversized period eyeglass frames ONLY if the person already wears glasses. Setting: a 1980s Turkish living room — a patterned carpet on the wall or floor, a lace-covered television or radio cabinet, tulle curtains, plastic flowers in a vase. Direct on-camera flash: bright hot highlights on the face, a hard short shadow cast on the wall behind, slightly overexposed skin. Warm saturated print colours with a faint magenta shift, medium film grain and a glossy photo-print texture. Absolutely no modern objects, no phones, no contemporary logos."},
- {id:"y1900",e:"\u{1F39E}\u{FE0F}",n:"1900 Osmanlı Stüdyo",on:true,p:"Recreate this photo as an authentic Ottoman studio portrait from around 1900, in the manner of the great Istanbul studios of that era (Abdullah Frères, Sébah & Joaillier). Dress the person in period Ottoman city attire: for a man a dark buttoned frock coat with a stiff collar and a red fez; for a woman a modest embroidered dress with a fine headscarf or a period hat. Setting: a photographer's studio with a hand-painted canvas backdrop (painted columns, a draped curtain, a hint of a garden), an ornate carved wooden chair and a patterned carpet on the floor. Render it exactly like an albumen print: warm sepia-to-chocolate-brown monochrome, soft overall contrast, delicate fine detail, gentle fading toward the edges, the subtle surface sheen of an old mounted photograph and a few small foxing spots. Formal upright posture and a calm, serious expression, as the long exposure of that time required. Absolutely no modern objects."},
- {id:"y1800",e:"\u{1FA9E}",n:"1800'ler Dagerreyotip",on:true,p:"Recreate this photo as a mid-19th-century daguerreotype portrait from around 1850. Dress the person in 1850s attire: for a man a dark tailcoat or frock coat with a high stiff collar and a cravat; for a woman a dark high-necked dress with a centre hair parting. Setting: a plain dark studio drape with a simple table and a book. Render it exactly like a daguerreotype plate: cool silvery monochrome with a mirror-like metallic sheen, a strong dark vignette around the edges, extremely fine detail in the centre falling off sharply, tiny tarnish spots and a faint bluish patina near the plate borders. Because of the very long exposure the posture is stiff and perfectly still with a neutral, unsmiling expression. Present the image inside an oval brass mat within a velvet-lined case. Absolutely no modern objects."},
- {id:"y1700",e:"\u{1F337}",n:"1700 Osmanlı Minyatürü",on:true,p:"Recreate this person as a figure in an 18th-century Ottoman miniature painting of the Tulip Era, in the style of the court painter Levni. Flat decorative composition with no realistic perspective and no cast shadows; luminous opaque gouache colours — turquoise, coral red, deep blue — with fine gold-leaf highlights. Dress the figure in a richly patterned silk kaftan with a fur-trimmed collar and a large wrapped turban with a jewelled aigrette (for a woman, an ornate headdress with a fine veil and long braided hair), holding a single tulip. Background: a stylised garden of tulips and cypress trees with a small palace pavilion, framed by a thin gold rule and delicate illumination at the border, on aged cream paper with visible fibres. Even in this flat painted style, the face must remain clearly recognisable as this exact person — keep their real facial features and proportions, simply drawn with the fine confident outlines of the miniature tradition."},
- {id:"saray",e:"\u{1F54C}",n:"Osmanlı Saray Portresi",on:true,p:"Transform this person into a 19th-century Ottoman court oil portrait in the manner of the palace painters. Dress them in ceremonial court attire: a dark ceremonial coat with heavy gold bullion embroidery, decorations and a sash across the chest, with a red fez bearing a jewelled aigrette; for a woman, a richly embroidered gown with pearls and an ornate headpiece. Setting: a palace interior — a gilded mirror, heavy silk drapery, a marble column and a glimpse of the Bosphorus through the window. Painterly oil technique with visible brushwork, deep chiaroscuro lighting, warm varnished tones and fine craquelure, presented within the edge of an ornate gilded frame. The face must stay an exact likeness of this person."},
- {id:"yesilcam",yas:30,poster:true,e:"\u{1F3A5}",n:"Yeşilçam Afişi",on:true,p:"Recreate this photo as a hand-painted 1970s Turkish Yeşilçam film-poster portrait. Style: bold hand-painted poster art with visible brush and airbrush work, dramatically saturated colours, a strong warm rim light on the face and a cinematic gaze. Composition: a large painted portrait of this person as the film\'s star filling the upper two thirds, with a smaller dramatic scene painted behind them (an old Istanbul street, a vintage car, a seaside villa). Period-correct 1970s Turkish styling: wide collars and a patterned shirt, or an elegant dress. Add the printing artefacts of an old poster — slight colour misregistration, coarse print texture, paper wear along the edges. CRITICAL: do NOT write, paint or add ANY text, letters, words, numbers, titles, credits or signatures anywhere in the image — the poster must be completely free of writing. Leave the bottom fifth of the image as a simple darker painted area (sky, sea or shadow) with no important detail. The face must stay clearly recognisable as this person. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"vesika",yas:25,e:"\u{1FAAA}",n:"Eski Vesikalık",on:true,p:"Recreate this photo as an old official Turkish identity-card photograph from the 1980s. Strict formal composition: head and shoulders only, squarely facing the camera, neutral expression, a plain flat light-grey or pale-blue studio background with no props at all. Modest period clothing — a plain shirt, a simple jacket or a blouse. Render it like a small cheap studio print of that era: flat slightly cool lighting, mild overexposure, a little softness, visible print grain, faint yellowing and a slightly worn edge as if it had been glued inside a document for decades. Absolutely no modern styling and no modern eyewear. The face must remain exactly the person's own."},
- {id:"mermer",e:"\u{1F5FF}",n:"Antik Mermer Heykel",on:true,p:"Transform this person into a classical marble bust sculpture photographed in a museum. The whole head, neck and shoulders become carved white Carrara marble with realistic stone texture, subtle veining, a few chipped edges and a slightly weathered surface with faint age staining. Keep every facial feature — the exact face shape, hairline, nose, and beard or moustache shape of this person — faithfully translated into carved stone, with classical drapery over the shoulders. Lighting: soft directional museum light from above with gentle shadows, against a dark neutral background, shallow depth of field. It must look like a photorealistic museum photograph of a real sculpture, not an illustration."},
- {id:"y2000",e:"\u{1F4F1}",n:"Y2K 2000'ler",on:true,p:"Restyle this photo as an early-2000s Y2K era portrait: glossy futuristic silver-blue fashion, frosted tips or sleek hair, chrome and translucent plastic backdrop. Keep the same face clearly recognizable, same pose and framing."},
- {id:"sci",e:"\u{1F9EA}",n:"Dahi Bilim İnsanı",on:true,p:"Transform this person into a brilliant eccentric scientist in a vintage physics laboratory: lab coat, chalkboard full of equations behind them, glowing apparatus, dramatic warm lighting. Keep the same face clearly recognizable, same pose and framing."},
- {id:"astro",e:"\u{1F680}",n:"Astronot",on:true,p:"Transform this person into an astronaut on the moon surface: detailed space suit with the helmet visor open showing their face, Earth visible in the black sky behind. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"royal",e:"\u{1F451}",n:"Kraliyet Portresi",on:false,p:"Transform this person into a regal renaissance royal portrait with ornate attire and a crown, palace background, painterly style. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y20",e:"\u{1F3A9}",n:"1920'ler",on:false,p:"Restyle this photo as an authentic 1920s portrait: elegant twenties fashion, art-deco studio backdrop, warm sepia film tones, soft vintage grain. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y50",e:"\u{1F3B8}",n:"50'ler Rock'n Roll",on:false,p:"Restyle this photo as a 1950s rock'n roll era portrait: fifties fashion and hairstyle, and replace the ENTIRE background with a 1950s American diner interior (checkered floor, jukebox, chrome details) — no trace of the original room. Rich Kodachrome colors. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"y80",yas:25,e:"\u{1F4FB}",n:"80'ler Türkiye",on:false,p:"Recreate this photo as an authentic mid-1980s Turkish family photograph. Period styling: big volumised permed or blow-dried hair, shoulder pads, a bold patterned knitted sweater or a boxy blazer; oversized period eyeglass frames ONLY if the person already wears glasses. Setting: a 1980s Turkish living room — a patterned carpet on the wall or floor, a lace-covered television or radio cabinet, tulle curtains, plastic flowers in a vase. Direct on-camera flash: bright hot highlights on the face, a hard short shadow cast on the wall behind, slightly overexposed skin. Warm saturated print colours with a faint magenta shift, medium film grain and a glossy photo-print texture. Absolutely no modern objects, no phones, no contemporary logos."},
+ {id:"y1900",e:"\u{1F39E}\u{FE0F}",n:"1900 Osmanlı Stüdyo",on:false,p:"Recreate this photo as an authentic Ottoman studio portrait from around 1900, in the manner of the great Istanbul studios of that era (Abdullah Frères, Sébah & Joaillier). Dress the person in period Ottoman city attire: for a man a dark buttoned frock coat with a stiff collar and a red fez; for a woman a modest embroidered dress with a fine headscarf or a period hat. Setting: a photographer's studio with a hand-painted canvas backdrop (painted columns, a draped curtain, a hint of a garden), an ornate carved wooden chair and a patterned carpet on the floor. Render it exactly like an albumen print: warm sepia-to-chocolate-brown monochrome, soft overall contrast, delicate fine detail, gentle fading toward the edges, the subtle surface sheen of an old mounted photograph and a few small foxing spots. Formal upright posture and a calm, serious expression, as the long exposure of that time required. Absolutely no modern objects."},
+ {id:"y1800",e:"\u{1FA9E}",n:"1800'ler Dagerreyotip",on:false,p:"Recreate this photo as a mid-19th-century daguerreotype portrait from around 1850. Dress the person in 1850s attire: for a man a dark tailcoat or frock coat with a high stiff collar and a cravat; for a woman a dark high-necked dress with a centre hair parting. Setting: a plain dark studio drape with a simple table and a book. Render it exactly like a daguerreotype plate: cool silvery monochrome with a mirror-like metallic sheen, a strong dark vignette around the edges, extremely fine detail in the centre falling off sharply, tiny tarnish spots and a faint bluish patina near the plate borders. Because of the very long exposure the posture is stiff and perfectly still with a neutral, unsmiling expression. Present the image inside an oval brass mat within a velvet-lined case. Absolutely no modern objects."},
+ {id:"y1700",e:"\u{1F337}",n:"1700 Osmanlı Minyatürü",on:false,p:"Recreate this person as a figure in an 18th-century Ottoman miniature painting of the Tulip Era, in the style of the court painter Levni. Flat decorative composition with no realistic perspective and no cast shadows; luminous opaque gouache colours — turquoise, coral red, deep blue — with fine gold-leaf highlights. Dress the figure in a richly patterned silk kaftan with a fur-trimmed collar and a large wrapped turban with a jewelled aigrette (for a woman, an ornate headdress with a fine veil and long braided hair), holding a single tulip. Background: a stylised garden of tulips and cypress trees with a small palace pavilion, framed by a thin gold rule and delicate illumination at the border, on aged cream paper with visible fibres. Even in this flat painted style, the face must remain clearly recognisable as this exact person — keep their real facial features and proportions, simply drawn with the fine confident outlines of the miniature tradition."},
+ {id:"saray",e:"\u{1F54C}",n:"Osmanlı Saray Portresi",on:false,p:"Transform this person into a 19th-century Ottoman court oil portrait in the manner of the palace painters. Dress them in ceremonial court attire: a dark ceremonial coat with heavy gold bullion embroidery, decorations and a sash across the chest, with a red fez bearing a jewelled aigrette; for a woman, a richly embroidered gown with pearls and an ornate headpiece. Setting: a palace interior — a gilded mirror, heavy silk drapery, a marble column and a glimpse of the Bosphorus through the window. Painterly oil technique with visible brushwork, deep chiaroscuro lighting, warm varnished tones and fine craquelure, presented within the edge of an ornate gilded frame. The face must stay an exact likeness of this person."},
+ {id:"yesilcam",yas:30,poster:true,e:"\u{1F3A5}",n:"Yeşilçam Afişi",on:false,p:"Recreate this photo as a hand-painted 1970s Turkish Yeşilçam film-poster portrait. Style: bold hand-painted poster art with visible brush and airbrush work, dramatically saturated colours, a strong warm rim light on the face and a cinematic gaze. Composition: a large painted portrait of this person as the film\'s star filling the upper two thirds, with a smaller dramatic scene painted behind them (an old Istanbul street, a vintage car, a seaside villa). Period-correct 1970s Turkish styling: wide collars and a patterned shirt, or an elegant dress. Add the printing artefacts of an old poster — slight colour misregistration, coarse print texture, paper wear along the edges. CRITICAL: do NOT write, paint or add ANY text, letters, words, numbers, titles, credits or signatures anywhere in the image — the poster must be completely free of writing. Leave the bottom fifth of the image as a simple darker painted area (sky, sea or shadow) with no important detail. The face must stay clearly recognisable as this person. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"vesika",yas:25,e:"\u{1FAAA}",n:"Eski Vesikalık",on:false,p:"Recreate this photo as an old official Turkish identity-card photograph from the 1980s. Strict formal composition: head and shoulders only, squarely facing the camera, neutral expression, a plain flat light-grey or pale-blue studio background with no props at all. Modest period clothing — a plain shirt, a simple jacket or a blouse. Render it like a small cheap studio print of that era: flat slightly cool lighting, mild overexposure, a little softness, visible print grain, faint yellowing and a slightly worn edge as if it had been glued inside a document for decades. Absolutely no modern styling and no modern eyewear. The face must remain exactly the person's own."},
+ {id:"mermer",e:"\u{1F5FF}",n:"Antik Mermer Heykel",on:false,p:"Transform this person into a classical marble bust sculpture photographed in a museum. The whole head, neck and shoulders become carved white Carrara marble with realistic stone texture, subtle veining, a few chipped edges and a slightly weathered surface with faint age staining. Keep every facial feature — the exact face shape, hairline, nose, and beard or moustache shape of this person — faithfully translated into carved stone, with classical drapery over the shoulders. Lighting: soft directional museum light from above with gentle shadows, against a dark neutral background, shallow depth of field. It must look like a photorealistic museum photograph of a real sculpture, not an illustration."},
+ {id:"y2000",e:"\u{1F4F1}",n:"Y2K 2000'ler",on:false,p:"Restyle this photo as an early-2000s Y2K era portrait: glossy futuristic silver-blue fashion, frosted tips or sleek hair, chrome and translucent plastic backdrop. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"sci",e:"\u{1F9EA}",n:"Dahi Bilim İnsanı",on:false,p:"Transform this person into a brilliant eccentric scientist in a vintage physics laboratory: lab coat, chalkboard full of equations behind them, glowing apparatus, dramatic warm lighting. Keep the same face clearly recognizable, same pose and framing."},
+ {id:"astro",e:"\u{1F680}",n:"Astronot",on:false,p:"Transform this person into an astronaut on the moon surface: detailed space suit with the helmet visor open showing their face, Earth visible in the black sky behind. Keep the same face clearly recognizable, same pose and framing."},
  {id:"padisah",e:"\u{1F451}",n:"Padişah",on:true,p:"Transform this person into an Ottoman sultan in a photorealistic royal portrait. Dress them in a magnificent ceremonial kaftan of silk brocade with fur trim and gold thread embroidery, a large white wrapped turban with a jewelled aigrette and an emerald-set dagger at the sash. Setting: the throne room of Topkapi Palace — Iznik tile walls, a gilded canopied throne, oil lamps, deep red carpets, soft shafts of light. Rich cinematic photographic lighting, museum-quality detail, imperial and commanding. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"sultanh",e:"\u{1F48E}",n:"Sultan Hanım",on:true,p:"Transform this person into a noble lady of the Ottoman palace in a photorealistic royal portrait. Dress them in a sumptuous embroidered entari gown of silk and velvet with a gold-embroidered short jacket, layered pearl and emerald jewellery, and a delicate jewelled headpiece with a fine veil. Setting: a private palace chamber — carved wooden lattice windows filtering warm light, Iznik tiles, silk cushions, a brass tray with tulips. Elegant, refined and powerful — a woman of rank, never a servant. Rich cinematic photographic lighting and museum-quality detail. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"yeniceri",e:"\u{2694}\u{FE0F}",n:"Yeniçeri",on:true,p:"Transform this person into an Ottoman Janissary soldier in a photorealistic heroic portrait. Dress them in the classic Janissary outfit: a tall white felt börk headdress with a brass holder and plume, a long blue-and-red wool kaftan with a wide sash, leather boots, and a curved yatağan sword at the waist. Setting: a fortress courtyard at dawn with mehter drums and banners softly out of focus behind. Proud upright stance, dramatic morning light, fine fabric and metal detail. Use no readable text on the banners. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"soytari",e:"\u{1F0CF}",n:"Saray Soytarısı",on:true,p:"Transform this person into the beloved court jester of an Ottoman palace, in a warm photorealistic portrait. Dress them in a colourful patchwork silk costume of red, yellow and turquoise with a soft belled cap and a small tambourine or lute in hand. Setting: a palace hall with lanterns and courtiers laughing warmly in the blurred background. The mood is charming and mischievous — a clever, well-loved entertainer with a twinkle in the eye, elegantly dressed and genuinely likeable. Warm golden lighting, rich colour, crisp detail. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"sultanh",e:"\u{1F48E}",n:"Sultan Hanım",on:false,p:"Transform this person into a noble lady of the Ottoman palace in a photorealistic royal portrait. Dress them in a sumptuous embroidered entari gown of silk and velvet with a gold-embroidered short jacket, layered pearl and emerald jewellery, and a delicate jewelled headpiece with a fine veil. Setting: a private palace chamber — carved wooden lattice windows filtering warm light, Iznik tiles, silk cushions, a brass tray with tulips. Elegant, refined and powerful — a woman of rank, never a servant. Rich cinematic photographic lighting and museum-quality detail. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"yeniceri",e:"\u{2694}\u{FE0F}",n:"Yeniçeri",on:false,p:"Transform this person into an Ottoman Janissary soldier in a photorealistic heroic portrait. Dress them in the classic Janissary outfit: a tall white felt börk headdress with a brass holder and plume, a long blue-and-red wool kaftan with a wide sash, leather boots, and a curved yatağan sword at the waist. Setting: a fortress courtyard at dawn with mehter drums and banners softly out of focus behind. Proud upright stance, dramatic morning light, fine fabric and metal detail. Use no readable text on the banners. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"soytari",e:"\u{1F0CF}",n:"Saray Soytarısı",on:false,p:"Transform this person into the beloved court jester of an Ottoman palace, in a warm photorealistic portrait. Dress them in a colourful patchwork silk costume of red, yellow and turquoise with a soft belled cap and a small tambourine or lute in hand. Setting: a palace hall with lanterns and courtiers laughing warmly in the blurred background. The mood is charming and mischievous — a clever, well-loved entertainer with a twinkle in the eye, elegantly dressed and genuinely likeable. Warm golden lighting, rich colour, crisp detail. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
  {id:"misir",e:"\u{1F3FA}",n:"Mısır Kralı / Kraliçesi",on:true,v:[
 "seated on a golden lion-armed throne in a torchlit hall, shot slightly from below so they look commanding, courtiers blurred behind",
 "standing between colossal hieroglyph-carved columns of a temple, a wide shaft of sunlight cutting through incense smoke, low-angle three-quarter view",
@@ -747,17 +752,17 @@ var DEFSTYLES=[
 "at a mountain helipad with rotor dust catching the golden light, slight low angle, shoulders squared",
 "in the open door of a hangar with strong daylight behind, silhouette rim light on the shoulders, calm gaze",
 "on a hilltop at blue hour with a small unit blurred far behind, cool ambient light, resolute three-quarter view"],p:"Transform this person into an elite Turkish special-forces operator in a photorealistic heroic portrait, framed from the chest up so the face is large and clear. Outfit: Turkish military multi-terrain camouflage combat uniform with a plate carrier vest, tactical gloves, and either the maroon beret worn correctly on the head or a modern combat helmet with the visor up and a radio headset. A small Turkish flag patch may appear on the shoulder; there must be NO unit insignia, NO rank markings, NO names and NO readable text anywhere. Apply this to BOTH genders: a man gets the male grooming of the period, a woman is an equally elite female operator with her hair tied back under the beret or helmet — never change the person\'s gender. Expression: calm, disciplined, composed and quietly confident — professional, never aggressive, never shouting. No weapon pointed at the camera, no blood, no violence. Crisp documentary photography with natural light, real fabric and gear texture. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"askerlik",yas:21,e:"\u{1F4EE}",n:"Askerlik Hatırası",on:true,p:"Recreate this photo as a 1980s-90s Turkish military service keepsake photograph — the kind sent home to family from the barracks. Dress the person in a plain, generic period service uniform and cap with NO readable insignia, unit patches, rank markings or emblems. Setting: a simple garrison photo studio or a barracks garden, with a plain painted backdrop or a whitewashed wall. Shot on warm colour negative film: slightly faded colours, soft contrast, visible grain, direct flash, and the glossy scalloped-edge print look of that era. Proud upright posture and a warm, slightly shy smile — the honest sentimental feeling of an old keepsake photograph. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"lord",e:"\u{1F3E9}",n:"İngiliz Lordu / Leydisi",on:true,p:"Transform this person into a Victorian British aristocrat in a photorealistic portrait. For a man: a tailored three-piece morning suit with a silk cravat, pocket watch chain and a top hat resting nearby. For a woman: an elegant high-necked gown of silk and lace with cameo jewellery and gloves, hair softly pinned up. Setting: the library of a grand English country estate — floor-to-ceiling bookshelves, an oil portrait and a marble fireplace, rain-soft daylight through tall windows, a wolfhound asleep by the hearth. Refined, composed and quietly powerful. Rich natural light, fine fabric detail, photorealistic. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"downton",e:"\u{2615}",n:"1910 Aristokrat",on:true,p:"Transform this person into a member of a grand English household in the 1910s, in a photorealistic cinematic portrait. For a man: white-tie evening dress — black tailcoat, white waistcoat and bow tie, hair neatly parted. For a woman: a beaded silk evening gown of the period with long gloves, a feathered or jewelled headband and drop earrings. Setting: the candlelit dining room or grand staircase of a stately manor, crystal chandelier, dark polished wood, a warm fire out of focus behind. Elegant Edwardian styling, soft warm golden lighting and shallow depth of field, like a frame from a prestige period drama. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"okul90",age:"cocuk",e:"\u{1F392}",n:"İlkokul Fotoğrafı",on:true,p:"an old Turkish primary-school portrait of this person as a child. Uniform: for a BOY, the classic black school pinafore with a crisp white detachable collar worn over a shirt, with short neatly combed boyish hair; for a GIRL, the same black pinafore with the white collar, hair in a period style. Setting: a school classroom — a blackboard, a wall map and a wooden desk, plain and simple. Rendered as an old sepia school photograph: warm brown sepia monochrome, soft low contrast, gentle vignette, visible film grain and the faded slightly worn look of a print kept in an album for decades. Neat posture, hands down, a small shy honest smile, looking straight at the camera. A fully clothed, innocent school portrait."},
+ {id:"askerlik",yas:21,e:"\u{1F4EE}",n:"Askerlik Hatırası",on:false,p:"Recreate this photo as a 1980s-90s Turkish military service keepsake photograph — the kind sent home to family from the barracks. Dress the person in a plain, generic period service uniform and cap with NO readable insignia, unit patches, rank markings or emblems. Setting: a simple garrison photo studio or a barracks garden, with a plain painted backdrop or a whitewashed wall. Shot on warm colour negative film: slightly faded colours, soft contrast, visible grain, direct flash, and the glossy scalloped-edge print look of that era. Proud upright posture and a warm, slightly shy smile — the honest sentimental feeling of an old keepsake photograph. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"lord",e:"\u{1F3E9}",n:"İngiliz Lordu / Leydisi",on:false,p:"Transform this person into a Victorian British aristocrat in a photorealistic portrait. For a man: a tailored three-piece morning suit with a silk cravat, pocket watch chain and a top hat resting nearby. For a woman: an elegant high-necked gown of silk and lace with cameo jewellery and gloves, hair softly pinned up. Setting: the library of a grand English country estate — floor-to-ceiling bookshelves, an oil portrait and a marble fireplace, rain-soft daylight through tall windows, a wolfhound asleep by the hearth. Refined, composed and quietly powerful. Rich natural light, fine fabric detail, photorealistic. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"downton",e:"\u{2615}",n:"1910 Aristokrat",on:false,p:"Transform this person into a member of a grand English household in the 1910s, in a photorealistic cinematic portrait. For a man: white-tie evening dress — black tailcoat, white waistcoat and bow tie, hair neatly parted. For a woman: a beaded silk evening gown of the period with long gloves, a feathered or jewelled headband and drop earrings. Setting: the candlelit dining room or grand staircase of a stately manor, crystal chandelier, dark polished wood, a warm fire out of focus behind. Elegant Edwardian styling, soft warm golden lighting and shallow depth of field, like a frame from a prestige period drama. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"okul90",age:"cocuk",e:"\u{1F392}",n:"İlkokul Fotoğrafı",on:false,p:"an old Turkish primary-school portrait of this person as a child. Uniform: for a BOY, the classic black school pinafore with a crisp white detachable collar worn over a shirt, with short neatly combed boyish hair; for a GIRL, the same black pinafore with the white collar, hair in a period style. Setting: a school classroom — a blackboard, a wall map and a wooden desk, plain and simple. Rendered as an old sepia school photograph: warm brown sepia monochrome, soft low contrast, gentle vignette, visible film grain and the faded slightly worn look of a print kept in an album for decades. Neat posture, hands down, a small shy honest smile, looking straight at the camera. A fully clothed, innocent school portrait."},
  {id:"gazino",yas:30,e:"\u{1F399}\u{FE0F}",n:"Gazino Sahnesi",on:true,p:"Transform this person into the star performer of a 1970s Istanbul gazino nightclub, in a photorealistic portrait. For a man: a sharp wide-lapel tuxedo or a shimmering jacket with a bow tie. For a woman: a glamorous sequinned evening gown with statement jewellery and voluminous styled hair. They stand at a vintage chrome microphone stand. Setting: the gazino stage — heavy red velvet curtains, warm spotlights cutting through cigarette haze, an orchestra and candlelit tables softly out of focus below. Golden theatrical lighting, glamorous and charismatic, rich film-like colour. Do not write any real name or venue text anywhere. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"kina",e:"\u{1F319}",n:"Kına Gecesi",on:true,p:"Transform this person into the elegant guest of honour at a traditional Anatolian henna night, in a warm photorealistic portrait. For a woman: a magnificent embroidered bindalli gown of deep red or purple velvet with gold thread work, a fine red sequinned veil over styled hair, and layered traditional gold jewellery. For a man: a sharply tailored dark suit or a finely embroidered waistcoat over a crisp white shirt with a woven red sash — an adult, elegant, groom-side look. Pose: STANDING or seated on an elegant chair, upright and composed, shown from the waist up so the face is large and clear. Setting: a courtyard or hall lit by candles and lanterns, copper henna trays, a hand-woven kilim, rose petals, family softly out of focus behind. Deep warm candlelight, rich fabric and gold detail, joyful and dignified. NEVER seated cross-legged on the floor, never a small skullcap or a fez, never a boy\'s circumcision-ceremony outfit or a child-like costume — this is an elegant adult celebration portrait. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"efe",e:"\u{1F5E1}\u{FE0F}",n:"Ege Efesi",on:true,p:"Transform this person into an Aegean zeybek efe in a photorealistic heroic portrait. Dress them in the full traditional outfit: a short richly embroidered jacket and waistcoat over a white shirt, a wide woven sash wrapped at the waist with a silver-handled dagger, embroidered short şalvar, high leather boots, and a fringed headscarf wrapped around the head. Setting: a stony Aegean hillside among olive trees at golden hour, mountains hazy in the distance. Proud upright stance with hands resting on the sash, warm low sunlight raking across the fabric, crisp texture in the embroidery and silver. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"hostes",e:"\u{2708}\u{FE0F}",n:"Havacılığın Altın Çağı",on:true,p:"Transform this person into an airline professional of the 1960s golden age of travel, in a photorealistic portrait. For a man: a captain\'s tailored navy uniform with gold sleeve stripes and a peaked cap, all insignia generic and unreadable, no airline name or logo. For a woman: a chic tailored flight-attendant suit in teal or red with a pillbox hat, white gloves and a silk neck scarf, hair in a neat period style. Setting: the airstair of a vintage propeller airliner on a sunlit apron, or a retro terminal with a departure board too soft to read. Confident welcoming smile, warm mid-century colour film look, glamorous and optimistic. No brand names or logos anywhere. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"meclis1920",yas:30,e:"\u{1F3DB}\u{FE0F}",n:"1920 Meclis Önü",on:true,p:"Recreate this photo as a 1920s portrait taken in front of the first Grand National Assembly building in Ankara. For a man: a period three-piece suit with a waistcoat and a black kalpak (traditional lambswool hat) or a fedora. For a woman: a modest long coat of the early Republic years with a fine headscarf or a period cloche hat, hair softly pinned. Setting: the plain stone façade and arched windows of the old assembly building on a clear Anatolian day, a horse-drawn cart and a simple dirt street softly out of focus. Rendered as an early-1920s photograph: warm sepia-brown monochrome, soft contrast, fine grain, gentle vignette and the surface texture of an old print. Formal upright posture, serious and dignified expression. No political symbols, no readable text on any sign, and do not depict any real or historical public figure. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"malazgirt",e:"\u{1F3F9}",n:"Malazgirt 1071",on:true,p:"Transform this person into an 11th-century Seljuk Turkic figure from the time of the Battle of Manzikert, in a photorealistic heroic portrait, framed from the waist up so the face is large and clear. For a man: a warrior in a lamellar armour vest over a long silk-trimmed kaftan, a conical helmet with fur trim or a padded cap, a recurve bow and quiver resting at his side. For a woman: a noblewoman of the Turkic steppe in a richly embroidered long kaftan with fur trim, heavy silver and turquoise jewellery, and a tall traditional headdress with fine veils over braided hair. Setting: the high Anatolian plateau at golden hour — dry grass moving in the wind, distant blue mountains, horses and felt tents softly out of focus behind. Warm low sunlight, crisp detail in leather, fur, silver and steel, a proud composed stance and a calm strong expression. No blood, no wounds, no violence, and no weapon pointed at the camera. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
- {id:"fetih1453",e:"\u{1F6E1}\u{FE0F}",n:"İstanbul\'un Fethi 1453",on:true,p:"Transform this person into a figure from the time of the conquest of Istanbul in 1453, in a photorealistic heroic portrait, framed from the waist up so the face is large and clear. For a man: an Ottoman soldier of the period — a mail-and-plate cuirass worn over a deep red kaftan, a turban helmet, a round shield on the arm and a curved sword at the belt. For a woman: a noblewoman of the era in a sumptuous brocade kaftan with fur trim, a jewelled headdress with a fine veil, and pearl and ruby jewellery. Setting: the ancient city walls and towers at dawn, banners moving in the wind, the sea and the silhouettes of ships softly out of focus far below, a golden sunrise sky. Warm sunrise light, rich fabric and metal detail, a proud dignified stance. No readable text on any banner. No blood, no wounds, no violence, and no weapon pointed at the camera. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"kina",e:"\u{1F319}",n:"Kına Gecesi",on:false,p:"Transform this person into the elegant guest of honour at a traditional Anatolian henna night, in a warm photorealistic portrait. For a woman: a magnificent embroidered bindalli gown of deep red or purple velvet with gold thread work, a fine red sequinned veil over styled hair, and layered traditional gold jewellery. For a man: a sharply tailored dark suit or a finely embroidered waistcoat over a crisp white shirt with a woven red sash — an adult, elegant, groom-side look. Pose: STANDING or seated on an elegant chair, upright and composed, shown from the waist up so the face is large and clear. Setting: a courtyard or hall lit by candles and lanterns, copper henna trays, a hand-woven kilim, rose petals, family softly out of focus behind. Deep warm candlelight, rich fabric and gold detail, joyful and dignified. NEVER seated cross-legged on the floor, never a small skullcap or a fez, never a boy\'s circumcision-ceremony outfit or a child-like costume — this is an elegant adult celebration portrait. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"efe",e:"\u{1F5E1}\u{FE0F}",n:"Ege Efesi",on:false,p:"Transform this person into an Aegean zeybek efe in a photorealistic heroic portrait. Dress them in the full traditional outfit: a short richly embroidered jacket and waistcoat over a white shirt, a wide woven sash wrapped at the waist with a silver-handled dagger, embroidered short şalvar, high leather boots, and a fringed headscarf wrapped around the head. Setting: a stony Aegean hillside among olive trees at golden hour, mountains hazy in the distance. Proud upright stance with hands resting on the sash, warm low sunlight raking across the fabric, crisp texture in the embroidery and silver. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"hostes",e:"\u{2708}\u{FE0F}",n:"Havacılığın Altın Çağı",on:false,p:"Transform this person into an airline professional of the 1960s golden age of travel, in a photorealistic portrait. For a man: a captain\'s tailored navy uniform with gold sleeve stripes and a peaked cap, all insignia generic and unreadable, no airline name or logo. For a woman: a chic tailored flight-attendant suit in teal or red with a pillbox hat, white gloves and a silk neck scarf, hair in a neat period style. Setting: the airstair of a vintage propeller airliner on a sunlit apron, or a retro terminal with a departure board too soft to read. Confident welcoming smile, warm mid-century colour film look, glamorous and optimistic. No brand names or logos anywhere. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"meclis1920",yas:30,e:"\u{1F3DB}\u{FE0F}",n:"1920 Meclis Önü",on:false,p:"Recreate this photo as a 1920s portrait taken in front of the first Grand National Assembly building in Ankara. For a man: a period three-piece suit with a waistcoat and a black kalpak (traditional lambswool hat) or a fedora. For a woman: a modest long coat of the early Republic years with a fine headscarf or a period cloche hat, hair softly pinned. Setting: the plain stone façade and arched windows of the old assembly building on a clear Anatolian day, a horse-drawn cart and a simple dirt street softly out of focus. Rendered as an early-1920s photograph: warm sepia-brown monochrome, soft contrast, fine grain, gentle vignette and the surface texture of an old print. Formal upright posture, serious and dignified expression. No political symbols, no readable text on any sign, and do not depict any real or historical public figure. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"malazgirt",e:"\u{1F3F9}",n:"Malazgirt 1071",on:false,p:"Transform this person into an 11th-century Seljuk Turkic figure from the time of the Battle of Manzikert, in a photorealistic heroic portrait, framed from the waist up so the face is large and clear. For a man: a warrior in a lamellar armour vest over a long silk-trimmed kaftan, a conical helmet with fur trim or a padded cap, a recurve bow and quiver resting at his side. For a woman: a noblewoman of the Turkic steppe in a richly embroidered long kaftan with fur trim, heavy silver and turquoise jewellery, and a tall traditional headdress with fine veils over braided hair. Setting: the high Anatolian plateau at golden hour — dry grass moving in the wind, distant blue mountains, horses and felt tents softly out of focus behind. Warm low sunlight, crisp detail in leather, fur, silver and steel, a proud composed stance and a calm strong expression. No blood, no wounds, no violence, and no weapon pointed at the camera. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
+ {id:"fetih1453",e:"\u{1F6E1}\u{FE0F}",n:"İstanbul\'un Fethi 1453",on:false,p:"Transform this person into a figure from the time of the conquest of Istanbul in 1453, in a photorealistic heroic portrait, framed from the waist up so the face is large and clear. For a man: an Ottoman soldier of the period — a mail-and-plate cuirass worn over a deep red kaftan, a turban helmet, a round shield on the arm and a curved sword at the belt. For a woman: a noblewoman of the era in a sumptuous brocade kaftan with fur trim, a jewelled headdress with a fine veil, and pearl and ruby jewellery. Setting: the ancient city walls and towers at dawn, banners moving in the wind, the sea and the silhouettes of ships softly out of focus far below, a golden sunrise sky. Warm sunrise light, rich fabric and metal detail, a proud dignified stance. No readable text on any banner. No blood, no wounds, no violence, and no weapon pointed at the camera. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
  {id:"n23",gun:true,e:"\u{1F388}",n:"23 Nisan",on:false,p:"Recreate this photo as a joyful Turkish 23 April National Sovereignty and Children\'s Day celebration portrait. Setting: a sunlit stadium or school yard decorated for the holiday — rows of red Turkish flags, colourful balloons and paper streamers, children in white performing a folk display softly out of focus in the background. Dress the person in neat, cheerful festive clothing suited to the day. Bright spring daylight, vivid festive colours, a warm genuine smile, a small flag or balloon in hand. No political party symbols, no readable text on any banner, and do not depict any real or historical public figure. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
  {id:"m19",gun:true,e:"\u{1F3C3}",n:"19 Mayıs",on:false,p:"Recreate this photo as a Turkish 19 May Youth and Sports Day celebration portrait. Dress the person in the classic crisp white sports outfit of the day\'s stadium displays. Setting: a sunlit stadium filled with red flags, young people forming a display on the grass softly out of focus, a ceremonial torch and blue sky behind. Energetic upright posture, bright confident expression, clear midday sunlight with vivid colour. No political party symbols, no readable text on banners, and do not depict any real or historical public figure. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
  {id:"a30",gun:true,e:"\u{1F3C5}",n:"30 Ağustos",on:false,p:"Recreate this photo as a dignified Turkish 30 August Victory Day commemoration portrait. Setting: a formal ceremonial square on a bright late-summer day — rows of large Turkish flags moving in the wind, a solemn honour guard and a marching band softly out of focus behind. Dress the person in respectful formal attire suited to a national ceremony (a dark suit, or an elegant modest outfit). Composed, proud and serious expression, clear strong daylight, deep saturated red in the flags. No political party symbols, no readable text on banners, no military insignia, and do not depict any real or historical public figure. The person must look attractive, dignified and confident — any humour comes from the costume and setting, never from making them look foolish."},
@@ -797,13 +802,32 @@ DEFSTYLES.forEach(function(d){
   if(!s)S.aiStyles.push(JSON.parse(JSON.stringify(d)));
   else{if(d.gun&&!s.gun){s.gun=true;s.on=false;} if(d.poster)s.poster=true; if(d.age)s.age=d.age; if(d.yas)s.yas=d.yas; if(d.v)s.v=d.v; if(!s.cust){if(s.p!==d.p)s.p=d.p;if(d.v)s.v=d.v;if(d.n)s.n=d.n;if(d.e)s.e=d.e;}}
 });
+/* v0.48 sahaya indirme: kanıtlanmamış 35 stil bir kez kapatılır, operatör istediğini açar */
+if(S.stilSet!=="v48"){
+  try{
+    var ACIK48={noir:1,hero:1,misir:1,padisah:1,ozelkuv:1,gazino:1};
+    S.aiStyles.forEach(function(x){ if(!x.gun) x.on=!!ACIK48[x.id]; });
+    S.stilSet="v48";save();
+  }catch(e){}
+}
 if(!S.aiScenes||!S.aiScenes.length)S.aiScenes=JSON.parse(JSON.stringify(DEFSCENES));
 DEFSCENES.forEach(function(d){
   var s=null;for(var i3=0;i3<S.aiScenes.length;i3++)if(S.aiScenes[i3].id===d.id)s=S.aiScenes[i3];
   if(!s)S.aiScenes.push(JSON.parse(JSON.stringify(d)));
   else if(!s.cust&&s.p!==d.p)s.p=d.p;
 });
-function save(){try{localStorage.setItem("booth.v1",JSON.stringify(S));}catch(e){}}
+function save(){
+  try{localStorage.setItem("booth.v1",JSON.stringify(S));}
+  catch(e){
+    /* kota dolduysa operatör bilmeliydi — sessizce kaybolmasın */
+    try{hataYaz("ayar kaydı","kaydedilemedi: "+((e&&e.name)||"kota dolu olabilir"));}catch(_){}
+  }
+}
+/* sayaçlar ayrı ve küçük anahtarda: her çekimde 1 MB'lık ayar dosyasını yazmıyoruz */
+function sayacKaydet(){try{localStorage.setItem("booth.cnt",JSON.stringify({s:S.shots|0,p:S.prints|0,k:S.sheets|0}));}catch(e){}}
+try{var _c=JSON.parse(localStorage.getItem("booth.cnt")||"null");
+  if(_c){if(_c.s>(S.shots|0))S.shots=_c.s;if(_c.p>(S.prints|0))S.prints=_c.p;if(_c.k>(S.sheets|0))S.sheets=_c.k;}
+}catch(e){}
 
 /* ---------- ekran yönetimi ---------- */
 var cur="attract";
@@ -824,6 +848,9 @@ function clearGuestData(){
   aiGen++;
   ["#previewImg","#emergeImg","#aiImg"].forEach(function(s){var el=$(s);if(el)el.removeAttribute("src");});
   shots=[];shotsEnh=[];aiShots=[];aiSel=[];aiDone=[];aiForce=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;composed="";storyComposed="";
+  /* RAM: 8'li şeritte onlarca tam boy canvas birikiyordu — misafir gidince bırak */
+  try{aiCache=new Map();aiBgCache=new Map();aiCutCache=new Map();}catch(e){}
+  try{var bb=$("#bgBusy");if(bb)bb.hidden=true;}catch(e){}
 }
 
 /* ---------- film grain ---------- */
@@ -866,7 +893,21 @@ function camError(msg){
   var old=st.querySelector(".err"); if(old)old.remove();
   var d=document.createElement("div");d.className="err";d.textContent=msg;st.appendChild(d);
 }
+function camCanli(){
+  try{
+    if(!stream)return false;
+    var t=stream.getVideoTracks?stream.getVideoTracks()[0]:null;
+    if(!t||t.readyState!=="live")return false;
+    if(cam&&cam.paused)return false;
+    return true;
+  }catch(e){return false}
+}
 function startCam(){
+  /* uyku sonrası: stream dolu görünür ama track ölmüştür — kontrol edip yeniden kur */
+  if(stream&&!camCanli()){
+    try{stream.getTracks().forEach(function(t){try{t.stop()}catch(e){}})}catch(e){}
+    stream=null;
+  }
   if(stream)return Promise.resolve(stream);
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     camError("Bu tarayıcı kamerayı desteklemiyor. Sayfayı Safari veya Chrome'da, https:// adresiyle aç.");
@@ -935,7 +976,7 @@ $("#shotFile").addEventListener("change",function(){
   var f=this.files&&this.files[0]; if(!f||!mode)return;
   var target=(mode.id==="serit")?4/3:3/4;
   fileToCanvas(f,target).then(function(c){
-    shots.push(c);shotsEnh.push(enhanceShot(c));S.shots++;save();
+    shots.push(c);shotsEnh.push(enhanceShot(c));S.shots++;sayacKaydet();
     var t=$("#fileThumb");t.hidden=false;t.src=c.toDataURL("image/jpeg",.7);
     drawDots();
     if(shots.length>=mode.shots){$("#fileBtn").hidden=true;showReview();}
@@ -969,6 +1010,8 @@ buildModes();
 var mode=null,shots=[],shotsEnh=[],timer=null;
 function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
+  /* önceki oturumdan kalan kamera hata yazısını temizle (çalışan sistemi bozuk gösteriyordu) */
+  try{var eski=document.querySelectorAll("#s-shoot .stage .err");for(var q=0;q<eski.length;q++)eski[q].remove();}catch(e){}
   mode=m;shots=[];shotsEnh=[];
   if(m.id==="serit")m.shots=S.serit8?8:4;
   filt="dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;storyComposed="";
@@ -1015,7 +1058,7 @@ function capture(){
   if(S.mirror){x.translate(c.width,0);x.scale(-1,1);}
   x.drawImage(cam,sx,sy,sw,sh,0,0,c.width,c.height);
   shots.push(c);shotsEnh.push(enhanceShot(c));
-  S.shots++;save();
+  S.shots++;sayacKaydet();
   timer=setTimeout(function(){
     if(shots.length>=mode.shots){$("#count").textContent="";showReview();}
     else{$("#count").textContent="";next();}
@@ -1602,6 +1645,7 @@ $("#aiGo").onclick=function(){
   var jobs=[];
   aiSel.forEach(function(st,i){
     if(!st)return;
+    if(!shotsEnh[i]){hataYaz("AI üretim","kare "+(i+1)+" eksik, atlandı");return} /* eksik kare AI'yı çökertiyordu */
     var force=!!aiForce[i];
     if(aiDone[i]===st.id&&!force)return; /* zaten üretildi, değişmedi — kredi yakma */
     jobs.push({i:i,st:st,force:force});
@@ -1611,12 +1655,21 @@ $("#aiGo").onclick=function(){
   aiState("work");
   var done=0,fail=0;
   $("#aiMsg").textContent="0/"+jobs.length+" görsel üretildi…";
-  Promise.all(jobs.map(function(j){
-    return aiStyled(shotsEnh[j.i],j.st,j.force).then(function(c){
+  /* 8 iş aynı anda gidince Gemini kotası 429 veriyordu — 3'erli kuyruk, hem daha az hata hem gerçek ilerleme */
+  runPool(jobs,function(j){
+    var p;
+    try{p=aiStyled(shotsEnh[j.i],j.st,j.force)}
+    catch(e){fail++;aiForce[j.i]=false;hataYaz("AI üretim",(e&&e.message)||"hata");return Promise.resolve()}
+    return p.then(function(c){
+      /* misafir gittiyse sonucu YAZMA — yoksa önceki misafirin yüzü yenisinin baskısına düşer */
+      if(myGen!==aiGen)return;
       aiShots[j.i]=c;aiDone[j.i]=j.st.id;aiForce[j.i]=false;done++;
       if(myGen===aiGen)$("#aiMsg").textContent=done+"/"+jobs.length+" görsel üretildi…";
-    }).catch(function(e){fail++;aiForce[j.i]=false;});
-  })).then(function(){
+    }).catch(function(e){fail++;aiForce[j.i]=false;hataYaz("AI üretim",(e&&e.message)||"hata");});
+  }).catch(function(e){
+    /* havuz beklenmedik bir hatayla düşse bile misafiri AI ekranında bırakma */
+    hataYaz("AI havuzu",(e&&e.message)||"hata");
+  }).then(function(){
     /* misafir ekrandan ayrıldıysa/yeni oturum başladıysa geç gelen sonucu uygulama */
     if(myGen!==aiGen||cur!=="ai")return;
     /* yarım kalsa bile misafir devam eder: hazır kareler uygulanır */
@@ -1740,6 +1793,7 @@ function geminiImage(parts,outW,outH){
 }
 var aiCache=new Map();
 function aiStyled(src,st,force){
+  if(!src||!src.width)return Promise.reject(new Error("kare hazır değil"));
   var cc=aiCache.get(src)||{};
   if(cc[st.id]&&!force)return Promise.resolve(cc[st.id]);
   return aiTransform(src,st).then(function(c){cc[st.id]=c;aiCache.set(src,cc);return c});
@@ -1816,12 +1870,32 @@ function doPrint(){
     var p=Math.min(1,(Date.now()-t0)/ms);bar.style.width=(p*100)+"%";
     if(p>=1){clearInterval(iv);finish();}
   },120);
-  S.prints++;S.sheets+=copies;save();
+  /* sayaç: simülasyonda hemen, gerçek baskıda yazdırma penceresi kapandıktan sonra sayılır */
+  if(!S.realPrint){S.prints++;S.sheets+=copies;sayacKaydet();save();}
+  else{
+    var sayildi=false,kopya=copies;
+    function sayacArtir(){if(sayildi)return;sayildi=true;S.prints++;S.sheets+=kopya;sayacKaydet();save();}
+    if("onafterprint" in window){
+      var h=function(){window.removeEventListener("afterprint",h);sayacArtir()};
+      window.addEventListener("afterprint",h);
+      setTimeout(sayacArtir,20000); /* pencere hiç kapanmazsa yine de say */
+    }else setTimeout(sayacArtir,3000);
+  }
   addToGallery(composed);
   if(S.realPrint){
     var pa=$("#printArea");pa.innerHTML="";
-    for(var i=0;i<copies;i++){var im=new Image();im.src=composed;pa.appendChild(im);}
-    setTimeout(function(){try{window.print()}catch(e){}},600);
+    var bekle=[];
+    for(var i=0;i<copies;i++){
+      var im=new Image();im.src=composed;pa.appendChild(im);
+      bekle.push(im.decode?im.decode().catch(function(){}):new Promise(function(r){
+        im.onload=r;im.onerror=r;setTimeout(r,4000);
+      }));
+    }
+    /* görseller çözülmeden yazdırırsak boş kağıt çıkıyordu — bekle, ama en fazla 6 sn */
+    var yazdirildi=false;
+    function yazdir(){if(yazdirildi)return;yazdirildi=true;try{window.print()}catch(e){}}
+    Promise.all(bekle).then(function(){setTimeout(yazdir,120)});
+    setTimeout(yazdir,6000);
   }
 }
 function finish(){
@@ -1981,11 +2055,11 @@ function fillAdmin(){
   ovNote();drawPreviews();
   if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
   tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
-  buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();
+  buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();hataYaz("","");
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.47 · Model ve Kimlik · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.48 · Saha Sağlamlaştırma · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
@@ -2143,8 +2217,20 @@ function libAll(cb){
     };
   }catch(e){cb([])}
 }
-function libPut(rec,cb){ if(!db)return; try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").put(rec);tx.oncomplete=function(){cb&&cb()}}catch(e){} }
-function libDel(id,cb){ if(!db)return; try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").delete(id);tx.oncomplete=function(){cb&&cb()}}catch(e){} }
+function libPut(rec,cb){
+  if(!db){hataYaz("kütüphane","veritabanı açık değil");cb&&cb();return}
+  try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").put(rec);
+    tx.oncomplete=function(){cb&&cb()};
+    tx.onerror=tx.onabort=function(){hataYaz("kütüphane","kayıt yazılamadı (yer dolu olabilir)");cb&&cb()};
+  }catch(e){hataYaz("kütüphane",e&&e.message);cb&&cb()}
+}
+function libDel(id,cb){
+  if(!db){cb&&cb();return}
+  try{var tx=db.transaction("lib","readwrite");tx.objectStore("lib").delete(id);
+    tx.oncomplete=function(){cb&&cb()};
+    tx.onerror=tx.onabort=function(){hataYaz("kütüphane","silinemedi");cb&&cb()};
+  }catch(e){cb&&cb()}
+}
 function readFileDataUrl(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(r.result)};r.onerror=function(){rej(new Error("dosya okunamadı"))};r.readAsDataURL(file)})}
 function renderLib(){
   libAll(function(list){
@@ -2251,7 +2337,8 @@ function loadSeg(){
   return segLoadP;
 }
 function segMask(canvas){
-  segBusyQ=segBusyQ.then(function(){
+  /* kuyruk bir kez reddedilirse sonraki her çağrı anında hata veriyordu — her durumda temiz devam et */
+  segBusyQ=segBusyQ.then(function(){return null},function(){return null}).then(function(){
     return loadSeg().then(function(si){
       return new Promise(function(res,rej){
         var t=setTimeout(function(){rej(new Error("segmentasyon zaman aşımı"))},20000);
@@ -2260,7 +2347,9 @@ function segMask(canvas){
       });
     });
   });
-  return segBusyQ;
+  var bu=segBusyQ;
+  segBusyQ=segBusyQ.then(function(){return null},function(){return null});
+  return bu;
 }
 var maskCache=new WeakMap(),bgImgCache={};
 function bgComposite(shot,bgUrl){
@@ -2467,9 +2556,9 @@ function applyBg(rec){
         cc[rec.dataUrl]=out;aiBgCache.set(c,cc);return out;
       });
     })).then(function(outs){
+      $("#bgBusy").hidden=true;
       if(bgSel!==rec.id)return;
       shotsBg=outs;
-      $("#bgBusy").hidden=true;
       compose();
     }).catch(function(e){
       $("#bgBusy").hidden=true;
@@ -2484,13 +2573,24 @@ function applyBg(rec){
     return;
   }
   if(bsp)bsp.textContent="Arka plan uygulanıyor…";
+  /* hata yutuluyordu: hiçbir kare değişmediyse misafire "oldu" gibi görünüyordu — say ve söyle */
+  var degisen=0;
   Promise.all(mine.map(function(c){
-    if(bm==="chroma")return chromaComposite(c,rec.dataUrl).catch(function(){return bgComposite(c,rec.dataUrl).catch(function(){return c})});
-    return bgComposite(c,rec.dataUrl).catch(function(){return c});
+    function sayVeDon(out){if(out!==c)degisen++;return out}
+    if(bm==="chroma")return chromaComposite(c,rec.dataUrl).then(sayVeDon).catch(function(){return bgComposite(c,rec.dataUrl).then(sayVeDon).catch(function(){return c})});
+    return bgComposite(c,rec.dataUrl).then(sayVeDon).catch(function(){return c});
   })).then(function(outs){
-    if(bgSel!==rec.id)return;
-    shotsBg=outs;
     $("#bgBusy").hidden=true;
+    if(bgSel!==rec.id)return;
+    if(!degisen){
+      bgSel=null;shotsBg=null;
+      var w2=$("#bgWrap");
+      var d2=document.createElement("div");d2.className="err";
+      d2.textContent="Arka plan uygulanamadı — kişi ayırma modeli yüklenemedi. İnternet bağlantısını kontrol et, sonra tekrar dene.";
+      w2.appendChild(d2);setTimeout(function(){if(d2.parentNode)d2.parentNode.removeChild(d2)},7000);
+      buildBgStrip();compose();return;
+    }
+    shotsBg=outs;
     compose();
   }).catch(function(e){
     $("#bgBusy").hidden=true;
@@ -2520,12 +2620,15 @@ function uploadPhoto(dataUrl,tag,isTest){
     var slug=isTest?"_test":evSlug();
     fd.append("folder","booth/"+slug);
     fd.append("tags",slug); /* sadece etkinlik slug'ı — ortak "booth" etiketi yok (galeri gizliliği) */
-    var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},45000);
+    var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},20000);
     return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/image/upload",
       {method:"POST",body:fd,signal:ctrl.signal})
       .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("yükleme reddedildi ("+r.status+")");return r.json()})
       .then(function(j){if(!j.secure_url)throw new Error("adres dönmedi");return j.secure_url})
-      .catch(function(e){clearTimeout(tmo);if(e.name==="AbortError")throw new Error("yükleme zaman aşımı");throw e});
+      .catch(function(e){clearTimeout(tmo);
+        if(e.name==="AbortError")throw new Error("internet çok yavaş");
+        if(e instanceof TypeError)throw new Error("internet bağlantısı yok");
+        throw e});
   });
 }
 function qrMessage(lines){
@@ -2538,9 +2641,15 @@ function qrMessage(lines){
 var lastUrl=null;
 function deliverQR(){
   lastUrl=null;
+  var qrGen=aiGen; /* misafir değiştiyse geç gelen yükleme bu ekrana yazmasın */
+  function benimMi(){return qrGen===aiGen}
   if(!cldReady()){
     qrMessage(["Dijital teslim bağlı değil.","Panel → Dijital Teslim (QR)","bölümünden bağla."]);
     $("#qrCanvas").onclick=null;return;
+  }
+  if(navigator.onLine===false){
+    qrMessage(["İnternet şu an yok.","Baskın elinde —","dijital kopya için","görevliye söyle."]);
+    $("#qrCanvas").onclick=function(){deliverQR()};return;
   }
   qrMessage(["Fotoğraf yükleniyor…","birkaç saniye"]);
   var myCode=Date.now().toString(36);
@@ -2548,6 +2657,7 @@ function deliverQR(){
   /* INSTAGRAM: post + story birlikte yüklenir; karekoda dokununca ikisi arasında geçilir */
   if(mode&&mode.id==="insta"&&storyComposed){
     Promise.all([uploadPhoto(composed,myCode+"-post"),uploadPhoto(storyComposed,myCode+"-story")]).then(function(us){
+      if(!benimMi())return;
       lastUrl=us[0];
       var urls={post:us[0],story:us[1]},curq="post";
       function drawSel(){
@@ -2557,12 +2667,14 @@ function deliverQR(){
       $("#qrCanvas").onclick=function(){curq=(curq==="post")?"story":"post";drawSel()};
       drawSel();
     }).catch(function(e){
+      if(!benimMi())return;
       qrMessage(["Yüklenemedi: "+((e&&e.message)||"hata"),"Tekrar denemek için","karekod alanına dokun."]);
       $("#qrCanvas").onclick=function(){deliverQR()};
     });
     return;
   }
   uploadPhoto(composed,myCode).then(function(url){
+    if(!benimMi())return;
     lastUrl=url;drawQR(fotoSayfa(url));
     $("#qrCanvas").onclick=null;
   }).catch(function(e){
@@ -3078,7 +3190,19 @@ if(document.fonts&&document.fonts.load){
 }
 loadLogo();applyBrand();chips();keepAwake();
 if(camBlocked())setFileMode(); else startCam().catch(function(){setFileMode()});
-window.BOOTH={S:S,save:save,evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut};
+/* sahada teşhis: sessizce ölen hatalar artık kayda geçiyor (panelde "Son hatalar") */
+var HATALAR=[];
+function hataYaz(kaynak,msg){
+  try{
+    if(kaynak)HATALAR.push({t:new Date().toLocaleTimeString("tr-TR"),k:kaynak,m:String(msg||"").slice(0,180)});
+    if(HATALAR.length>20)HATALAR.shift();
+    var el=document.getElementById("hataNote");
+    if(el)el.textContent=HATALAR.length?HATALAR.map(function(h){return h.t+" · "+h.k+" · "+h.m}).join("\n"):"Bu oturumda hata kaydı yok.";
+  }catch(e){}
+}
+window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
+window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
+window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut};
 })();
 </script>
 
