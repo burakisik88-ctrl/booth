@@ -427,6 +427,16 @@ h1 em{font-style:italic;color:var(--amber)}
           <h3>Bu cihazda ne var</h3>
           <div class="note" id="durumNote">yükleniyor…</div>
         </div>
+        <div class="grp" id="kontrolGrp">
+          <h3>Saha kontrolü</h3>
+          <div class="note" id="kontrolSon">Bu cihazda hiç saha kontrolü yapılmadı.</div>
+          <div class="row" style="justify-content:flex-start">
+            <button class="btn mini" id="kontrolBtn">Tam kontrol (AI dahil)</button>
+            <button class="btn ghost mini" id="kontrolHizli">AI'sız hızlı kontrol</button>
+          </div>
+          <div class="note" id="kontrolCik" style="white-space:pre-line">Etkinliğe gitmeden önce burada bir kez çalıştır. Kamera, depolama, boş alan, kütüphane, baskı kurgusu, internet, teslim sayfası, QR bulutu ve AI yolunu tek tek GERÇEKTEN dener; çalışmayanı adıyla ve ne yapman gerektiğiyle yazar. Tam kontrol 1 adet AI görseli harcar.</div>
+        </div>
+
         <div class="grp">
           <h3>Son hatalar</h3>
           <div class="note" id="hataNote" style="white-space:pre-line">Bu oturumda hata kaydı yok.</div>
@@ -2042,6 +2052,258 @@ function updDurum(){
     el.style.whiteSpace="pre-line";
   });
 }
+/* ================= SAHA KONTROLÜ =================
+   Etkinlikten önce her yolu gerçekten dener. "Test yeşil" değil — cihazın kendisi dener. */
+var kontrolCalisiyor=false;
+function kontrolKaydet(o){try{localStorage.setItem("booth.kontrol",JSON.stringify(o))}catch(e){}}
+function kontrolOku(){try{return JSON.parse(localStorage.getItem("booth.kontrol")||"null")}catch(e){return null}}
+function kMB(n){return (n/1048576).toFixed(0)+" MB"}
+function kontrolYas(){
+  var el=$("#kontrolSon");if(!el)return;
+  var k=kontrolOku();
+  if(!k||!k.t){el.textContent="Bu cihazda hiç saha kontrolü yapılmadı. Etkinliğe gitmeden önce bir kez çalıştır.";return}
+  var fark=Date.now()-k.t, g=Math.floor(fark/86400000), sa=Math.floor(fark/3600000);
+  var ne = g>0 ? (g+" gün önce") : (sa>0 ? (sa+" saat önce") : "az önce");
+  el.textContent="Son kontrol: "+ne+" — "+k.gecen+"/"+k.toplam+" geçti"
+    +(k.kalan?(" · KALAN: "+k.kalan):" · hepsi temiz")
+    +(g>=7?"  ⚠ eskidi, yeniden çalıştır.":"");
+}
+function kTest(ad,fn){
+  return Promise.resolve().then(fn).then(function(r){
+    r=r||{};
+    return {ad:ad,ok:r.ok!==false,uyari:!!r.uyari,m:r.m||"",o:r.o||""};
+  }).catch(function(e){
+    return {ad:ad,ok:false,uyari:false,m:(e&&e.message)||"bilinmeyen hata",o:(e&&e.oneri)||""};
+  });
+}
+function kontrolCiz(R,calisan,bitti){
+  var el=$("#kontrolCik");if(!el)return;
+  var t=R.map(function(r){
+    return (r.ok?(r.uyari?"⚠ ":"✓ "):"✗ ")+r.ad+(r.m?" — "+r.m:"")+(r.o?"\n      → "+r.o:"");
+  }).join("\n");
+  if(calisan)t+=(t?"\n":"")+"… "+calisan+" deneniyor";
+  if(bitti){
+    var kalan=R.filter(function(r){return !r.ok}).map(function(r){return r.ad});
+    var uy=R.filter(function(r){return r.ok&&r.uyari}).length;
+    var bas = kalan.length
+      ? "SONUÇ: "+kalan.length+" kontrol KALDI → "+kalan.join(", ")+"\nBu haliyle sahaya çıkma; yukarıdaki okları uygula ve tekrar çalıştır."
+      : "SONUÇ: hepsi geçti"+(uy?(" — "+uy+" uyarı var, okumakta fayda var."):" — bu cihaz sahaya hazır.");
+    t=bas+"\n\n"+t;
+  }
+  el.textContent=t;
+}
+/* --- tek tek testler --- */
+function kDepolama(){
+  var k="booth.probe."+Date.now();
+  try{localStorage.setItem(k,"1")}catch(e){throw new Error("ayarlar kaydedilemiyor (gizli mod veya depolama dolu)")}
+  var v=localStorage.getItem(k);
+  try{localStorage.removeItem(k)}catch(e){}
+  if(v!=="1")return {ok:false,m:"ayar yazıldı ama geri okunamadı",o:"Tarayıcı gizli/özel moddaysa kapat, normal pencerede aç."};
+  return {m:"ayarlar kaydediliyor"};
+}
+function kGorselDeposu(){
+  return new Promise(function(res){
+    if(!db)return res({ok:false,m:"veritabanı açılmadı",o:"Sayfayı yenile. Düzelmezse tarayıcı depolaması engelli — gizli modda olmadığından emin ol."});
+    var id="probe-"+Date.now().toString(36);
+    libPut({id:id,kind:"probe",name:"probe",dataUrl:""},function(){
+      libAll(function(list){
+        var bulundu=list.some(function(r){return r.id===id});
+        libDel(id,function(){
+          if(!bulundu)return res({ok:false,m:"yazıldı ama geri okunamadı",o:"Depolama dolu olabilir. Panel → kütüphaneden kullanılmayan görselleri sil."});
+          res({m:"okuma/yazma çalışıyor"});
+        });
+      });
+    });
+  });
+}
+function kBosAlan(){
+  if(!navigator.storage||!navigator.storage.estimate)
+    return {uyari:true,m:"bu tarayıcı boş alanı bildirmiyor",o:"Ölçülemedi — sorun olduğu anlamına gelmez."};
+  return navigator.storage.estimate().then(function(e){
+    var kalan=(e.quota||0)-(e.usage||0);
+    var m="kullanılan "+kMB(e.usage||0)+" · kalan "+kMB(kalan);
+    if(kalan<50*1048576)return {ok:false,m:m,o:"Yer bitmek üzere; etkinlik ortasında kayıt durur. Kütüphaneden kullanmadığın fon/çerçeveleri sil."};
+    if(kalan<200*1048576)return {uyari:true,m:m,o:"Uzun etkinlikte dolabilir; gözün üstünde olsun."};
+    return {m:m};
+  });
+}
+function kKamera(){
+  if(fileMode){
+    if(camBlocked())return {uyari:true,m:"cihaz kamerası modu — canlı kamera kapalı",
+      o:"Bu pencere kamerayı açamıyor. Tablette kiosk olarak kullanacaksan sayfayı doğrudan tarayıcıda ve https:// adresiyle aç."};
+    return {ok:false,m:"canlı kamera açılamadı, cihaz kamerasına düşüldü",
+      o:"Misafir her karede elle \"FOTOĞRAF ÇEK\" demek zorunda kalır. Tarayıcının adres çubuğundaki kamera simgesinden izin ver ve sayfayı yenile; kameranın başka bir uygulamada açık olmadığından emin ol."};
+  }
+  return startCam().then(function(){
+    if(!camCanli())throw new Error("kamera açıldı ama görüntü akmıyor");
+    var w=cam.videoWidth||0,h=cam.videoHeight||0;
+    if(!w||!h)throw new Error("kameradan görüntü ölçüsü gelmedi");
+    var c=document.createElement("canvas");c.width=160;c.height=120;
+    var cx=c.getContext("2d");cx.drawImage(cam,0,0,160,120);
+    var d=cx.getImageData(0,0,160,120).data,top=0,mn=255,mx=0;
+    for(var i=0;i<d.length;i+=4){var v=(d[i]+d[i+1]+d[i+2])/3;top+=v;if(v<mn)mn=v;if(v>mx)mx=v;}
+    var ort=top/(d.length/4);
+    if(mx-mn<8)return {ok:false,m:w+"×"+h+" ama görüntü düz renk",
+      o:"Lens kapağı kapalı ya da kamerayı başka bir uygulama tutuyor. Kapağı aç, diğer kamera uygulamalarını kapat."};
+    if(ort<18)return {ok:false,m:w+"×"+h+" ama görüntü neredeyse karanlık",
+      o:"Kabin ışığını aç. Karanlıkta hem baskı kötü çıkar hem AI yüzü tanıyamaz."};
+    if(w<1280)return {uyari:true,m:w+"×"+h+" (düşük çözünürlük)",
+      o:"10×15 baskı için ideali 1920×1440. Bu haliyle baskı yumuşak çıkabilir."};
+    return {m:w+"×"+h+" · görüntü akıyor · ortalama ışık "+Math.round(ort)};
+  }).catch(function(e){
+    throw new Error((e&&e.message)||"kamera açılmadı — tarayıcı kamera izni verilmemiş olabilir");
+  });
+}
+function kKutuphane(){
+  return new Promise(function(res){
+    libAll(function(list){
+      var fr=0,bg=0,sc=0,ilk=null;
+      list.forEach(function(r){
+        if(r.kind==="frame")fr++;else if(r.kind==="bg")bg++;else if(r.kind==="aiscene")sc++;
+        if(!ilk&&r.dataUrl&&String(r.dataUrl).slice(0,11)==="data:image/")ilk=r;
+      });
+      var m="Çerçeve "+fr+" · Fon "+bg+" · AI mekân "+sc;
+      if(!fr&&!bg&&!sc)return res({ok:false,m:"boş",
+        o:"Bu tarayıcıda kurulum yok. Panel → \"Buluttan yükle\" ile kurulum kodunu gir; çerçeveler, fonlar ve anahtar gelsin."});
+      if(!ilk)return res({uyari:true,m:m,o:"Kayıtlar var ama görsel verisi okunamadı."});
+      var im=new Image();
+      im.onload=function(){res({m:m+" · görseller açılıyor"})};
+      im.onerror=function(){res({ok:false,m:m,o:"Kayıtlı görsel bozuk. Kurulumu buluttan yeniden yükle."})};
+      im.src=ilk.dataUrl;
+    });
+  });
+}
+function kBaski(){
+  var d=makeDummy(),keep=gFrame,c=document.createElement("canvas");
+  c.width=W;c.height=H;
+  var x=c.getContext("2d");
+  gFrame=null;
+  try{ composeOn(x,S.serit8?"serit":"kare4",[d[0],d[1],d[2],d[3],d[0],d[1],d[2],d[3]]); }
+  catch(e){ gFrame=keep; throw new Error("baskı sayfası kurulamadı: "+((e&&e.message)||"bilinmeyen")); }
+  gFrame=keep;
+  var im=x.getImageData(0,0,W,H).data,mn=255,mx=0,n=0;
+  for(var i=0;i<im.length;i+=4*1013){var v=(im[i]+im[i+1]+im[i+2])/3;if(v<mn)mn=v;if(v>mx)mx=v;n++}
+  if(n<50||mx-mn<10)return {ok:false,m:"sayfa boş çıkıyor",o:"Baskı kurgusu çalışmıyor — bu haliyle yazıcıdan boş kâğıt çıkar. Çerçeve ayarını 'bant' yapıp tekrar dene."};
+  var m=(S.serit8?"şerit (2 kopya)":"dörtlü")+" · 10×15 cm · sayfa doluyor";
+  if(!S.realPrint)return {uyari:true,m:m+" · SİMÜLASYON",
+    o:"Şu an gerçek yazıcıya basmaz, sadece ekranda gösterir. Etkinlikte panel → \"Gerçek baskı\" AÇIK olmalı."};
+  return {m:m+" · gerçek baskı açık"};
+}
+function kUyanik(){
+  if(!("wakeLock" in navigator))
+    return {uyari:true,m:"tarayıcı ekranı uyanık tutmayı desteklemiyor",
+      o:"Tablet uykuya geçerse kamera donar. Cihaz ayarlarından ekran kapanmasını 'Hiçbir zaman' yap."};
+  return {m:"destekleniyor"+(wl?" · şu an aktif":" · misafir ekranında devreye girer")};
+}
+function kStil(){
+  if(!S.aiOn||!S.aiKey)return {uyari:true,m:"AI kapalı — stil listesi kullanılmıyor"};
+  var acik=S.aiStyles.filter(function(x){return x.on&&!x.gun}).length;
+  var gun=S.aiStyles.filter(function(x){return x.on&&x.gun}).length;
+  if(acik+gun===0)return {ok:false,m:"hiç açık stil yok",o:"Panel → Yapay Zekâ → stillerden en az birini aç, yoksa misafire AI butonu görünmez."};
+  if(acik+gun>10)return {uyari:true,m:acik+" stil"+(gun?" + "+gun+" özel gün":""),
+    o:"Çok seçenek misafiri yavaşlatır, kuyruk uzar. 5–7 arası ideal."};
+  return {m:acik+" stil"+(gun?(" + "+gun+" özel gün"):"")};
+}
+function kInternet(){
+  if(navigator.onLine===false)return {ok:false,m:"bağlantı yok",
+    o:"Baskı çalışır ama QR teslim ve AI çalışmaz. Wi-Fi'yi veya hotspot'u aç."};
+  var t0=Date.now(),ctrl=new AbortController(),tmo=setTimeout(function(){ctrl.abort()},10000);
+  return fetch(location.pathname+"?ping="+t0,{cache:"no-store",signal:ctrl.signal}).then(function(r){
+    clearTimeout(tmo);
+    var ms=Date.now()-t0;
+    if(!r.ok)throw new Error("sunucu "+r.status+" döndü");
+    if(ms>2500)return {uyari:true,m:ms+" ms (yavaş)",o:"AI ve QR yavaş olacak. Mümkünse telefon hotspot'u yerine sabit Wi-Fi kullan."};
+    return {m:ms+" ms"};
+  }).catch(function(e){
+    clearTimeout(tmo);
+    throw new Error(e&&e.name==="AbortError"?"10 saniyede cevap gelmedi":"internete çıkılamadı");
+  });
+}
+function kTeslimSayfa(){
+  var u=location.pathname.replace(/[^/]*$/,"")+"foto.html?k="+Date.now();
+  var ctrl=new AbortController(),tmo=setTimeout(function(){ctrl.abort()},10000);
+  return fetch(u,{cache:"no-store",signal:ctrl.signal}).then(function(r){
+    clearTimeout(tmo);
+    if(!r.ok)throw new Error("açılmadı ("+r.status+")");
+    return r.text();
+  }).then(function(t){
+    if(t.indexOf("Kaydet")<0)return {uyari:true,m:"açılıyor ama Kaydet butonu görünmüyor",o:"Teslim sayfası eski sürümde kalmış olabilir."};
+    return {m:"açılıyor · Kaydet butonu var"};
+  }).catch(function(e){
+    clearTimeout(tmo);
+    throw new Error(((e&&e.message)||"okunamadı")+" — QR'ı okuyan misafir boş sayfa görür");
+  });
+}
+function kBulut(){
+  if(!cldReady())return {ok:false,m:"bağlı değil",
+    o:"Panel → Dijital Teslim (QR) alanlarını doldur; yoksa misafir QR ile fotoğrafını alamaz."};
+  var c=document.createElement("canvas");c.width=48;c.height=48;
+  var x=c.getContext("2d");x.fillStyle="#123";x.fillRect(0,0,48,48);x.fillStyle="#eee";x.fillRect(10,10,28,28);
+  var t0=Date.now();
+  return uploadPhoto(c.toDataURL("image/jpeg",.7),"saha-kontrol",true).then(function(url){
+    var ms=Date.now()-t0;
+    return fetch(url,{cache:"no-store"}).then(function(r){
+      if(!r.ok)throw new Error("yüklendi ama geri okunamadı ("+r.status+")");
+      if(ms>8000)return {uyari:true,m:"yükleme+okuma "+ms+" ms (yavaş)",o:"Misafir QR ekranında uzun bekler. Bağlantıyı güçlendir."};
+      return {m:"yükleme+okuma "+ms+" ms"};
+    });
+  }).catch(function(e){
+    var msg=(e&&e.message)||"yüklenemedi";
+    var er=new Error(msg);
+    er.oneri="Cloudinary adı ve ön ayarı doğru mu, ön ayar 'unsigned' mi kontrol et.";
+    throw er;
+  });
+}
+function kAI(){
+  if(!S.aiOn)return {ok:false,m:"AI kapalı",o:"Panel → Yapay Zekâ bölümünden aç."};
+  if(!S.aiKey)return {ok:false,m:"anahtar yok",o:"Bu tarayıcıya kurulum yüklenmemiş. Panel → \"Buluttan yükle\" ile kurulum kodunu gir."};
+  var t0=Date.now(),b=toB64(makeDummy()[0],384);
+  return geminiImage([{text:"Return this image with slightly warmer color temperature. Keep composition identical."},
+                      {inline_data:{mime_type:"image/jpeg",data:b}}],256,256)
+  .then(function(cv){
+    var ms=Date.now()-t0, md=S.aiModel||"gemini-2.5-flash-image";
+    if(!cv||!cv.width)throw new Error("servis görsel döndürmedi");
+    if(ms>45000)return {uyari:true,m:md+" · "+Math.round(ms/1000)+" sn",
+      o:"Çok yavaş: 8 kare için misafir dakikalarca bekler. İnternet veya Google kotası sıkışık."};
+    return {m:md+" · "+Math.round(ms/1000)+" sn · görsel geldi"};
+  });
+}
+function sahaKontrol(aiDahil){
+  if(kontrolCalisiyor)return;
+  kontrolCalisiyor=true;
+  var b1=$("#kontrolBtn"),b2=$("#kontrolHizli");
+  if(b1)b1.disabled=true; if(b2)b2.disabled=true;
+  var R=[],testler=[
+    ["Ayar depolama",kDepolama],
+    ["Görsel deposu",kGorselDeposu],
+    ["Boş alan",kBosAlan],
+    ["Kamera",kKamera],
+    ["Çerçeve/fon kütüphanesi",kKutuphane],
+    ["Baskı kurgusu",kBaski],
+    ["Ekran uyanık kalma",kUyanik],
+    ["Açık stil sayısı",kStil],
+    ["İnternet",kInternet],
+    ["Teslim sayfası",kTeslimSayfa],
+    ["QR teslim (bulut)",kBulut]
+  ];
+  if(aiDahil)testler.push(["AI dönüşüm",kAI]);
+  var i=0;
+  (function sonraki(){
+    if(i>=testler.length){
+      kontrolCalisiyor=false;
+      if(b1)b1.disabled=false; if(b2)b2.disabled=false;
+      kontrolCiz(R,null,true);
+      var kalan=R.filter(function(r){return !r.ok}).map(function(r){return r.ad});
+      kontrolKaydet({t:Date.now(),toplam:R.length,gecen:R.length-kalan.length,kalan:kalan.join(", ")});
+      kontrolYas();
+      return;
+    }
+    var t=testler[i++];
+    kontrolCiz(R,t[0],false);
+    kTest(t[0],t[1]).then(function(r){R.push(r);sonraki()});
+  })();
+}
+
 function fillAdmin(){
   $("#fEvt").value=S.evt;$("#fDate").value=S.date;$("#fSub").value=S.sub;
   $("#fBrand").value=S.brand;$("#fTag").value=S.tag;
@@ -2055,12 +2317,14 @@ function fillAdmin(){
   ovNote();drawPreviews();
   if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
   tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
-  buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();hataYaz("","");
+  buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();kontrolYas();hataYaz("","");
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.48 · Saha Sağlamlaştırma · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.49 · Saha Kontrolü · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
+if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
+if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
 function bindTxt(sel,key){$(sel).addEventListener("input",function(){S[key]=this.value;save();applyBrand();if(cur==="admin")drawPreviews()})}
 bindTxt("#fEvt","evt");bindTxt("#fDate","date");bindTxt("#fSub","sub");
 bindTxt("#fBrand","brand");bindTxt("#fTag","tag");
@@ -3202,7 +3466,7 @@ function hataYaz(kaynak,msg){
 }
 window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
 window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
-window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut};
+window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 
