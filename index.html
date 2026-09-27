@@ -458,6 +458,12 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="fld"><div class="lbl">Ad</div><select id="fVeriAd"><option value="kapali">Sorma</option><option value="istege">İsteğe bağlı</option><option value="zorunlu">Zorunlu</option></select></div>
           <div class="fld"><div class="lbl">E-posta</div><select id="fVeriMail"><option value="kapali">Sorma</option><option value="istege">İsteğe bağlı</option><option value="zorunlu">Zorunlu</option></select></div>
           <div class="fld"><div class="lbl">Telefon</div><select id="fVeriTel"><option value="kapali">Sorma</option><option value="istege">İsteğe bağlı</option><option value="zorunlu">Zorunlu</option></select></div>
+          <div class="fld"><div class="lbl">Video mesaj süresi (saniye)</div><input type="number" id="fVideoSn" min="5" max="30" step="1" placeholder="10"></div>
+          <div class="fld"><div class="lbl">E-posta gönderim adresi (servis uç noktası) — boşsa kabin mail atmaz</div>
+            <input type="text" id="fMailUrl" placeholder="https://... (senin e-posta servisinin adresi)" autocomplete="off"></div>
+          <div class="fld"><div class="lbl">Servis anahtarı (varsa)</div><input type="password" id="fMailKey" autocomplete="off" placeholder="gerekiyorsa"></div>
+          <div class="note">E-posta adresi doluysa: misafir e-postasını bıraktığı anda fotoğrafının linki oraya gönderilir. Boşsa kabin mail atmaz — misafirin e-postası CSV'ye yazılır, toplu gönderim oradan yapılır. Teslim sayfasında misafirin kendi mail uygulamasıyla gönderebileceği buton her durumda var.</div>
+          <div class="note" id="mailNote">—</div>
           <div class="note" id="veriNote">—</div>
           <div class="row" style="justify-content:flex-start">
             <button class="btn mini" id="veriCsvBtn">CSV indir</button>
@@ -874,7 +880,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"Melisa & Burak",date:"26.
   frame:"bant",bandBg:"#12100E",bandFg:"#F6F0E6",topText:"",botText:"",
   enh:"dogal",filterMode:"hepsi",aiOn:false,aiKey:"",aiModel:"gemini-2.5-flash-image",profId:"",profName:"",aiStyles:DEFSTYLES,aiScenes:DEFSCENES,flatter:true,
   bgOn:true,frameChoice:true,cldName:"",cldPreset:"",pngText:true,serit8:false,bgAi:true,bgMode:"cihaz",guide:false,
-  onayOn:false,onayZorunlu:true,onayMetni:"",veriAd:"kapali",veriMail:"kapali",veriTel:"kapali",
+  videoSn:10,mailUrl:"",mailKey:"",onayOn:false,onayZorunlu:true,onayMetni:"",veriAd:"kapali",veriMail:"kapali",veriTel:"kapali",
   evMode:false,evStart:0,aiBudget:0,aiUsed:0,aiBirim:"",printDown:false,printFail:0,
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
@@ -918,7 +924,7 @@ function go(name){
   var el=$("#s-"+name); if(!el)return;
   document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on")});
   el.classList.add("on"); cur=name; resetIdle();
-  if(name==="attract"){applyBrand();stopSeq();clearGuestData();misafirId=null;}
+  if(name==="attract"){applyBrand();stopSeq();clearGuestData();misafirId=null;misafirMail="";}
   if(name==="mode"){try{buildModes()}catch(e){}}
   if(name==="onay"){try{onayEkraniKur()}catch(e){}}
   if(name==="admin"){fillAdmin();}
@@ -1193,6 +1199,61 @@ function boomerangSirasi(kareler){
   return d;
 }
 
+/* ================= VİDEO MESAJ / VİDEO MİSAFİR DEFTERİ =================
+   13 rakipte var, bizde yoktu. Kamera akışını MediaRecorder ile kaydeder,
+   sesi ayrı izin alıp ekler; desteklemeyen tarayıcıda kart hiç görünmez. */
+var VIDEO_TIPLERI=["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4","video/webm;codecs=vp9,opus",
+                   "video/webm;codecs=vp8,opus","video/webm"];
+function videoTipi(){
+  if(typeof MediaRecorder==="undefined"||!MediaRecorder.isTypeSupported)return null;
+  for(var i=0;i<VIDEO_TIPLERI.length;i++)if(MediaRecorder.isTypeSupported(VIDEO_TIPLERI[i]))return VIDEO_TIPLERI[i];
+  return null;
+}
+function videoDestekli(){return !!videoTipi()&&!fileMode}
+var videoBlob=null,videoUzanti="mp4",videoSesli=false,vRec=null,sesAkis=null;
+function sesAl(){
+  /* ses ayrı izin — verilmezse sessiz kaydeder, misafire dürüst söylenir */
+  if(sesAkis)return Promise.resolve(sesAkis);
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return Promise.resolve(null);
+  return navigator.mediaDevices.getUserMedia({audio:true}).then(function(a){sesAkis=a;return a})
+    .catch(function(){return null});
+}
+function videoKaydet(sn,onIlerle){
+  var tip=videoTipi();
+  if(!tip)return Promise.reject(new Error("Bu tarayıcı video kaydını desteklemiyor"));
+  videoUzanti=(tip.indexOf("mp4")>=0)?"mp4":"webm";
+  return sesAl().then(function(ses){
+    videoSesli=!!ses;
+    var trk=stream.getVideoTracks().slice(0,1);
+    if(ses)trk=trk.concat(ses.getAudioTracks().slice(0,1));
+    var mix=new MediaStream(trk);
+    return new Promise(function(res,rej){
+      var parca=[],rec;
+      try{rec=new MediaRecorder(mix,{mimeType:tip,videoBitsPerSecond:2500000})}
+      catch(e){try{rec=new MediaRecorder(mix)}catch(e2){return rej(new Error("kayıt başlatılamadı"))}}
+      vRec=rec;
+      rec.ondataavailable=function(e){if(e.data&&e.data.size)parca.push(e.data)};
+      rec.onerror=function(){try{rec.stop()}catch(e){}};
+      rec.onstop=function(){
+        vRec=null;
+        var b=new Blob(parca,{type:tip.split(";")[0]});
+        if(!b.size)return rej(new Error("kayıt boş çıktı"));
+        res(b);
+      };
+      rec.start(250);
+      var t0=Date.now();
+      (function ilerle(){
+        if(!vRec)return;
+        var gecen=(Date.now()-t0)/1000;
+        onIlerle&&onIlerle(Math.min(1,gecen/sn),Math.max(0,Math.ceil(sn-gecen)));
+        if(gecen>=sn){try{rec.stop()}catch(e){}return}
+        timer=setTimeout(ilerle,120);
+      })();
+    });
+  });
+}
+function videoDurdur(){ if(vRec){try{vRec.stop()}catch(e){}} }
+
 /* ---------- modlar ---------- */
 var MODES=[
   {id:"tek",name:"Tek Kare",desc:"Tek fotoğraf, tam sayfa baskı.",shots:1,cells:[[1]]},
@@ -1200,14 +1261,16 @@ var MODES=[
   {id:"kare4",name:"Dörtlü",desc:"Dört kare tek sayfada.",shots:4,cells:[[1,1],[1,1]]},
   {id:"insta",name:"Instagram",desc:"Tek çekim — post + story, QR ile telefonuna.",shots:1,cells:[[1]]},
   {id:"boom",name:"Boomerang",desc:"Hareketli GIF — ileri geri döner, QR ile telefonuna.",shots:4,cells:[[1,1],[1,1]]},
-  {id:"glam",name:"Glam",desc:"Tek kare — siyah-beyaz, yumuşak ışık, dergi kapağı hissi.",shots:1,cells:[[1]]}
+  {id:"glam",name:"Glam",desc:"Tek kare — siyah-beyaz, yumuşak ışık, dergi kapağı hissi.",shots:1,cells:[[1]]},
+  {id:"video",name:"Video Mesaj",desc:"Kameraya konuş — sesli video, QR ile telefonuna.",shots:1,cells:[[1]]}
 ];
 /* GEZİCİ MOD: görevli elinde telefonla masaları gezer — baskı yok, her kare aynı galeriye düşer.
    Adrese #gezici eklenince açılır; kabin kurulumunu bozmaz. */
 var gezici=(location.hash.indexOf("gezici")>=0);
 function buildModes(){
   var w=$("#modeCards");w.innerHTML="";
-  var liste=gezici?MODES.filter(function(m){return m.id==="tek"||m.id==="boom"||m.id==="glam"}):MODES;
+  var liste=gezici?MODES.filter(function(m){return m.id==="tek"||m.id==="boom"||m.id==="glam"||m.id==="video"}):MODES;
+  liste=liste.filter(function(m){return m.id!=="video"||videoDestekli()});
   liste.forEach(function(m){
     var b=document.createElement("button");b.className="card";
     var shotN=(m.id==="serit"&&S.serit8)?8:m.shots;
@@ -1235,8 +1298,20 @@ function beginSeq(m){
   $("#shootTitle").textContent=m.name;
   $("#fileThumb").hidden=true;$("#fileBtn").hidden=true;
   drawDots();
-  gifBlob=null;boomKareler=[];
+  gifBlob=null;boomKareler=[];videoDurdur();
   if(fileMode||camBlocked()){setFileMode();askFile();return}
+  videoBlob=null;
+  if(m.id==="video"){
+    startCam().then(function(){
+      var n=S.count,cd=$("#count");cd.className="count";
+      $("#shootHint").textContent="Hazır ol — sayım bitince konuşmaya başla.";
+      (function tick(){
+        if(n>0){cd.textContent=n;beep(660,.09);n--;timer=setTimeout(tick,1000)}
+        else{cd.className="count go";cd.textContent="";videoCek()}
+      })();
+    }).catch(function(){setFileMode();askFile()});
+    return;
+  }
   if(m.id==="boom"){
     startCam().then(function(){
       var n=S.count,cd=$("#count");cd.className="count";
@@ -1316,6 +1391,41 @@ function boomYakala(){
       showReview();
     },60);
   })();
+}
+
+function videoCek(){
+  var vw=cam.videoWidth,vh=cam.videoHeight;
+  if(!vw){capTry++;if(capTry<15){timer=setTimeout(videoCek,300);return}capTry=0;camError("Kamera görüntüsü gelmedi. Sayfayı yenile.");return}
+  capTry=0;
+  var benim=aiGen,sn=Math.max(5,Math.min(30,S.videoSn|0||10));
+  /* baskı ve önizleme için ilk kareyi al */
+  var target=3/4,sw=vw,sh=vw/target;
+  if(sh>vh){sh=vh;sw=vh*target}
+  var sx=(vw-sw)/2,sy=(vh-sh)/2;
+  var c=document.createElement("canvas");c.width=1200;c.height=1600;
+  var x=c.getContext("2d");
+  if(S.mirror){x.translate(c.width,0);x.scale(-1,1)}
+  x.drawImage(cam,sx,sy,sw,sh,0,0,1200,1600);
+  shots=[c];shotsEnh=[enhanceShot(c)];S.shots++;sayacKaydet();
+  var bar=$("#recTxt");
+  shutter();
+  videoKaydet(sn,function(oran,kalan){
+    if(benim!==aiGen)return;
+    $("#recTxt").textContent="KAYIT · "+kalan+" sn";
+    $("#shootHint").textContent=videoSesli?"Konuş! Mesajını söyle.":"Kamera kaydediyor (ses izni verilmedi — sessiz kayıt).";
+  }).then(function(b){
+    if(benim!==aiGen)return;
+    videoBlob=b;
+    $("#count").textContent="";
+    showReview();
+  }).catch(function(e){
+    if(benim!==aiGen)return;
+    videoBlob=null;
+    hataYaz("video",(e&&e.message)||"kayıt alınamadı");
+    camError("Video kaydı alınamadı: "+((e&&e.message)||"bilinmeyen")+". Fotoğraf yine de çekildi.");
+    $("#count").textContent="";
+    showReview();
+  });
 }
 
 var capTry=0;
@@ -1720,11 +1830,17 @@ function showReview(){
   $("#printBtn").textContent=(S.printDown||gezici)?"KAREKODLA GÖNDER":"YAZDIR";
   var bn=$("#boomNote");
   if(bn){
-    var bm=(mode&&mode.id==="boom");
-    bn.hidden=!bm;
-    if(bm)bn.textContent = gifBlob
-      ? ("Hareketli görüntün hazır ("+Math.round(gifBoyut/1024)+" KB) — karekodla telefonuna gelecek. Baskı dörtlü kare olarak çıkar.")
-      : "Hareketli görüntü üretilemedi — baskı ve karekod yine de çalışıyor.";
+    var bm=(mode&&mode.id==="boom"),vm=(mode&&mode.id==="video");
+    bn.hidden=!(bm||vm);
+    if(vm){
+      bn.textContent = videoBlob
+        ? ("Videon hazır ("+Math.round(videoBlob.size/1024/1024*10)/10+" MB"+(videoSesli?", sesli":", sessiz")+") — karekodla telefonuna gelecek. Baskı ilk kareden çıkar.")
+        : "Video kaydedilemedi — fotoğraf baskısı ve karekod yine de çalışıyor.";
+    }else if(bm){
+      bn.textContent = gifBlob
+        ? ("Hareketli görüntün hazır ("+Math.round(gifBoyut/1024)+" KB) — karekodla telefonuna gelecek. Baskı dörtlü kare olarak çıkar.")
+        : "Hareketli görüntü üretilemedi — baskı ve karekod yine de çalışıyor.";
+    }
   }
   $("#aiBtn").hidden=!(aiReady&&S.aiStyles.some(function(st){return st.on}));
   $("#aiSceneBtn").hidden=!(aiReady&&((S.aiScenes&&S.aiScenes.some(function(st){return st.on}))||hasSceneImgs));
@@ -1828,7 +1944,7 @@ function compose(){
   var pw0=document.querySelector(".pwrap");if(pw0)pw0.style.aspectRatio="";
   var c=document.createElement("canvas");c.width=W;c.height=H;
   var x=c.getContext("2d");
-  composeOn(x,(mode.id==="boom")?"kare4":((mode.id==="glam")?"tek":mode.id),currentShots());
+  composeOn(x,(mode.id==="boom")?"kare4":((mode.id==="glam"||mode.id==="video")?"tek":mode.id),currentShots());
   composed=c.toDataURL("image/jpeg",.95);
   $("#previewImg").src=composed;
   $("#emergeImg").src=composed;
@@ -2291,7 +2407,7 @@ var ONAY_VARSAYILAN=
 "6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamındaki haklarınız saklıdır; "+
 "verilerinizin silinmesini istediğinizde görevliye başvurabilirsiniz.";
 function onayMetniniAl(){return (S.onayMetni&&S.onayMetni.trim())?S.onayMetni:ONAY_VARSAYILAN}
-var misafirId=null,misafirKutu=false;
+var misafirId=null,misafirKutu=false,misafirMail="";
 function guestPut(rec,cb){
   if(!db){hataYaz("misafir verisi","veritabanı açık değil");cb&&cb(false);return}
   try{var tx=db.transaction("guests","readwrite");tx.objectStore("guests").put(rec);
@@ -2314,8 +2430,35 @@ function guestTemizle(cb){
     tx.oncomplete=function(){cb&&cb()};tx.onerror=tx.onabort=function(){cb&&cb()};
   }catch(e){cb&&cb()}
 }
+var mailSayac={ok:0,hata:0,son:""};
+function mailNotYaz(){
+  var el=$("#mailNote");if(!el)return;
+  if(!S.mailUrl){el.textContent="E-posta gönderimi kapalı (adres boş).";return}
+  el.textContent="E-posta gönderimi açık · bu oturumda gönderilen "+mailSayac.ok+
+    (mailSayac.hata?(" · başarısız "+mailSayac.hata):"")+(mailSayac.son?(" · son durum: "+mailSayac.son):"");
+}
+function mailGonder(adres,link){
+  if(!S.mailUrl||!adres||!link)return Promise.resolve(false);
+  var ctrl=new AbortController(),tmo=setTimeout(function(){ctrl.abort()},15000);
+  var govde={to:adres,link:link,event:(S.profName||S.evt||""),brand:S.brand||"OBSKURA"};
+  var bas={"Content-Type":"application/json"};
+  if(S.mailKey)bas["Authorization"]="Bearer "+S.mailKey;
+  return fetch(S.mailUrl,{method:"POST",headers:bas,body:JSON.stringify(govde),signal:ctrl.signal})
+    .then(function(r){clearTimeout(tmo);
+      if(!r.ok)throw new Error("servis "+r.status);
+      mailSayac.ok++;mailSayac.son="gönderildi";if(cur==="admin")mailNotYaz();return true})
+    .catch(function(e){clearTimeout(tmo);
+      mailSayac.hata++;mailSayac.son=(e&&e.name==="AbortError")?"zaman aşımı":((e&&e.message)||"hata");
+      hataYaz("e-posta",mailSayac.son);if(cur==="admin")mailNotYaz();return false});
+}
 function guestLinkYaz(url){
-  if(!misafirId||!db)return;
+  if(!misafirId)return;
+  try{
+    var el=$("#gMail");
+    var adres=misafirMail||(el?el.value.trim():"");
+    if(adres&&S.mailUrl)mailGonder(adres,fotoSayfa(url));
+  }catch(e){}
+  if(!db)return;
   try{
     var tx=db.transaction("guests","readwrite"),st=tx.objectStore("guests");
     var rq=st.get(misafirId);
@@ -2372,6 +2515,7 @@ function onayKaydet(){
     return false;
   }
   misafirId="g"+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  misafirMail=$("#gMail").value.trim();
   guestPut({id:misafirId,t:Date.now(),ev:(S.profName||S.evt||""),
             ad:$("#gAd").value.trim(),mail:$("#gMail").value.trim(),tel:$("#gTel").value.trim(),
             onay:!!misafirKutu||!S.onayOn,foto:""},function(){});
@@ -2422,7 +2566,8 @@ function upqDene(cb){
     (function nx(){
       if(i>=list.length){upqCalisiyor=false;updUpq();cb&&cb(ok,kalan);return}
       var r=list[i++];
-      var p2=(r.blob)?uploadBlob(r.blob,r.ad):uploadPhoto(r.data,r.ad);
+      if(r.uzanti)videoUzanti=r.uzanti;
+      var p2=(r.blob)?uploadBlob(r.blob,r.ad,!!r.video):uploadPhoto(r.data,r.ad);
       p2.then(function(url){
         ok++;
         if(r.gid){try{
@@ -2731,6 +2876,24 @@ function kYazici(){
     });
   });
 }
+function kVideoDestek(){
+  if(!videoDestekli()){
+    if(fileMode)return {uyari:true,m:"cihaz kamerası modunda video kartı gizli",
+      o:"Canlı kamera açık değilken video kaydı yapılamaz; sayfayı doğrudan tarayıcıda aç."};
+    return {uyari:true,m:"bu tarayıcı video kaydını desteklemiyor",
+      o:"Video Mesaj kartı misafire hiç görünmüyor. Güncel Chrome/Safari'de çalışır."};
+  }
+  return {m:"destekli ("+(videoTipi().indexOf("mp4")>=0?"mp4":"webm")+") · süre "+(S.videoSn|0||10)+" sn"};
+}
+function kEposta(){
+  if(!S.mailUrl)return {uyari:true,m:"kabinden e-posta gönderimi kapalı",
+    o:"Misafirin e-postası CSV'ye yazılıyor, toplu gönderim oradan yapılıyor. Anında mail istiyorsan panele servis adresini gir."};
+  if(S.veriMail==="kapali")return {ok:false,m:"e-posta adresi açık ama misafire e-posta sorulmuyor",
+    o:"Panel → Misafir verisi → E-posta'yı 'isteğe bağlı' ya da 'zorunlu' yap."};
+  if(mailSayac.hata)return {ok:false,m:mailSayac.hata+" gönderim başarısız (son: "+mailSayac.son+")",
+    o:"Servis adresini ve anahtarını kontrol et."};
+  return {m:"açık · bu oturumda "+mailSayac.ok+" gönderim"};
+}
 function kTeslimKuyrugu(){
   return new Promise(function(res){
     upqAll(function(l){
@@ -2860,6 +3023,8 @@ function sahaKontrol(aiDahil){
     ["Açık stil sayısı",kStil],
     ["Misafir verisi",kMisafirVerisi],
     ["Teslim kuyruğu",kTeslimKuyrugu],
+    ["Video desteği",kVideoDestek],
+    ["E-posta teslimi",kEposta],
     ["İnternet",kInternet],
     ["Teslim sayfası",kTeslimSayfa],
     ["QR teslim (bulut)",kBulut]
@@ -2886,7 +3051,7 @@ function sahaKontrol(aiDahil){
 var EV_KILIT=["#tgPrint","#tgSerit8","#fAiKey","#fAiModel","#fCldName","#fCldPreset","#fBgMode",
               "#fFilterMode","#fFrame","#fEnh","#libFrFile","#libBgFile","#tupluFile","#sceneImgFile",
               "#cfgFile","#cldGetBtn","#cfgBox","#stilHepAc","#stilHepKapa","#libFrBtn","#libBgBtn",
-              "#fOnayMetni","#fVeriAd","#fVeriMail","#fVeriTel","#veriSilBtn"];
+              "#fOnayMetni","#fVeriAd","#fVeriMail","#fVeriTel","#veriSilBtn","#fMailUrl","#fMailKey"];
 function evKilit(){
   var kilit=!!S.evMode;
   EV_KILIT.forEach(function(sel){
@@ -2938,13 +3103,16 @@ function fillAdmin(){
   tg($("#tgOnay"),S.onayOn);tg($("#tgOnayZor"),S.onayZorunlu!==false);
   if($("#fOnayMetni"))$("#fOnayMetni").value=S.onayMetni||"";
   ["Ad","Mail","Tel"].forEach(function(k){var e2=$("#fVeri"+k);if(e2)e2.value=S["veri"+k]||"kapali"});
-  veriNotYaz();
+  if($("#fVideoSn"))$("#fVideoSn").value=S.videoSn||10;
+  if($("#fMailUrl"))$("#fMailUrl").value=S.mailUrl||"";
+  if($("#fMailKey"))$("#fMailKey").value=S.mailKey||"";
+  mailNotYaz();veriNotYaz();
   aiKullanimYaz();updPend();updUpq();evKilit();
   buildStyleRows();buildSceneRows();buildSceneImgRows();refreshProfUI();renderLib();updDurum();kontrolYas();hataYaz("","");
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.52 · Boomerang · Veri · Çevrimdışı · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.53 · Video · E-posta · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -2977,6 +3145,11 @@ function veriNotYaz(){
     if(b)b.disabled=!l.length; if(c)c.disabled=!l.length;
   });
 }
+if($("#fVideoSn"))$("#fVideoSn").addEventListener("input",function(){
+  S.videoSn=Math.max(5,Math.min(30,parseInt(this.value,10)||10));save();
+});
+if($("#fMailUrl"))$("#fMailUrl").addEventListener("input",function(){S.mailUrl=this.value.trim();save();mailNotYaz()});
+if($("#fMailKey"))$("#fMailKey").addEventListener("input",function(){S.mailKey=this.value;save()});
 if($("#tgOnay"))$("#tgOnay").onclick=function(){S.onayOn=!S.onayOn;tg(this,S.onayOn);save();veriNotYaz()};
 if($("#tgOnayZor"))$("#tgOnayZor").onclick=function(){S.onayZorunlu=!S.onayZorunlu;tg(this,S.onayZorunlu);save()};
 if($("#fOnayMetni"))$("#fOnayMetni").addEventListener("input",function(){S.onayMetni=this.value;save()});
@@ -3573,27 +3746,31 @@ function evSlug(){
   if(s.length>40)s=s.slice(0,40).replace(/-+$/,"");
   return s||"etkinlik";
 }
-function uploadBlob(blob,tag){
-  return Promise.resolve(blob).then(function(b){return _cldGonder(b,tag,false)});
+function uploadBlob(blob,tag,videoMu){
+  return Promise.resolve(blob).then(function(b){return _cldGonder(b,tag,false,videoMu)});
 }
 function uploadPhoto(dataUrl,tag,isTest){
   return fetch(dataUrl).then(function(r){return r.blob()}).then(function(blob){
     return _cldGonder(blob,tag,isTest);
   });
 }
-function _cldGonder(blob,tag,isTest){
+function _cldGonder(blob,tag,isTest,videoMu){
   return Promise.resolve().then(function(){
     var fd=new FormData();
-    var uzanti=(blob&&blob.type==="image/gif")?".gif":((blob&&blob.type==="image/png")?".png":".jpg");
+    var uzanti=videoMu?("."+videoUzanti):((blob&&blob.type==="image/gif")?".gif":((blob&&blob.type==="image/png")?".png":".jpg"));
     fd.append("file",blob,(tag||"foto")+uzanti);
     fd.append("upload_preset",S.cldPreset);
     var slug=isTest?"_test":evSlug();
     fd.append("folder","booth/"+slug);
     fd.append("tags",slug); /* sadece etkinlik slug'ı — ortak "booth" etiketi yok (galeri gizliliği) */
     var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},20000);
-    return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/image/upload",
+    return fetch("https://api.cloudinary.com/v1_1/"+encodeURIComponent(S.cldName)+"/"+(videoMu?"video":"image")+"/upload",
       {method:"POST",body:fd,signal:ctrl.signal})
-      .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("yükleme reddedildi ("+r.status+")");return r.json()})
+      .then(function(r){clearTimeout(tmo);
+        if(!r.ok)throw new Error(videoMu&&(r.status===400||r.status===401)
+          ? "video yüklenemedi ("+r.status+") — Cloudinary ön ayarında video izni kapalı olabilir"
+          : "yükleme reddedildi ("+r.status+")");
+        return r.json()})
       .then(function(j){if(!j.secure_url)throw new Error("adres dönmedi");return j.secure_url})
       .catch(function(e){clearTimeout(tmo);
         if(e.name==="AbortError")throw new Error("internet çok yavaş");
@@ -3644,14 +3821,17 @@ function deliverQR(){
     return;
   }
   /* BOOMERANG: karekod hareketli GIF'e gider */
-  var isim=(mode&&mode.id==="boom"&&gifBlob)?(myCode+"-boom"):myCode;
-  var gonder=(mode&&mode.id==="boom"&&gifBlob)?uploadBlob(gifBlob,isim):uploadPhoto(composed,isim);
+  var videoMu=!!(mode&&mode.id==="video"&&videoBlob);
+  var isim=videoMu?(myCode+"-video"):((mode&&mode.id==="boom"&&gifBlob)?(myCode+"-boom"):myCode);
+  var gonder=videoMu?uploadBlob(videoBlob,isim,true)
+            :((mode&&mode.id==="boom"&&gifBlob)?uploadBlob(gifBlob,isim):uploadPhoto(composed,isim));
   gonder.then(function(url){
     if(!benimMi())return;
     lastUrl=url;drawQR(fotoSayfa(url));guestLinkYaz(url);
     $("#qrCanvas").onclick=null;
     var sw2=$("#qrSwap");
-    if(sw2&&mode&&mode.id==="boom"&&gifBlob){sw2.style.display="block";sw2.textContent="Bu kod HAREKETLİ görüntüne gider"}
+    if(sw2&&videoMu){sw2.style.display="block";sw2.textContent="Bu kod VİDEONA gider"}
+    else if(sw2&&mode&&mode.id==="boom"&&gifBlob){sw2.style.display="block";sw2.textContent="Bu kod HAREKETLİ görüntüne gider"}
   }).catch(function(e){
     if(!benimMi())return;
     kuyrugaAl((e&&e.message)||"yüklenemedi");
@@ -3662,7 +3842,9 @@ function deliverQR(){
     var ad=(mode&&mode.id==="boom"&&gifBlob)?(myCode+"-boom"):myCode;
     var rec={id:"u"+myCode+Math.random().toString(36).slice(2,5),t:Date.now(),ad:ad,
              gid:misafirId,ev:(S.profName||S.evt||"")};
-    if(mode&&mode.id==="boom"&&gifBlob)rec.blob=gifBlob; else rec.data=composed;
+    if(videoMu){rec.blob=videoBlob;rec.video=true;rec.uzanti=videoUzanti}
+    else if(mode&&mode.id==="boom"&&gifBlob)rec.blob=gifBlob;
+    else rec.data=composed;
     upqPut(rec,function(basarili){
       updUpq();
       if(!benimMi())return;
@@ -4228,7 +4410,7 @@ function hataYaz(kaynak,msg){
 }
 window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
 window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
-window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 

@@ -12,7 +12,7 @@ body{margin:0;background:#12100E;color:#F6F0E6;font-family:Figtree,-apple-system
 .evt{font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#F2A93B;margin:0 0 14px;font-weight:600}
 .ph{width:100%;border-radius:14px;overflow:hidden;background:#1c1815;box-shadow:0 18px 48px rgba(0,0,0,.55);min-height:180px;
  display:flex;align-items:center;justify-content:center}
-.ph img{width:100%;display:block}
+.ph img,.ph video{width:100%;display:block;background:#000}
 .btn{display:block;width:100%;margin-top:18px;padding:17px 20px;border:0;border-radius:999px;font-size:17px;font-weight:700;
  background:#F2A93B;color:#171310;cursor:pointer;font-family:inherit}
 .btn:active{transform:translateY(1px)}
@@ -27,6 +27,7 @@ body{margin:0;background:#12100E;color:#F6F0E6;font-family:Figtree,-apple-system
   <p class="evt" id="evt"></p>
   <div class="ph"><img id="ph" alt="Fotoğrafın"></div>
   <button class="btn" id="save">📥 Telefonuma kaydet</button>
+  <button class="btn ghost" id="mail">✉︎ E-posta ile gönder</button>
   <button class="btn ghost" id="open">Yeni sekmede aç</button>
   <p class="note" id="note">Kaydet'e bas — fotoğraf telefonuna iner.</p>
   <p class="brand">OBSKURA</p>
@@ -41,10 +42,28 @@ body{margin:0;background:#12100E;color:#F6F0E6;font-family:Figtree,-apple-system
     note.className="note err";note.textContent="Bağlantı eksik görünüyor. Karekodu tekrar okut.";
     document.getElementById("save").style.display="none";
     document.getElementById("open").style.display="none";
+    document.getElementById("mail").style.display="none";
     return;
   }
-  img.src=u;
-  var ad=(evt?evt.replace(/[^\wçğıöşüÇĞİÖŞÜ ]+/g,"").trim().replace(/\s+/g,"-"):"obskura")+"-"+Date.now().toString(36)+".jpg";
+  /* ne geldi: fotoğraf, hareketli GIF yoksa video? */
+  var uz=(u.split("?")[0].match(/\.([a-z0-9]{2,4})$/i)||[,""])[1].toLowerCase();
+  var videoMu=(uz==="mp4"||uz==="webm"||uz==="mov"||u.indexOf("/video/upload/")>=0);
+  var gifMi=(uz==="gif");
+  if(videoMu){
+    var v=document.createElement("video");
+    v.id="ph";v.src=u;v.controls=true;v.autoplay=true;v.loop=true;v.muted=false;
+    v.setAttribute("playsinline","");v.setAttribute("webkit-playsinline","");
+    img.parentNode.replaceChild(v,img);img=v;
+    document.title="Videon hazır";
+    document.getElementById("save").textContent="📥 Videoyu telefonuma kaydet";
+    note.textContent="Kaydet'e bas — video telefonuna iner. Ses varsa hoparlörü aç.";
+    v.play().catch(function(){});
+  }else{
+    img.src=u;
+    if(gifMi){document.title="Hareketli görüntün hazır";note.textContent="Kaydet'e bas — hareketli görüntü telefonuna iner."}
+  }
+  var temiz=(evt?evt.replace(/[^\wçğıöşüÇĞİÖŞÜ ]+/g,"").trim().replace(/\s+/g,"-"):"obskura");
+  var ad=temiz+"-"+Date.now().toString(36)+"."+(videoMu?(uz||"mp4"):(gifMi?"gif":"jpg"));
   function ekle(el){document.body.appendChild(el)}
   function indirBlob(b){
     var url=URL.createObjectURL(b), a=document.createElement("a");
@@ -53,29 +72,39 @@ body{margin:0;background:#12100E;color:#F6F0E6;font-family:Figtree,-apple-system
   }
   function ekle_flag(){
     /* Cloudinary'nin kendi indirme bayrağı — son çare */
-    return u.replace("/image/upload/","/image/upload/fl_attachment/");
+    return u.replace("/image/upload/","/image/upload/fl_attachment/")
+            .replace("/video/upload/","/video/upload/fl_attachment/");
   }
+  /* misafirin kendi mail uygulamasıyla göndermesi — hiçbir servise ihtiyaç yok */
+  document.getElementById("mail").onclick=function(){
+    var konu=(evt?evt+" ":"")+(videoMu?"videom":"fotoğrafım");
+    var govde=(evt?evt+"\n\n":"")+(videoMu?"Videom":"Fotoğrafım")+":\n"+u+"\n\n"+
+      "Bu bağlantıyı açıp kaydedebilirsin.";
+    location.href="mailto:?subject="+encodeURIComponent(konu)+"&body="+encodeURIComponent(govde);
+  };
   document.getElementById("open").onclick=function(){window.open(u,"_blank")};
   document.getElementById("save").onclick=function(){
     var b=this;b.disabled=true;var eski=b.textContent;b.textContent="Hazırlanıyor…";
     fetch(u).then(function(r){if(!r.ok)throw new Error("indirilemedi");return r.blob()})
     .then(function(blob){
       var file=null;
-      try{file=new File([blob],ad,{type:blob.type||"image/jpeg"})}catch(e){}
+      try{file=new File([blob],ad,{type:blob.type||(videoMu?"video/mp4":(gifMi?"image/gif":"image/jpeg"))})}catch(e){}
       if(file&&navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
         return navigator.share({files:[file]}).then(function(){
-          note.textContent="Açılan menüden “Fotoğraflara Kaydet”’i seç.";
+          note.textContent=videoMu?"Açılan menüden “Videoyu Kaydet”’i seç.":"Açılan menüden “Fotoğraflara Kaydet”’i seç.";
         }).catch(function(err){
           if(err&&err.name==="AbortError"){return}
-          indirBlob(blob);note.textContent="Fotoğraf indirildi.";
+          indirBlob(blob);note.textContent=(videoMu?"Video":"Fotoğraf")+" indirildi.";
         });
       }
       indirBlob(blob);
-      note.textContent="Fotoğraf indirildi — telefonunun “İndirilenler” klasöründe.";
+      note.textContent=(videoMu?"Video":"Fotoğraf")+" indirildi — telefonunun “İndirilenler” klasöründe.";
     })
     .catch(function(){
       note.className="note";
-      note.textContent="Tarayıcı doğrudan kaydetmedi, indirme sayfası açılıyor. Açılan fotoğrafa basılı tutup “Fotoğrafı kaydet” de.";
+      note.textContent=videoMu
+        ? "Tarayıcı doğrudan kaydetmedi, indirme sayfası açılıyor. Açılan videoya basılı tutup “Videoyu kaydet” de."
+        : "Tarayıcı doğrudan kaydetmedi, indirme sayfası açılıyor. Açılan fotoğrafa basılı tutup “Fotoğrafı kaydet” de.";
       window.location.href=ekle_flag();
     })
     .then(function(){b.disabled=false;b.textContent=eski});
