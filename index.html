@@ -242,7 +242,7 @@ h1 em{font-style:italic;color:var(--amber)}
 .bgbusy i{width:18px;height:18px;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--amber);animation:spin 1s linear infinite;display:block}
 
 #printArea{display:none}
-@page{size:100mm 150mm;margin:0}
+@page{size:4in 6in;margin:0}
 .kvkkNote{margin-top:14px;font:500 12px var(--ui);color:var(--muted);letter-spacing:.02em}
 .simBadge{position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:6;background:var(--ember);color:#fff;font:700 12px var(--ui);letter-spacing:.06em;padding:7px 16px;border-radius:999px}
 #guideBox{position:absolute;inset:0;pointer-events:none;z-index:5}
@@ -251,14 +251,15 @@ h1 em{font-style:italic;color:var(--amber)}
 #guideBox span{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);
   font:600 15px var(--ui);color:rgba(246,240,230,.9);background:rgba(18,16,14,.55);
   padding:8px 14px;border-radius:999px;white-space:nowrap}
-/* Sayfa 10×15 cm KENARSIZ: A4 ortasında pul gibi foto + üstbilgi/altbilgi yazıları biter,
-   foto kâğıdı uçtan uca doldurur */
-@page{size:100mm 150mm;margin:0}
+/* Sayfa 4×6 inç (101,6×152,4 mm) KENARSIZ — DNP RX1HS 4x6 medyanın birebir ölçüsü.
+   Eskiden 100×150 mm idi: sürücü %1,6 büyütüyor ya da kenarda beyaz şerit bırakıyordu.
+   Kompozisyon 1200×1800 px = tam 4×6 @300 dpi, ölçeklenmeden basılır. */
+@page{size:4in 6in;margin:0}
 @media print{
   html,body{background:#fff!important;margin:0!important;padding:0!important;height:auto!important;min-height:0!important;overflow:visible!important}
   #app,.grain,.vig{display:none!important}
   #printArea{display:block!important;position:static!important;margin:0!important;padding:0!important}
-  #printArea img{width:100mm;height:150mm;object-fit:contain;background:#fff;display:block;margin:0!important;break-after:page;page-break-after:always}
+  #printArea img{width:4in;height:6in;object-fit:contain;background:#fff;display:block;margin:0!important;break-after:page;page-break-after:always}
   #printArea img:last-child{break-after:auto;page-break-after:auto}
 }
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -560,7 +561,11 @@ h1 em{font-style:italic;color:var(--amber)}
           <h3>Baskı</h3>
           <div class="sw"><div class="t">Gerçek baskı<div class="note">Kapalıyken kağıt harcanmaz, akış simüle edilir</div></div><div class="tg" id="tgPrint"><i></i></div></div>
           <div class="note">Baskı boyutu 10×15 cm, kenarlıksız. Yazıcı seçimi cihazın kendi baskı ekranından yapılır.</div>
-          <button class="btn ghost" id="testPrint">Test sayfası bas</button>
+          <div class="note" id="yaziciNot"></div>
+          <div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap">
+            <button class="btn ghost" id="testPrint">Test sayfası bas</button>
+            <a class="btn ghost" href="yazici.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">DNP kurulum ve testler →</a>
+          </div>
         </div>
 
         <div class="grp">
@@ -789,7 +794,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 (function(){
 "use strict";
 var $=function(s){return document.querySelector(s)};
-var W=1200,H=1800; // 10x15cm @ ~300dpi
+var W=1200,H=1800; // 4x6 inç @ 300 dpi (DNP RX1HS 4x6 medya)
 
 /* ---------- ayarlar ---------- */
 var DEFSTYLES=[
@@ -1294,6 +1299,16 @@ function sablonUygula(id){
   return true;
 }
 
+/* ---------- YAZICI (DNP DS-RX1HS) ----------
+   İnce ayar ve kesici durumu yazici.html sayfasında ayarlanır, AYRI anahtarda durur:
+   kabin sekmesi açıkken S'nin üstüne yazılıp kaybolmasın diye her baskıda taze okunur. */
+function yaziciAyar(){var d={olcek:100,x:0,y:0,dnpKesim:false};
+  try{var o=JSON.parse(localStorage.getItem("booth.yazici")||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}
+  return d}
+function prImg(src){var a=yaziciAyar(),im=new Image();im.src=src;
+  var sc=(+a.olcek||100)/100,dx=+a.x||0,dy=+a.y||0;
+  if(sc!==1||dx||dy){im.style.transform="translate("+dx+"mm,"+dy+"mm) scale("+sc+")";im.style.transformOrigin="50% 50%";}
+  return im}
 /* ---------- modlar ---------- */
 var MODES=[
   {id:"tek",name:"Tek Kare",desc:"Tek fotoğraf, tam sayfa baskı.",shots:1,cells:[[1]]},
@@ -1310,6 +1325,9 @@ var gezici=(location.hash.indexOf("gezici")>=0);
 function buildModes(){
   var w=$("#modeCards");w.innerHTML="";
   var liste=gezici?MODES.filter(function(m){return m.id==="tek"||m.id==="boom"||m.id==="glam"||m.id==="video"}):MODES;
+  /* DNP kesici açıkken yazıcı HER 10×15'i ortadan böler — tek kare / dörtlü ikiye bölünmesin diye
+     o etkinlikte yalnız şerit gösterilir */
+  if(!gezici&&yaziciAyar().dnpKesim)liste=MODES.filter(function(m){return m.id==="serit"});
   liste=liste.filter(function(m){return m.id!=="video"||videoDestekli()});
   liste.forEach(function(m){
     var b=document.createElement("button");b.className="card";
@@ -1916,8 +1934,6 @@ function composeOn(x,id,sh){
         drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
       }
     }
-    x.strokeStyle="rgba(255,255,255,.30)";x.setLineDash([10,12]);x.lineWidth=2;
-    x.beginPath();x.moveTo(W/2,20);x.lineTo(W/2,H-20);x.stroke();x.setLineDash([]);
   } else if(id==="tek"&&(f==="yok"||f==="png"||f==="bant")){
     cover(x,sh[0],0,0,W,H);
     if(f==="bant"||(f==="png"&&S.pngText)){
@@ -1949,6 +1965,20 @@ function composeOn(x,id,sh){
         x.fillStyle=gsp;x.fillRect(spx,H-lay.b-40,560,lay.b+40);
         drawFooter(x,spx,H-lay.b,560,lay.b,true,"#F6F0E6");
       }
+    }
+  }
+  if(id==="serit"){
+    /* DNP 2 inç kesim sayfayı TAM ORTADAN (x=600) keser. Eski düzende sağ şerit 640–1200'deydi:
+       kesimden 40 px uzak, sağ kenarda hiç payı yok (kenarsız baskıda kırpılıyordu). Sağ yarıyı —
+       foto, bant, PNG çerçeve, yazı hepsi birlikte — 20 px sola alıyoruz: 20–580 | 620–1180,
+       kesime göre iki yanda 20'şer px. PNG çerçeveler aynı kaydığı için hizaları bozulmaz. */
+    var yk=W/2+10;
+    x.drawImage(x.canvas,yk,0,W-yk,H,yk-20,0,W-yk,H);
+    x.fillStyle=(f==="yok"||f==="png")?"#12100E":S.bandBg;
+    x.fillRect(W-20,0,20,H);
+    if(!yaziciAyar().dnpKesim){ /* kesici kapalı: makasla kesilecek, kılavuz çizgi bas */
+      x.strokeStyle="rgba(255,255,255,.30)";x.setLineDash([10,12]);x.lineWidth=2;
+      x.beginPath();x.moveTo(W/2,20);x.lineTo(W/2,H-20);x.stroke();x.setLineDash([]);
     }
   }
 }
@@ -2352,7 +2382,7 @@ function doPrint(){
     var pa=$("#printArea");pa.innerHTML="";
     var bekle=[];
     for(var i=0;i<copies;i++){
-      var im=new Image();im.src=composed;pa.appendChild(im);
+      var im=prImg(composed);pa.appendChild(im);
       bekle.push(im.decode?im.decode().catch(function(){}):new Promise(function(r){
         im.onload=r;im.onerror=r;setTimeout(r,4000);
       }));
@@ -2670,7 +2700,7 @@ function pendHepsiniBas(){
       var pa=$("#printArea");pa.innerHTML="";
       var bekle=[];
       for(var k=0;k<(r.kopya||1);k++){
-        var im=new Image();im.src=r.d;pa.appendChild(im);
+        var im=prImg(r.d);pa.appendChild(im);
         bekle.push(im.decode?im.decode().catch(function(){}):new Promise(function(res){im.onload=res;im.onerror=res;setTimeout(res,4000)}));
       }
       Promise.all(bekle).then(function(){
@@ -2897,7 +2927,10 @@ function kBaski(){
   var im=x.getImageData(0,0,W,H).data,mn=255,mx=0,n=0;
   for(var i=0;i<im.length;i+=4*1013){var v=(im[i]+im[i+1]+im[i+2])/3;if(v<mn)mn=v;if(v>mx)mx=v;n++}
   if(n<50||mx-mn<10)return {ok:false,m:"sayfa boş çıkıyor",o:"Baskı kurgusu çalışmıyor — bu haliyle yazıcıdan boş kâğıt çıkar. Çerçeve ayarını 'bant' yapıp tekrar dene."};
-  var m=(S.serit8?"şerit (2 kopya)":"dörtlü")+" · 10×15 cm · sayfa doluyor";
+  var ya=yaziciAyar();
+  var m=(S.serit8?"şerit (2 kopya)":"dörtlü")+" · 10×15 cm · sayfa doluyor"
+    +(ya.dnpKesim?" · DNP kesici açık (yalnız şerit)":"")
+    +((+ya.olcek!==100||+ya.x||+ya.y)?" · ince ayar %"+ya.olcek:"");
   if(!S.realPrint)return {uyari:true,m:m+" · SİMÜLASYON",
     o:"Şu an gerçek yazıcıya basmaz, sadece ekranda gösterir. Etkinlikte panel → \"Gerçek baskı\" AÇIK olmalı."};
   return {m:m+" · gerçek baskı açık"};
@@ -3140,6 +3173,9 @@ function fillAdmin(){
   if($("#fAiBudget"))$("#fAiBudget").value=S.aiBudget||"";
   if($("#fAiBirim"))$("#fAiBirim").value=S.aiBirim||"";
   tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
+  (function(){var a=yaziciAyar(),n=$("#yaziciNot");if(!n)return;
+    n.innerHTML="Yazıcı ayarı: <b>"+(a.dnpKesim?"kesici AÇIK — yalnız Çift Şerit":"10×15 tek parça")+"</b>"
+      +((+a.olcek!==100||+a.x||+a.y)?" · ince ayar %"+a.olcek+", "+a.x+"/"+a.y+" mm":"");})();
   tg($("#tgOnay"),S.onayOn);tg($("#tgOnayZor"),S.onayZorunlu!==false);
   if($("#fOnayMetni"))$("#fOnayMetni").value=S.onayMetni||"";
   ["Ad","Mail","Tel"].forEach(function(k){var e2=$("#fVeri"+k);if(e2)e2.value=S["veri"+k]||"kapali"});
@@ -3153,7 +3189,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.54 · Video · E-posta · Şablonlar · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.55 · DNP · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -3396,7 +3432,7 @@ $("#testPrint").onclick=function(){
   x.fillStyle="#F6F0E6";x.font="600 40px Figtree,sans-serif";x.textAlign="center";
   x.fillText("10 × 15 KENARLIKSIZ TEST",W/2,H-90);
   composed=c.toDataURL("image/jpeg",.95);copies=1;$("#emergeImg").src=composed;
-  var pa=$("#printArea");pa.innerHTML="";var im=new Image();im.src=composed;pa.appendChild(im);
+  var pa=$("#printArea");pa.innerHTML="";var im=prImg(composed);pa.appendChild(im);
   setTimeout(function(){try{window.print()}catch(e){}},400);
 };
 
@@ -4469,7 +4505,7 @@ function hataYaz(kaynak,msg){
 }
 window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
 window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
-window.BOOTH={S:S,save:save,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 

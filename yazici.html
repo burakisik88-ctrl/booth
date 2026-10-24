@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>OBSKURA Yazıcı</title>
+<style>
+/* Düzen: solda kurulum adımları, sağda ayar + test kartları; dar ekranda tek sütun */
+:root{
+  --zemin:#F4EFE6; --kart:#FFFDF8; --mur:#1E1813; --govde:#4C3F33; --soluk:#8A7A69;
+  --cizgi:rgba(30,24,19,.13); --amber:#B9772E; --yesil:#2F6B48; --kirmizi:#9A2E22;
+  --ui:-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--zemin);color:var(--mur);font:15px/1.55 var(--ui)}
+.sar{max-width:1120px;margin:0 auto;padding:28px 18px 60px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;border-bottom:1px solid var(--cizgi);padding-bottom:14px}
+header h1{margin:0;font-size:26px;letter-spacing:.01em}
+header .alt{color:var(--soluk);font-size:14px}
+header a{margin-left:auto;color:var(--amber);text-decoration:none;font-weight:600;font-size:14px}
+.izgara{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:22px}
+@media (max-width:860px){.izgara{grid-template-columns:1fr}}
+section{background:var(--kart);border:1px solid var(--cizgi);border-radius:10px;padding:18px 20px;min-width:0}
+h2{margin:0 0 4px;font-size:18px}
+.aciklama{color:var(--govde);margin:0 0 12px;font-size:14px}
+ol{margin:0;padding-left:22px}
+ol li{margin:0 0 12px;color:var(--govde)}
+ol li b{color:var(--mur)}
+code{background:rgba(30,24,19,.06);padding:1px 6px;border-radius:4px;font-size:13px}
+.uyari{background:#FBEDE8;border-left:3px solid var(--kirmizi);padding:10px 12px;border-radius:6px;font-size:14px;color:#5e2b22;margin:12px 0 0}
+.bilgi{background:#EEF4EE;border-left:3px solid var(--yesil);padding:10px 12px;border-radius:6px;font-size:14px;color:#24412f;margin:12px 0 0}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--cizgi)}
+.sw:last-child{border-bottom:0}
+.sw .t{font-weight:600}
+.sw .n{font-weight:400;color:var(--soluk);font-size:13px;margin-top:2px}
+.tg{flex:none;width:52px;height:30px;border-radius:999px;background:#d9cfc2;position:relative;cursor:pointer;border:0;padding:0}
+.tg i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.tg[aria-pressed="true"]{background:var(--yesil)}
+.tg[aria-pressed="true"] i{left:25px}
+.tg:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.ayar{display:grid;grid-template-columns:1fr 110px;gap:8px 12px;align-items:center;margin-top:6px}
+.ayar label{font-size:14px;color:var(--govde)}
+.ayar input{width:100%;padding:8px 10px;border:1px solid var(--cizgi);border-radius:6px;font:inherit;font-variant-numeric:tabular-nums;text-align:right;background:#fff}
+.satir{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+button.b{font:600 14px var(--ui);padding:10px 14px;border-radius:8px;border:1px solid var(--cizgi);background:#fff;color:var(--mur);cursor:pointer}
+button.b.ana{background:var(--mur);color:#fff;border-color:var(--mur)}
+button.b:hover{border-color:var(--amber)}
+.durum{font-size:13px;color:var(--yesil);min-height:1.4em;margin-top:8px}
+.testler{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+@media (max-width:480px){.testler{grid-template-columns:1fr}}
+.test{border:1px solid var(--cizgi);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.test .ad{font-weight:700}
+.test .ne{font-size:13px;color:var(--govde);flex:1}
+.test button{align-self:flex-start}
+.kontrol{margin:10px 0 0;padding-left:20px;font-size:14px;color:var(--govde)}
+.kontrol li{margin:0 0 6px}
+.olcu{font-variant-numeric:tabular-nums}
+
+/* -------- BASKI -------- */
+#bas{display:none}
+@page{size:4in 6in;margin:0}
+@media print{
+  html,body{background:#fff!important;margin:0!important;padding:0!important}
+  .sar{display:none!important}
+  #bas{display:block!important}
+  .sayfa{width:4in;height:6in;position:relative;overflow:hidden;break-after:page;page-break-after:always;background:#fff;color:#000;font-family:var(--ui)}
+  .sayfa:last-child{break-after:auto;page-break-after:auto}
+  .sayfa img{width:4in;height:6in;display:block}
+}
+</style>
+</head>
+<body>
+<div class="sar">
+  <header>
+    <h1>Yazıcı kurulumu ve test</h1>
+    <span class="alt">DNP DS-RX1HS · RX1HS 4x6 medya (101,6 × 152,4 mm) · OBSKURA</span>
+    <a href="./">Kabine dön →</a>
+  </header>
+
+  <div class="izgara">
+    <!-- ================= KURULUM ================= -->
+    <section>
+      <h2>1 · Bir kere yapılacak kurulum</h2>
+      <p class="aciklama">Kabini çalıştıran bilgisayarda (Windows ya da Mac) yapılır. Sırayla git.</p>
+      <ol>
+        <li><b>Medya: RX1HS 4x6</b> (kutuda mavi yazı) — bir rulodan 700, setten 1.400 baskı. Kabin sayfayı tam bu ölçüde, 4×6 inç (101,6 × 152,4 mm) gönderiyor; büyütme/küçültme olmaz. Eski RX1 medyası (sarı yazılı) bu yazıcıda çalışmaz.</li>
+        <li><b>Sürücüyü kur.</b> DNP'nin resmî indirme sayfası:
+          <code>dnpphoto.com/en-us/New-Drivers-Landing</code> → DS-RX1HS → işletim sistemine uygun sürücüyü indir, kur. RX1 sürücüsü RX1HS ile de çalışıyor.</li>
+        <li><b>Yazıcıyı USB ile bağla, aç.</b> Bilgisayar yazıcıyı "DS-RX1" adıyla görmeli. Görmezse sürücü kurulumunu yazıcı takılıyken tekrarla.</li>
+        <li><b>Sürücü ayarı</b> (Windows: Ayarlar → Yazıcılar → DS-RX1 → Yazdırma tercihleri):
+          kağıt boyutu <code>PC 4x6</code> (4×6 inç — 10×15 değil), yön <b>Dikey</b>, kalite en yüksek. "Bunu varsayılan yazıcı yap" işaretle.</li>
+        <li><b>2 inç kesim</b> — sadece <b>şerit etkinliğinde</b> aç. Aynı menüde "Cutting / 2 inch cut" seçeneği. Açıkken yazıcı <u>her</u> 10×15'i ortadan ikiye keser; o yüzden sağdaki "Kesici" anahtarını da aç, kabin o etkinlikte sadece şerit modunu gösterir.</li>
+        <li><b>Chrome'da kabini aç</b>, panel (⚙ · PIN) → Baskı → <b>Gerçek baskı: AÇIK</b>.</li>
+        <li><b>İlk baskıda</b> Chrome'un yazdır ekranında: Hedef <b>DS-RX1</b>, Kağıt <b>4x6</b>, Kenar boşlukları <b>Yok</b>, Ölçek <b>100</b>, "Arka plan grafikleri" <b>işaretli</b>. Chrome bunları hatırlar.</li>
+        <li><b>Aşağıdaki testleri bas</b>, sonuçlara göre ince ayarı yap.</li>
+      </ol>
+      <div class="bilgi"><b>Her baskıda pencere çıkmasın:</b> Chrome'u <code>--kiosk-printing</code> ile başlatırsan yazdır ekranı açılmadan doğrudan varsayılan yazıcıya basar. Önce testleri pencereli bas, ayarlar oturunca bu moda geç.</div>
+      <div class="uyari"><b>iPad / tablet:</b> DNP'nin AirPrint'i yok, tabletten doğrudan basamaz. Kabini çalıştıran cihaz Windows ya da Mac olmalı; ya da tablet ekranı kalır, baskı yazıcının bağlı olduğu bilgisayardan çıkar. Hangisini yapacağını konuşalım.</div>
+    </section>
+
+    <!-- ================= AYAR + TEST ================= -->
+    <div style="display:grid;gap:22px;min-width:0">
+      <section>
+        <h2>2 · Kabin ayarı</h2>
+        <p class="aciklama">Buradaki ayar kabine kaydedilir. Kabin sekmesi açıksa ayardan sonra onu bir kez yenile.</p>
+        <div class="sw">
+          <div><div class="t">Kesici (2 inç kesim) açık</div><div class="n">Açıksa kabin sadece Çift Şerit gösterir, makas çizgisi basılmaz. Kapalıysa her mod 10×15 tek parça çıkar.</div></div>
+          <button class="tg" id="kesici" aria-pressed="false" aria-label="Kesici"><i></i></button>
+        </div>
+        <div class="ayar">
+          <label for="olcek">Ölçek (%) — kenarlar kesiliyorsa 98–99 dene</label>
+          <input id="olcek" type="number" step="0.5" min="90" max="105" value="100">
+          <label for="kx">Sağa kaydır (mm) — sola kaçıyorsa artı</label>
+          <input id="kx" type="number" step="0.5" min="-5" max="5" value="0">
+          <label for="ky">Aşağı kaydır (mm) — yukarı kaçıyorsa artı</label>
+          <input id="ky" type="number" step="0.5" min="-5" max="5" value="0">
+        </div>
+        <div class="satir">
+          <button class="b ana" id="kaydet">Kaydet</button>
+          <button class="b" id="sifirla">Sıfırla</button>
+        </div>
+        <div class="durum" id="durum"></div>
+      </section>
+
+      <section>
+        <h2>3 · Test baskıları</h2>
+        <p class="aciklama">Her test tek kağıt. Önce 1 ve 2'yi bas — ölçek ve kayma onlardan anlaşılır.</p>
+        <div class="testler">
+          <div class="test"><div class="ad">1 · Kenar kontrolü</div><div class="ne">Kenarlardan 1–5 mm çizgiler. Kâğıtta hangi çizgi görünüyorsa kenardan o kadar kesiliyor.</div><button class="b" data-t="kenar">Bas</button></div>
+          <div class="test"><div class="ad">2 · Cetvel</div><div class="ne">80 mm ve 130 mm çizgi. Metreyle ölç: tam tutuyorsa ölçek doğru.</div><button class="b" data-t="cetvel">Bas</button></div>
+          <div class="test"><div class="ad">3 · Kabin yolu</div><div class="ne">Kabinin bastığı gibi 1200×1800 görsel (4×6 @300 dpi) olarak basılır. 2 ile aynı ölçüdeyse kabin baskısı doğru.</div><button class="b" data-t="kabin">Bas</button></div>
+          <div class="test"><div class="ad">4 · Şerit kesimi</div><div class="ne">İki 2×6 şerit. Kesici açıkken bas: kesim tam ortadaki boşluktan geçmeli.</div><button class="b" data-t="serit">Bas</button></div>
+          <div class="test"><div class="ad">5 · Renk ve ten</div><div class="ne">Gri basamaklar, ten tonları, saf renkler. Gölgede basamaklar ayrı görünmeli.</div><button class="b" data-t="renk">Bas</button></div>
+          <div class="test"><div class="ad">6 · Netlik</div><div class="ne">5–12 punto yazı ve ince çizgiler. Logo/yazı okunurluğunu gösterir.</div><button class="b" data-t="net">Bas</button></div>
+        </div>
+        <ul class="kontrol">
+          <li><b>Test 1:</b> görünen ilk çizginin numarasını not et (ör. "üstte 2, altta 1").</li>
+          <li><b>Test 2:</b> 80 mm çizgi 79 çıkıyorsa ölçek ≈ 101,3 — 81 çıkıyorsa ≈ 98,8.</li>
+          <li><b>Test 3, Test 2'den farklıysa</b> bana yaz, kabin baskı kodunda sorun var demektir.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="bas"></div>
+
+<script>
+(function(){
+var ANAH="booth.yazici";
+function oku(){var d={olcek:100,x:0,y:0,dnpKesim:false};try{var o=JSON.parse(localStorage.getItem(ANAH)||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}return d}
+function yaz(d){try{localStorage.setItem(ANAH,JSON.stringify(d));return true}catch(e){return false}}
+var $=function(s){return document.querySelector(s)};
+var a=oku();
+function goster(){
+  $("#kesici").setAttribute("aria-pressed",a.dnpKesim?"true":"false");
+  $("#olcek").value=a.olcek;$("#kx").value=a.x;$("#ky").value=a.y;
+}
+goster();
+function al(){
+  function n(id,v0,mn,mx){var v=parseFloat(String($(id).value).replace(",","."));if(!isFinite(v))v=v0;return Math.min(mx,Math.max(mn,v))}
+  a.olcek=n("#olcek",100,90,105);a.x=n("#kx",0,-5,5);a.y=n("#ky",0,-5,5);
+}
+function not(t,hata){var d=$("#durum");d.style.color=hata?"var(--kirmizi)":"var(--yesil)";d.textContent=t;}
+$("#kesici").onclick=function(){a.dnpKesim=!a.dnpKesim;goster();al();
+  not(yaz(a)?(a.dnpKesim?"Kesici açık kaydedildi — kabin sadece Çift Şerit gösterecek. Sürücüde 2 inç kesimi de aç.":"Kesici kapalı kaydedildi — tüm modlar 10×15 tek parça."):"Kaydedilemedi (gizli pencere olabilir).",false)};
+$("#kaydet").onclick=function(){al();goster();not(yaz(a)?"Kaydedildi: ölçek %"+a.olcek+", sağa "+a.x+" mm, aşağı "+a.y+" mm.":"Kaydedilemedi (gizli pencere olabilir).",false)};
+$("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim};yaz(a);goster();not("İnce ayar sıfırlandı.")};
+
+/* ---------- test sayfaları (mm ile — tarayıcı ölçeği dışında hiçbir şeye bağlı değil) ---------- */
+var mm=function(v){return v+"mm"};
+var PW=101.6, PH=152.4;   /* RX1HS 4x6 medya: 4×6 inç */
+function kalib(el){ /* kabin ince ayarını test sayfalarına da uygula: ayar sonrası tekrar basınca etkisi görünsün */
+  var s=(+a.olcek||100)/100;
+  if(s!==1||a.x||a.y){el.style.transform="translate("+a.x+"mm,"+a.y+"mm) scale("+s+")";el.style.transformOrigin="50% 50%";}
+  return el;
+}
+function sayfa(ic){var d=document.createElement("div");d.className="sayfa";var i=document.createElement("div");
+  i.style.cssText="position:absolute;inset:0";i.innerHTML=ic;d.appendChild(kalib(i));return d}
+function cizgi(x,y,w,h,renk){return '<div style="position:absolute;left:'+mm(x)+';top:'+mm(y)+';width:'+mm(w)+';height:'+mm(h)+';background:'+(renk||"#000")+'"></div>'}
+function yazi(x,y,t,boy,ek){return '<div style="position:absolute;left:'+mm(x)+';top:'+mm(y)+';font-size:'+boy+'pt;line-height:1;white-space:nowrap;'+(ek||"")+'">'+t+'</div>'}
+
+var TEST={
+kenar:function(){
+  var h="",i;
+  for(i=1;i<=5;i++){ var r=(i%2)?"#C2482B":"#1E1813";
+    h+=cizgi(0,i,PW,0.25,r)+cizgi(0,PH-i,PW,0.25,r)+cizgi(i,0,0.25,PH,r)+cizgi(PW-i,0,0.25,PH,r);
+    /* etiketler kaydırmalı dizilir — çizgiler 1 mm arayla, aynı yere yazılınca üst üste biniyordu */
+    var ex=14+i*14, ey=24+i*20;
+    h+=yazi(ex,i+0.4,i+" mm",5,"color:"+r)+yazi(ex,PH-i-2.4,i+" mm",5,"color:"+r)
+      +yazi(i+0.6,ey,i,5,"color:"+r)+yazi(PW-i-2.4,ey,i,5,"color:"+r);
+  }
+  h+=yazi(20,60,"KENAR KONTROLÜ",14,"font-weight:700")+yazi(20,68,"Görünen ilk çizginin numarası =",8)+yazi(20,72.5,"o kenardan kesilen milimetre.",8);
+  h+=yazi(20,82,"Üst · Alt · Sol · Sağ ayrı ayrı not et.",8)+yazi(20,142,"OBSKURA · yazıcı testi 1 · 4×6 inç",6,"color:#888");
+  return h;
+},
+cetvel:function(){
+  var h="",i;
+  h+=cizgi(10,30,80,0.3);for(i=0;i<=80;i++){var u=(i%10===0)?4:(i%5===0?2.5:1.4);h+=cizgi(10+i,30-u,0.2,u);if(i%10===0)h+=yazi(10+i-1,24,i,5)}
+  h+=yazi(10,36,"80 mm — metreyle ölç",8,"font-weight:600");
+  h+=cizgi(50,10,0.3,130);for(i=0;i<=130;i+=5){var u2=(i%10===0)?4:2.2;h+=cizgi(50,10+i,u2,0.2);if(i%10===0)h+=yazi(55,10+i-1.3,i,5)}
+  h+=yazi(60,74,"130 mm",9,"font-weight:600")+yazi(60,79,"dikey",7);
+  h+=yazi(12,96,"Ölçtüğün",8)+yazi(12,100.5,"80 mm → ölçek = 80 ÷ ölçülen × 100",7);
+  h+='<div style="position:absolute;left:12mm;top:108mm;width:30mm;height:30mm;border:0.3mm solid #000;box-sizing:border-box"></div>'+yazi(12,139.5,"30×30 mm kare",6);
+  return h;
+},
+serit:function(){
+  var h="";
+  function tek(x0,etiket){
+    var sw=560*PW/1200, s="";
+    s+='<div style="position:absolute;left:'+mm(x0)+';top:0;width:'+mm(sw)+';height:'+mm(PH)+';background:#1E1813"></div>';
+    for(var i=0;i<4;i++)s+='<div style="position:absolute;left:'+mm(x0+3)+';top:'+mm(4+i*33.2)+';width:'+mm(sw-6)+';height:31mm;background:linear-gradient(135deg,#8C6A4A,#D9B98C)"></div>'+yazi(x0+15,4+i*33.2+13,"KARE "+(i+1),8,"color:#fff;font-weight:700");
+    s+=yazi(x0+12,143,etiket,8,"color:#F4EFE6;font-weight:700");return s}
+  /* kabinin şerit düzeniyle birebir: 1200 px = 101,6 mm. Şeritler 20–580 | 620–1180 px,
+     DNP 2 inç kesim x=600 px = 50,8 mm (sayfanın tam ortası) */
+  var k=PW/1200;
+  h+=tek(20*k,"SOL ŞERİT")+tek(620*k,"SAĞ ŞERİT");
+  h+=cizgi(PW/2-0.05,0,0.1,PH,"#C2482B");
+  h+=yazi(PW/2-14,1.2,"2 inç kesim burada ↓",5,"color:#C2482B");
+  return h;
+},
+renk:function(){
+  var h="",i;
+  h+=yazi(8,6,"RENK VE TEN",12,"font-weight:700");
+  for(i=0;i<11;i++){var v=Math.round(i*25.5);h+='<div style="position:absolute;left:'+mm(8+i*7.6)+';top:14mm;width:7.6mm;height:16mm;background:rgb('+v+','+v+','+v+')"></div>'+yazi(9+i*7.6,31.5,i*10,5)}
+  h+=yazi(8,36,"gri basamak — 0 ve 10 farklı görünmeli",6);
+  var ten=["#F3D9C6","#E9C2A3","#D7A07B","#BE8460","#9C6443","#6E432C"];
+  for(i=0;i<6;i++)h+='<div style="position:absolute;left:'+mm(8+i*14)+';top:44mm;width:13mm;height:20mm;background:'+ten[i]+'"></div>';
+  h+=yazi(8,66,"ten tonları — sarı/yeşil kaçmamalı",6);
+  var saf=["#FF0000","#00A651","#0057B8","#FFD200","#E6007E","#00AEEF"];
+  for(i=0;i<6;i++)h+='<div style="position:absolute;left:'+mm(8+i*14)+';top:74mm;width:13mm;height:20mm;background:'+saf[i]+'"></div>';
+  h+=yazi(8,96,"saf renkler",6);
+  h+='<div style="position:absolute;left:8mm;top:104mm;width:84mm;height:18mm;background:linear-gradient(90deg,#000,#fff)"></div>'+yazi(8,123.5,"yumuşak geçiş — bant/çizgi olmamalı",6);
+  h+='<div style="position:absolute;left:8mm;top:130mm;width:41mm;height:12mm;background:#000"></div><div style="position:absolute;left:51mm;top:130mm;width:41mm;height:12mm;background:#fff;border:0.2mm solid #ccc;box-sizing:border-box"></div>';
+  return h;
+},
+net:function(){
+  var h="",y=10,boy=[5,6,7,8,9,10,12];
+  h+=yazi(8,4,"NETLİK",12,"font-weight:700");
+  boy.forEach(function(b){y+=b*0.55+3;h+=yazi(8,y,b+" pt — Türk Pediatri Kongresi 2026 · İstanbul",b)});
+  y+=10;
+  for(var i=0;i<20;i++)h+=cizgi(8+i*2,y,0.15+(i%4)*0.1,18);
+  h+=yazi(52,y+6,"ince çizgiler ayrık görünmeli",6);
+  y+=26;
+  h+='<div style="position:absolute;left:8mm;top:'+mm(y)+';width:84mm;height:30mm;background:#1E1813"></div>';
+  h+=yazi(14,y+9,"Beyaz yazı koyu bantta",11,"color:#F4EFE6;font-weight:600")+yazi(14,y+18,"alt bant logo/yazı okunurluğu",7,"color:#D9CDBE");
+  return h;
+},
+kabin:function(){
+  /* kabinin yaptığı gibi: 1200×1800 canvas → JPEG → img 4×6 inç */
+  var W=1200,H=1800,c=document.createElement("canvas");c.width=W;c.height=H;var x=c.getContext("2d");
+  x.fillStyle="#fff";x.fillRect(0,0,W,H);
+  var px=W/PW;    /* kabin 1200 px'i 4 inç (101,6 mm) genişliğe basıyor: 1 mm = 11,811 px = 300 dpi */
+  x.fillStyle="#000";
+  var y0=30*px;x.fillRect(10*px,y0,80*px,0.3*px);
+  for(var i=0;i<=80;i++){var u=(i%10===0)?4:(i%5===0?2.5:1.4);x.fillRect((10+i)*px,y0-u*px,0.2*px,u*px);if(i%10===0){x.font=(5*0.3528*px)+"px sans-serif";x.fillText(i,(10+i-1)*px,(24+1.5)*px)}}
+  x.font="600 "+(8*0.3528*px)+"px sans-serif";x.fillText("KABİN YOLU · 80 mm — Test 2 ile karşılaştır · 300 dpi",10*px,38*px);
+  x.fillRect(50*px,10*px,0.3*px,130*px);
+  for(var j=0;j<=130;j+=5){var u2=(j%10===0)?4:2.2;x.fillRect(50*px,(10+j)*px,u2*px,0.2*px)}
+  x.font="600 "+(9*0.3528*px)+"px sans-serif";x.fillText("130 mm",60*px,76*px);
+  x.strokeStyle="#000";x.lineWidth=0.3*px;x.strokeRect(12*px,108*px,30*px,30*px);
+  x.font=(6*0.3528*px)+"px sans-serif";x.fillText("30×30 mm kare",12*px,142*px);
+  var im=new Image();im.src=c.toDataURL("image/jpeg",.95);
+  var d=document.createElement("div");d.className="sayfa";kalib(im);d.appendChild(im);return d;
+}
+};
+
+function bas(t){
+  var hedef=document.getElementById("bas");hedef.innerHTML="";
+  var r=TEST[t]();
+  var el=(typeof r==="string")?sayfa(r):r;
+  hedef.appendChild(el);
+  var img=el.querySelector("img");
+  var git=function(){setTimeout(function(){try{window.print()}catch(e){}},150)};
+  if(img&&img.decode)img.decode().then(git,git);else git();
+}
+Array.prototype.forEach.call(document.querySelectorAll("[data-t]"),function(b){b.onclick=function(){bas(b.getAttribute("data-t"))}});
+})();
+</script>
+</body>
+</html>
