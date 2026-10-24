@@ -2496,14 +2496,20 @@ function geminiImage(parts,outW,outH){
    Uzun kural listesi, poz değiştirme ve "siyah-beyaz yap" talimatı modeli yüzü yeniden çizmeye itiyordu. */
 var FIGUR_PROMPT="Image 1 is the scene. Put the person from image 2 in the center, exactly as they are, and the person or people from image 3 standing beside them about half a step apart, shoulders not touching, in front of the backdrop. Realistic heights, matching the scene's light and shadows. Keep everyone's faces and clothes exactly the same, including casual clothes like shorts or sneakers; if only the upper body is visible, continue the same outfit naturally. It must look like one real photograph.";
 var FIG_W=1024,FIG_H=1536; /* 2:3 — 6x4 baskı; Instagram 4:5 bundan kırpılır */
+/* ton: saygılı (anma) → eller yanda/önde, cepte asla · eğlenceli (sanatçı) → rahat, gülümseyen, sarılma yok */
+var FIGUR_TON={
+  saygili:" The person or people from image 3 stand upright and respectful, hands at their sides or clasped in front, never in pockets.",
+  eglenceli:" A friendly, relaxed photo-op pose, smiling; no hugging and no arms around each other."
+};
 function figurKare(src,st){
+  var PR=FIGUR_PROMPT+(FIGUR_TON[st.ton]||"");
   return Promise.all([loadImg(st.img),loadImg(st.fig)]).then(function(im){
-    var p=(st.motor==="gpt")?gptImage([im[0],im[1],src],FIGUR_PROMPT,FIG_W,FIG_H)
+    var p=(st.motor==="gpt")?gptImage([im[0],im[1],src],PR,FIG_W,FIG_H)
       :geminiImage([
         {inline_data:{mime_type:"image/jpeg",data:toB64(im[0],1536)}},
         {inline_data:{mime_type:"image/jpeg",data:toB64(im[1],1536)}},
         {inline_data:{mime_type:"image/jpeg",data:toB64(src,1536)}},
-        {text:FIGUR_PROMPT}],FIG_W,FIG_H);
+        {text:PR}],FIG_W,FIG_H);
     return p.then(function(cv){if(st.sepya)sepyaYap(cv);if(st.etiket&&!st.etiketYok)etiketYaz(cv,st.etiket);return cv});
   });
 }
@@ -2582,7 +2588,7 @@ function figurAkis(){
   var myGen=aiGen;
   aiState("work");go("ai");
   $("#aiMsg").textContent="Fotoğrafın hazırlanıyor — 20-40 saniye sürebilir…";
-  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
+  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,ton:figurSahne.ton||(figurSahne.sepya?"saygili":"eglenceli"),sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
   figurKare(shotsEnh[0],st).then(function(c){
     if(myGen!==aiGen)return;
     aiShots=[c];figurEkran(true);compose();chips();go("review");
@@ -2609,7 +2615,7 @@ function figurKart(img,w,h){
   var k=Math.round(w*.045),alt=Math.round(h*.13);
   cover(x,img,k,k,w-2*k,h-k-alt);
   x.strokeStyle="rgba(0,0,0,.08)";x.lineWidth=1;x.strokeRect(k+.5,k+.5,w-2*k-1,h-k-alt-1);
-  var bas=((figurSahne&&(figurSahne.altYazi||figurSahne.name))||S.evt||"").trim();
+  var bas=((figurSahne&&(figurSahne.altYazi||figurSahne.name))||S.evt||"").trim().replace(/^["“”'‘’«»]+|["“”'‘’«»]+$/g,"").trim();
   var tarih=new Date().toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"});
   x.textAlign="center";x.fillStyle="#2A2420";
   var fs=Math.round(h*.03);
@@ -3646,7 +3652,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.64 · figür prompt: yarım adım mesafe, kıyafet korunur · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.65 · ton prompt (saygılı: eller cepte değil · eğlenceli: sarılma yok) · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
