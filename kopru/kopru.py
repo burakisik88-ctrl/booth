@@ -26,7 +26,7 @@ import json, os, re, subprocess, sys, time, threading, struct, glob
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-SURUM = "1.2"
+SURUM = "1.3"
 PORT = int(os.environ.get("OBSKURA_PORT", "8740"))
 EV = os.path.expanduser("~/OBSKURA-Baski")
 ISLER = os.path.join(EV, "isler")
@@ -246,7 +246,7 @@ def jpeg_pdf(jpeg, w_pt, h_pt, cevir=False):
     nesneler.append(b"<< /Type /Catalog /Pages 2 0 R >>")
     nesneler.append(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
     nesneler.append(("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.3f %.3f] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>" % (w_pt, h_pt)).encode())
-    renk = "/ICCBased 6 0 R" if icc else "/DeviceRGB"
+    renk = "[/ICCBased 6 0 R]" if icc else "/DeviceRGB"
     nesneler.append((("<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace %s /BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n" % (gw, gh, renk, len(jpeg))).encode() + jpeg + b"\nendstream"))
     if cevir:  # görüntünün eni sayfanın boyuna: 90° saat yönü tersine
         icerik = ("q 0 %.3f %.3f 0 %.3f 0 cm /Im0 Do Q" % (h_pt, -w_pt, w_pt)).encode()
