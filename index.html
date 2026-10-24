@@ -2529,15 +2529,29 @@ function _blob(img,max){
   return new Promise(function(res){c.toBlob(function(b){res(b)},"image/png")});
 }
 /* OpenAI görsel düzenleme: birden çok referans görsel + kısa prompt, her çağrı hafızasız */
+/* model erişimi yoksa (doğrulanmamış hesap, kapatılmış model) sıradaki modele geç */
+var GPT_MODELLER=["gpt-image-2.5-sunburst","gpt-image-2","gpt-image-1.5"];
 function gptImage(imgs,prompt,outW,outH){
+  var liste=S.gptModel?[S.gptModel]:GPT_MODELLER.slice(),i=0;
+  function dene(){
+    return gptImage1(imgs,prompt,outW,outH,liste[i]).catch(function(e){
+      var m=String((e&&e.message)||"");
+      if(i<liste.length-1&&/\((400|403|404)\)/.test(m)&&/model|verif|access|exist/i.test(m)){i++;return dene()}
+      throw e;
+    });
+  }
+  return dene();
+}
+function gptImage1(imgs,prompt,outW,outH,model){
   if(aiKalan()<=0)return Promise.reject(new Error("Bu etkinlik için ayrılan AI hakkı doldu."));
   if(!S.gptKey)return Promise.reject(new Error("OpenAI anahtarı yok — panel → Yapay Zekâ → OpenAI API anahtarı"));
-  return Promise.all(imgs.map(function(im){return _blob(im,1536)})).then(function(bl){
-    var fd=new FormData();fd.append("model",S.gptModel||"gpt-image-1");fd.append("prompt",prompt);
-    fd.append("size","1024x1536");fd.append("quality","high");fd.append("input_fidelity","high");fd.append("n","1");
-    bl.forEach(function(b,i){fd.append("image[]",b,"g"+(i+1)+".png")});
-    var ctrl=new AbortController(),tmo=setTimeout(function(){ctrl.abort()},150000);
-    return fetch("https://api.openai.com/v1/images/edits",{method:"POST",headers:{"Authorization":"Bearer "+S.gptKey},body:fd,signal:ctrl.signal})
+  /* OpenAI 23.10.2026'da gpt-image-1'i kapattı. Yeni uç JSON gövde + images:[{image_url:dataURL}] ister;
+     gpt-image-2.x'te input_fidelity gönderilmez. Model panelden değiştirilebilir (S.gptModel). */
+  var u=imgs.map(function(im){return "data:image/jpeg;base64,"+toB64(im,1536)});
+  return Promise.resolve(u).then(function(u){
+    var body={model:model,prompt:prompt,images:u.map(function(x){return {image_url:x}}),size:"1024x1536",quality:"high",output_format:"jpeg",n:1};
+    var ctrl=new AbortController(),tmo=setTimeout(function(){ctrl.abort()},180000);
+    return fetch("https://api.openai.com/v1/images/edits",{method:"POST",headers:{"Authorization":"Bearer "+S.gptKey,"Content-Type":"application/json"},body:JSON.stringify(body),signal:ctrl.signal})
       .then(function(r){clearTimeout(tmo);return r.json().catch(function(){return {}}).then(function(j){
         if(!r.ok){var m=(j&&j.error&&j.error.message)?String(j.error.message).slice(0,180):"";
           if(r.status===401)throw new Error("OpenAI anahtarı geçersiz"+(m?" — "+m:""));
@@ -2545,7 +2559,7 @@ function gptImage(imgs,prompt,outW,outH){
           throw new Error("OpenAI hatası ("+r.status+")"+(m?" — "+m:""));}
         var b=j&&j.data&&j.data[0]&&j.data[0].b64_json;if(!b)throw new Error("OpenAI görsel döndürmedi");
         S.aiUsed=(S.aiUsed|0)+1;try{localStorage.setItem("booth.aiused",String(S.aiUsed))}catch(e){}save();
-        return loadImg("data:image/png;base64,"+b).then(function(im){
+        return loadImg("data:image/jpeg;base64,"+b).then(function(im){
           var out=document.createElement("canvas");out.width=outW;out.height=outH;cover(out.getContext("2d"),im,0,0,outW,outH);return out;});
       })}).catch(function(e){clearTimeout(tmo);if(e.name==="AbortError")throw new Error("OpenAI süre aşıldı");throw e});
   });
@@ -3632,7 +3646,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.62 · etkinlik modu + anı çerçevesi + şerit baskısı iş başına kesilir · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.63 · GPT görsel modeli güncellendi (gpt-image-2.5) · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
