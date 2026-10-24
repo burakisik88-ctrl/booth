@@ -50,6 +50,13 @@ button.b:hover{border-color:var(--amber)}
 .profil button small{display:block;font-weight:400;color:var(--soluk);font-size:12px;margin-top:2px}
 .profil button[aria-pressed="true"]{border-color:var(--yesil);box-shadow:inset 0 0 0 1px var(--yesil);background:#F1F7F2}
 .durum{font-size:13px;color:var(--yesil);min-height:1.4em;margin-top:8px}
+.kopru{border:1px solid var(--cizgi);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--govde);background:#fff;line-height:1.5}
+.kod{display:flex;gap:8px;align-items:stretch;margin:8px 0 0}
+.kod code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;padding:9px 10px;font-size:12.5px;display:block}
+.secenek{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:10px}
+@media (max-width:480px){.secenek{grid-template-columns:1fr}}
+.secenek label{font-size:13px;color:var(--govde);display:flex;flex-direction:column;gap:4px}
+.secenek select{font:inherit;padding:7px 8px;border:1px solid var(--cizgi);border-radius:6px;background:#fff}
 .testler{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 @media (max-width:480px){.testler{grid-template-columns:1fr}}
 .test{border:1px solid var(--cizgi);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
@@ -95,7 +102,7 @@ button.b:hover{border-color:var(--amber)}
           kağıt boyutu <code>PC 4x6</code> (4×6 inç — 10×15 değil), kalite en yüksek. Yön ayarına dokunma: kabin sayfayı sürücünün tanıdığı gibi yatay gönderir. "Bunu varsayılan yazıcı yap" işaretle.</li>
         <li><b>2 inç kesim</b> — sadece <b>şerit etkinliğinde</b> aç. Aynı menüde "Cutting / 2 inch cut" seçeneği. Açıkken yazıcı <u>her</u> 10×15'i ortadan ikiye keser; o yüzden sağdaki "Kesici" anahtarını da aç, kabin o etkinlikte sadece şerit modunu gösterir.</li>
         <li><b>Chrome'da kabini aç</b>, panel (⚙ · PIN) → Baskı → <b>Gerçek baskı: AÇIK</b>.</li>
-        <li><b>İlk baskıda</b> Chrome'un yazdır ekranında: Hedef <b>Dai Nippon Printing DS…</b>, Kağıt boyutu <b>156 x 105 mm</b> (DNP 4x6'yı böyle, yatay ve kesim paylı listeler), Kenar boşlukları <b>Yok</b>, Ölçek <b>Varsayılan</b>. Önizlemede sayfa <b>yatay</b>, fotoğraf <b>yan yatmış</b> görünür — doğrusu bu; sağ üstte <b>1 kağıt</b> yazmalı. Chrome bunları hatırlar.</li>
+        <li><b>Mac'te:</b> sağdaki <b>Baskı köprüsü</b>nü kur, bu adımı atla. <b>Windows'ta ilk baskıda</b> Chrome'un yazdır ekranında: Hedef <b>Dai Nippon Printing DS…</b>, Kağıt boyutu <b>156 x 105 mm</b> (DNP 4x6'yı böyle, yatay ve kesim paylı listeler), Kenar boşlukları <b>Yok</b>, Ölçek <b>Varsayılan</b>. Önizlemede sayfa <b>yatay</b>, fotoğraf <b>yan yatmış</b> görünür — doğrusu bu; sağ üstte <b>1 kağıt</b> yazmalı. Chrome bunları hatırlar.</li>
         <li><b>Aşağıdaki testleri bas</b>, sonuçlara göre ince ayarı yap.</li>
       </ol>
       <div class="bilgi"><b>Her baskıda pencere çıkmasın:</b> Chrome'u <code>--kiosk-printing</code> ile başlatırsan yazdır ekranı açılmadan doğrudan varsayılan yazıcıya basar. Önce testleri pencereli bas, ayarlar oturunca bu moda geç.</div>
@@ -104,6 +111,16 @@ button.b:hover{border-color:var(--amber)}
 
     <!-- ================= AYAR + TEST ================= -->
     <div style="display:grid;gap:22px;min-width:0">
+      <section>
+        <h2>Baskı köprüsü (Mac'te şart)</h2>
+        <p class="aciklama">Chrome'un yazdır ekranı Mac'te DNP 4x6'yı basamıyor (kâğıdı kendi içinde dik çevirip DNP'nin tanımadığı ölçü gönderiyor). Köprü, Mac'te arka planda çalışan küçük bir program: kabin fotoğrafı ona gider, o da DNP'ye doğru kâğıt adıyla basar. Pencere çıkmaz. Bir kere kurulur, Mac her açıldığında kendiliğinden çalışır.</p>
+        <div class="kopru" id="kDurum" role="status">Köprü kontrol ediliyor…</div>
+        <div class="kod"><code id="kKur">curl -fsSL https://burakisik88-ctrl.github.io/booth/kopru/kur.sh | bash</code><button class="b" id="kKopyala">Kopyala</button></div>
+        <p class="aciklama" style="margin:8px 0 0">Kurulum: Spotlight'ta <b>Terminal</b>'i aç, satırı yapıştır, Enter. Şifre istemez. Sonunda "KURULUM TAMAM" yazar. Chrome "yerel ağdaki cihazlara erişim" izni sorarsa <b>İzin ver</b>.</p>
+        <div class="secenek" id="kSecenek"></div>
+        <div class="satir"><button class="b" id="kYenile">Yeniden kontrol et</button></div>
+      </section>
+
       <section>
         <h2>2 · Kabin ayarı</h2>
         <p class="aciklama">Buradaki ayar kabine kaydedilir. Kabin sekmesi açıksa ayardan sonra onu bir kez yenile.</p>
@@ -156,7 +173,7 @@ button.b:hover{border-color:var(--amber)}
 <script>
 (function(){
 var ANAH="booth.yazici";
-function oku(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp"};try{var o=JSON.parse(localStorage.getItem(ANAH)||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}return d}
+function oku(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp",yol:"oto",secenek:{}};try{var o=JSON.parse(localStorage.getItem(ANAH)||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}return d}
 function yaz(d){try{localStorage.setItem(ANAH,JSON.stringify(d));return true}catch(e){return false}}
 var $=function(s){return document.querySelector(s)};
 var a=oku();
@@ -230,6 +247,72 @@ function sayfaStili(){
     +"}";
 }
 /* ===== /BASKI YÜZEYİ ===== */
+/* ===== BASKI KÖPRÜSÜ (aynısı yazici.html'de — ikisi birlikte değişir) =====
+   Mac'te arka planda çalışan OBSKURA köprüsü (kopru/kopru.py, yalnız 127.0.0.1:8740). Chrome'un yazdır
+   ekranı Mac'te DNP 4x6'yı (156x105, eni boyundan büyük) kendi içinde dik çevirip "özel kağıt" gönderiyor
+   (Chromium hata 40267436), DNP basmıyor. Köprü fotoğrafı sürücünün KENDİ kağıt adıyla, kağıt ölçüsünde
+   PDF'e koyup basar; pencere çıkmaz. a.yol: "oto" (köprü varsa köprü, yoksa tarayıcı) | "kopru" | "tarayici". */
+var KOPRU="http://127.0.0.1:8740";
+var _kopruOnb={t:0,v:null};
+function kopruDurum(taze){
+  if(!taze&&_kopruOnb.v&&Date.now()-_kopruOnb.t<8000)return Promise.resolve(_kopruOnb.v);
+  var kont=("AbortController" in window)?new AbortController():null;
+  var zaman=setTimeout(function(){if(kont)kont.abort()},2500);
+  return fetch(KOPRU+"/durum"+(taze?"?taze":""),{cache:"no-store",signal:kont?kont.signal:undefined})
+    .then(function(r){return r.json()})
+    .catch(function(){return {ok:false,yok:true,hata:"köprü yanıt vermiyor (Mac'te kurulu ve açık mı?)"}})
+    .then(function(d){clearTimeout(zaman);_kopruOnb={t:Date.now(),v:d};return d});
+}
+/* DNP 2 inç kesim: sürücüdeki "cut" seçeneğinden — açıkken adında 2 geçen seçim, kapalıyken normal/off */
+function kopruKesim(d,acik){
+  if(!d||!d.secenekler)return null;
+  var o=d.secenekler.filter(function(s){return /cut/i.test(s.anahtar+" "+s.yazi)})[0];if(!o)return null;
+  var c=o.secimler.filter(function(c){return acik?/2/.test(c.ad+" "+c.yazi):/normal|off|none|standard|disable|^no/i.test(c.ad+" "+c.yazi)})[0];
+  return c?{anahtar:o.anahtar,secim:c.ad,yazi:c.yazi}:{anahtar:o.anahtar,secim:null,yazi:null};
+}
+function kopruSecenekleri(d,a){
+  a=a||yaziciAyar();
+  var out=[],k=kopruKesim(d,a.dnpKesim),sec=a.secenek||{};
+  if(k&&k.secim)out.push(k.anahtar+"="+k.secim);
+  for(var n in sec)if(sec[n]&&!(k&&n===k.anahtar))out.push(n+"="+sec[n]);
+  return out;
+}
+/* Promise<"kopru"|"kopru-yok"|"tarayici"> */
+function baskiYolu(){
+  var a=yaziciAyar(),mac=/Mac/i.test(navigator.platform||navigator.userAgent||"");
+  if(a.yol==="tarayici"||a.profil==="std")return Promise.resolve("tarayici");
+  /* Mac'te tarayıcı yolu DNP'de zaten basmaz: köprü yoksa "kopru-yok" (kare kuyruğa alınır). Windows'ta Chrome çalışır. */
+  return kopruDurum().then(function(d){return d&&d.ok?"kopru":((a.yol==="kopru"||mac)?"kopru-yok":"tarayici")});
+}
+/* dataUrl: baskiYuzeyi çıktısı (1843x1240 JPEG). Promise<{ok,is,hata}> */
+function kopruBas(dataUrl,kopya,a){
+  a=a||yaziciAyar();
+  return kopruDurum().then(function(d){
+    if(!d||!d.ok)return {ok:false,hata:(d&&d.hata)||"köprü hazır değil"};
+    var k=kopruKesim(d,a.dnpKesim);
+    if(a.dnpKesim&&!(k&&k.secim))return {ok:false,hata:"sürücüde 2 inç kesim seçeneği bulunamadı — yazici.html'de seçenekleri kontrol et"};
+    var q="kopya="+Math.max(1,kopya|0||1);
+    kopruSecenekleri(d,a).forEach(function(s){q+="&o="+encodeURIComponent(s)});
+    return fetch(dataUrl).then(function(r){return r.blob()}).then(function(b){
+      return fetch(KOPRU+"/bas?"+q,{method:"POST",headers:{"Content-Type":"image/jpeg"},body:b});
+    }).then(function(r){return r.json().catch(function(){return {ok:false,hata:"köprü HTTP "+r.status}})});
+  }).catch(function(e){return {ok:false,hata:"köprüye ulaşılamadı: "+((e&&e.message)||e)}});
+}
+/* iş bitene kadar yazıcıyı izle; hata nedeni görünürse bir kez bildir */
+function kopruIzle(no,bildir){
+  if(!no)return;var n=0,dendi=false;
+  (function tur(){
+    n++;
+    fetch(KOPRU+"/is?no="+encodeURIComponent(no),{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
+      var y=s.yazici||{},neden=String(y.nedenler||"none");
+      if(!dendi&&(y.durum==="durdu"||/error|offline|media-(empty|needed|jam)|marker-supply-empty|cover-open|door-open/i.test(neden))){
+        dendi=true;if(bildir)bildir((y.durum==="durdu"?"yazıcı durdu":"yazıcı uyarısı")+" — "+(y.mesaj||neden));
+      }
+      if(s.bekliyor&&n<40)setTimeout(tur,4000);
+    }).catch(function(){});
+  })();
+}
+/* ===== /BASKI KÖPRÜSÜ ===== */
 function goster(){
   $("#kesici").setAttribute("aria-pressed",a.dnpKesim?"true":"false");
   $("#prDnp").setAttribute("aria-pressed",a.profil!=="std"?"true":"false");
@@ -244,9 +327,9 @@ function al(){
 }
 function not(t,hata){var d=$("#durum");d.style.color=hata?"var(--kirmizi)":"var(--yesil)";d.textContent=t;}
 $("#kesici").onclick=function(){a.dnpKesim=!a.dnpKesim;goster();al();
-  not(yaz(a)?(a.dnpKesim?"Kesici açık kaydedildi — kabin sadece Çift Şerit gösterecek. Sürücüde 2 inç kesimi de aç.":"Kesici kapalı kaydedildi — tüm modlar 10×15 tek parça."):"Kaydedilemedi (gizli pencere olabilir).",false)};
+  not(yaz(a)?(a.dnpKesim?"Kesici açık kaydedildi — kabin sadece Çift Şerit gösterecek. Köprü 2 inç kesimi her baskıda kendisi açar (Windows'ta sürücüden aç).":"Kesici kapalı kaydedildi — tüm modlar 10×15 tek parça."):"Kaydedilemedi (gizli pencere olabilir).",false)};
 $("#kaydet").onclick=function(){al();goster();not(yaz(a)?"Kaydedildi: ölçek %"+a.olcek+", sağa "+a.x+" mm, aşağı "+a.y+" mm.":"Kaydedilemedi (gizli pencere olabilir).",false)};
-$("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim,profil:a.profil};yaz(a);goster();not("İnce ayar sıfırlandı.")};
+$("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim,profil:a.profil,yol:a.yol||"oto",secenek:a.secenek||{}};yaz(a);goster();not("İnce ayar sıfırlandı.")};
 function profilSec(pr){al();a.profil=pr;goster();
   not(yaz(a)?(pr==="std"?"Diğer yazıcı seçildi — sayfa 4×6 dikey.":"DNP seçildi — Chrome'da kağıt boyutu 156 x 105 mm olmalı (önizleme yatay görünür)."):"Kaydedilemedi (gizli pencere olabilir).",false)}
 $("#prDnp").onclick=function(){profilSec("dnp")};
@@ -363,15 +446,85 @@ kabin:function(){
 }
 };
 
+/* Test sayfasını görüntüye çevir (köprü yolu): dikey yüzey 105×156 → 1240×1843 px, sonra kabin baskısı
+   gibi 90° saat yönünde → 1843×1240. SVG foreignObject ile; ince ayar (kalib) dahil, ne görünüyorsa o. */
+function dikResim(dik){
+  var P=PROFIL[a.profil]||PROFIL.dnp,wpx=P.pxW,hpx=P.pxH,cw=P.mmW*96/25.4,ch=P.mmH*96/25.4;
+  var klon=dik.cloneNode(true);klon.style.transform="none";
+  var font=getComputedStyle(document.body).fontFamily.replace(/"/g,"'");
+  var html='<div xmlns="http://www.w3.org/1999/xhtml" style="position:relative;width:'+cw+'px;height:'+ch+'px;font-family:'+font+';color:#000;line-height:1">'+new XMLSerializer().serializeToString(klon)+'</div>';
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+cw+'" height="'+ch+'"><foreignObject x="0" y="0" width="100%" height="100%">'+html+'</foreignObject></svg>';
+  return new Promise(function(res,rej){
+    var im=new Image();
+    im.onload=function(){
+      var c=document.createElement("canvas");c.width=wpx;c.height=hpx;var x=c.getContext("2d");
+      x.fillStyle="#fff";x.fillRect(0,0,wpx,hpx);x.drawImage(im,0,0,wpx,hpx);
+      if(P.yatay){var r=document.createElement("canvas");r.width=hpx;r.height=wpx;var y=r.getContext("2d");
+        y.translate(hpx,0);y.rotate(Math.PI/2);y.drawImage(c,0,0);c=r;}
+      try{res(c.toDataURL("image/jpeg",.95))}catch(e){rej(e)}
+    };
+    im.onerror=function(){rej(new Error("test görüntüsü çizilemedi"))};
+    im.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+  });
+}
 function bas(t){
   var hedef=document.getElementById("bas");hedef.innerHTML="";
   var r=TEST[t]();
   var el=(typeof r==="string")?sayfa(r):r;
   hedef.appendChild(el);
   sayfaStili();
-  var git=function(){setTimeout(function(){try{window.print()}catch(e){}},150)};
-  if(el._hazir)el._hazir.then(git,git);else git();
+  baskiYolu().then(function(yol){
+    if(yol==="tarayici"){
+      var git=function(){setTimeout(function(){try{window.print()}catch(e){}},150)};
+      if(el._hazir)el._hazir.then(git,git);else git();
+      return;
+    }
+    if(yol==="kopru-yok")return not("Köprü yanıt vermiyor — yukarıdaki kurulum satırını Terminal'e yapıştır.",true);
+    not("Köprüye gönderiliyor…",false);
+    var resim=el._hazir?el._hazir.then(function(){return el.querySelector("img").src}):dikResim(el.firstChild);
+    resim.then(function(u){return kopruBas(u,1)}).then(function(s){
+      if(!s.ok)return not("Basılamadı: "+s.hata,true);
+      not("Yazıcıya gitti (iş "+(s.is||"?")+"). Kağıt ~15 sn içinde çıkar.",false);
+      kopruIzle(s.is,function(m){not(m,true)});
+    }).catch(function(e){not("Basılamadı: "+((e&&e.message)||e),true)});
+  });
 }
+function esc(v){return String(v==null?"":v).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function kopruGoster(){
+  var k=$("#kDurum"),sc=$("#kSecenek");k.textContent="Köprü kontrol ediliyor…";
+  kopruDurum(true).then(function(d){
+    if(!d.ok){
+      sc.innerHTML="";
+      k.innerHTML=d.yok?'<b style="color:var(--kirmizi)">Köprü kurulu değil ya da kapalı.</b> Aşağıdaki satırı bu Mac\'te Terminal\'e yapıştır. (Windows\'ta köprüye gerek yok, Chrome yazdırma çalışır.)'
+                      :'<b style="color:var(--kirmizi)">Köprü çalışıyor ama:</b> '+esc(d.hata);
+      return;
+    }
+    var kes=kopruKesim(d,true),k4=d.kagit4x6||{};
+    k.innerHTML='<b style="color:var(--yesil)">Köprü bağlı</b> · yazıcı <b>'+esc(d.yazici)+'</b> · 4x6 kağıt <b>'+esc(k4.ad)+'</b> ('+esc((k4.mm||[]).join(" × "))+' mm)'
+      +' · '+esc(d.durum||"")+' · kuyruk '+(d.kuyruk|0)+(d.nedenler&&d.nedenler!=="none"?' · <b>'+esc(d.nedenler)+'</b>':'')
+      +'<br>2 inç kesim: '+(kes&&kes.secim?esc(kes.anahtar+" → "+kes.yazi)+' (kesici anahtarıyla açılıp kapanır)':'<b>sürücüde bulunamadı</b> — kesici anahtarını açma');
+    var h="";
+    (d.secenekler||[]).forEach(function(s){
+      if(kes&&s.anahtar===kes.anahtar)return;
+      var cur=(a.secenek||{})[s.anahtar]||"";
+      h+='<label>'+esc(s.yazi)+'<select data-k="'+esc(s.anahtar)+'"><option value="">Sürücü varsayılanı'+(s.varsayilan?' ('+esc(s.varsayilan)+')':'')+'</option>'
+        +s.secimler.map(function(c){return '<option value="'+esc(c.ad)+'"'+(cur===c.ad?' selected':'')+'>'+esc(c.yazi)+'</option>'}).join("")+'</select></label>';
+    });
+    sc.innerHTML=h;
+    Array.prototype.forEach.call(sc.querySelectorAll("select"),function(se){se.onchange=function(){
+      a.secenek=a.secenek||{};var n=se.getAttribute("data-k");
+      if(se.value)a.secenek[n]=se.value;else delete a.secenek[n];
+      not(yaz(a)?"Sürücü seçeneği kaydedildi: "+n+" = "+(se.value||"varsayılan"):"Kaydedilemedi.",false);
+    }});
+  });
+}
+$("#kYenile").onclick=kopruGoster;
+$("#kKopyala").onclick=function(){
+  var m=$("#kKur").textContent;
+  (navigator.clipboard?navigator.clipboard.writeText(m):Promise.reject()).then(function(){not("Kurulum satırı kopyalandı — Terminal'e yapıştır.",false)},
+    function(){var r=document.createRange();r.selectNodeContents($("#kKur"));var sl=getSelection();sl.removeAllRanges();sl.addRange(r);not("Satır seçildi — ⌘C ile kopyala.",false)});
+};
+kopruGoster();
 Array.prototype.forEach.call(document.querySelectorAll("[data-t]"),function(b){b.onclick=function(){bas(b.getAttribute("data-t"))}});
 })();
 </script>

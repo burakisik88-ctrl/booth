@@ -1302,7 +1302,7 @@ function sablonUygula(id){
 /* ---------- YAZICI (DNP DS-RX1HS) ----------
    İnce ayar ve kesici durumu yazici.html sayfasında ayarlanır, AYRI anahtarda durur:
    kabin sekmesi açıkken S'nin üstüne yazılıp kaybolmasın diye her baskıda taze okunur. */
-function yaziciAyar(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp"};
+function yaziciAyar(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp",yol:"oto",secenek:{}};
   try{var o=JSON.parse(localStorage.getItem("booth.yazici")||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}
   return d}
 /* ===== BASKI YÜZEYİ (aynısı yazici.html'de — ikisi birlikte değişir) =====
@@ -1374,6 +1374,72 @@ function sayfaStili(){
     +"}";
 }
 /* ===== /BASKI YÜZEYİ ===== */
+/* ===== BASKI KÖPRÜSÜ (aynısı yazici.html'de — ikisi birlikte değişir) =====
+   Mac'te arka planda çalışan OBSKURA köprüsü (kopru/kopru.py, yalnız 127.0.0.1:8740). Chrome'un yazdır
+   ekranı Mac'te DNP 4x6'yı (156x105, eni boyundan büyük) kendi içinde dik çevirip "özel kağıt" gönderiyor
+   (Chromium hata 40267436), DNP basmıyor. Köprü fotoğrafı sürücünün KENDİ kağıt adıyla, kağıt ölçüsünde
+   PDF'e koyup basar; pencere çıkmaz. a.yol: "oto" (köprü varsa köprü, yoksa tarayıcı) | "kopru" | "tarayici". */
+var KOPRU="http://127.0.0.1:8740";
+var _kopruOnb={t:0,v:null};
+function kopruDurum(taze){
+  if(!taze&&_kopruOnb.v&&Date.now()-_kopruOnb.t<8000)return Promise.resolve(_kopruOnb.v);
+  var kont=("AbortController" in window)?new AbortController():null;
+  var zaman=setTimeout(function(){if(kont)kont.abort()},2500);
+  return fetch(KOPRU+"/durum"+(taze?"?taze":""),{cache:"no-store",signal:kont?kont.signal:undefined})
+    .then(function(r){return r.json()})
+    .catch(function(){return {ok:false,yok:true,hata:"köprü yanıt vermiyor (Mac'te kurulu ve açık mı?)"}})
+    .then(function(d){clearTimeout(zaman);_kopruOnb={t:Date.now(),v:d};return d});
+}
+/* DNP 2 inç kesim: sürücüdeki "cut" seçeneğinden — açıkken adında 2 geçen seçim, kapalıyken normal/off */
+function kopruKesim(d,acik){
+  if(!d||!d.secenekler)return null;
+  var o=d.secenekler.filter(function(s){return /cut/i.test(s.anahtar+" "+s.yazi)})[0];if(!o)return null;
+  var c=o.secimler.filter(function(c){return acik?/2/.test(c.ad+" "+c.yazi):/normal|off|none|standard|disable|^no/i.test(c.ad+" "+c.yazi)})[0];
+  return c?{anahtar:o.anahtar,secim:c.ad,yazi:c.yazi}:{anahtar:o.anahtar,secim:null,yazi:null};
+}
+function kopruSecenekleri(d,a){
+  a=a||yaziciAyar();
+  var out=[],k=kopruKesim(d,a.dnpKesim),sec=a.secenek||{};
+  if(k&&k.secim)out.push(k.anahtar+"="+k.secim);
+  for(var n in sec)if(sec[n]&&!(k&&n===k.anahtar))out.push(n+"="+sec[n]);
+  return out;
+}
+/* Promise<"kopru"|"kopru-yok"|"tarayici"> */
+function baskiYolu(){
+  var a=yaziciAyar(),mac=/Mac/i.test(navigator.platform||navigator.userAgent||"");
+  if(a.yol==="tarayici"||a.profil==="std")return Promise.resolve("tarayici");
+  /* Mac'te tarayıcı yolu DNP'de zaten basmaz: köprü yoksa "kopru-yok" (kare kuyruğa alınır). Windows'ta Chrome çalışır. */
+  return kopruDurum().then(function(d){return d&&d.ok?"kopru":((a.yol==="kopru"||mac)?"kopru-yok":"tarayici")});
+}
+/* dataUrl: baskiYuzeyi çıktısı (1843x1240 JPEG). Promise<{ok,is,hata}> */
+function kopruBas(dataUrl,kopya,a){
+  a=a||yaziciAyar();
+  return kopruDurum().then(function(d){
+    if(!d||!d.ok)return {ok:false,hata:(d&&d.hata)||"köprü hazır değil"};
+    var k=kopruKesim(d,a.dnpKesim);
+    if(a.dnpKesim&&!(k&&k.secim))return {ok:false,hata:"sürücüde 2 inç kesim seçeneği bulunamadı — yazici.html'de seçenekleri kontrol et"};
+    var q="kopya="+Math.max(1,kopya|0||1);
+    kopruSecenekleri(d,a).forEach(function(s){q+="&o="+encodeURIComponent(s)});
+    return fetch(dataUrl).then(function(r){return r.blob()}).then(function(b){
+      return fetch(KOPRU+"/bas?"+q,{method:"POST",headers:{"Content-Type":"image/jpeg"},body:b});
+    }).then(function(r){return r.json().catch(function(){return {ok:false,hata:"köprü HTTP "+r.status}})});
+  }).catch(function(e){return {ok:false,hata:"köprüye ulaşılamadı: "+((e&&e.message)||e)}});
+}
+/* iş bitene kadar yazıcıyı izle; hata nedeni görünürse bir kez bildir */
+function kopruIzle(no,bildir){
+  if(!no)return;var n=0,dendi=false;
+  (function tur(){
+    n++;
+    fetch(KOPRU+"/is?no="+encodeURIComponent(no),{cache:"no-store"}).then(function(r){return r.json()}).then(function(s){
+      var y=s.yazici||{},neden=String(y.nedenler||"none");
+      if(!dendi&&(y.durum==="durdu"||/error|offline|media-(empty|needed|jam)|marker-supply-empty|cover-open|door-open/i.test(neden))){
+        dendi=true;if(bildir)bildir((y.durum==="durdu"?"yazıcı durdu":"yazıcı uyarısı")+" — "+(y.mesaj||neden));
+      }
+      if(s.bekliyor&&n<40)setTimeout(tur,4000);
+    }).catch(function(){});
+  })();
+}
+/* ===== /BASKI KÖPRÜSÜ ===== */
 /* printArea görseli: yüzey hazırlanınca src atanır; im._hazir çözülünce yazdırılabilir */
 function prImg(src){sayfaStili();var im=new Image();
   im._hazir=baskiYuzeyi(src).then(function(u){
@@ -2432,38 +2498,68 @@ function doPrint(){
     pendPut({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
              t:Date.now(),d:composed,kopya:copies,ev:(S.profName||S.evt||"")},function(){updPend()});
   }
-  /* sayaç: simülasyonda hemen, gerçek baskıda yazdırma penceresi kapandıktan sonra sayılır */
+  /* sayaç: simülasyonda hemen; gerçek baskıda köprü işi kabul edince ya da yazdırma penceresi kapanınca */
   if(!yazicivar){ if(!S.printDown){S.prints++;S.sheets+=copies;sayacKaydet();save();} }
-  else{
-    var sayildi=false,kopya=copies,geldi=false;
-    function sayacArtir(){if(sayildi)return;sayildi=true;S.prints++;S.sheets+=kopya;sayacKaydet();save();}
-    if("onafterprint" in window){
-      var h=function(){window.removeEventListener("afterprint",h);geldi=true;S.printFail=0;save();sayacArtir()};
-      window.addEventListener("afterprint",h);
-      setTimeout(function(){
-        if(!geldi){ /* yazdırma penceresi hiç kapanmadı — sessiz yazıcı arızasının tipik izi */
-          S.printFail=(S.printFail|0)+1;save();
-          hataYaz("yazıcı","yazdırma penceresi 20 sn içinde kapanmadı ("+S.printFail+". kez)");
-          if(S.printFail>=3)yaziciUyar();
-        }
-        sayacArtir();
-      },20000);
-    }else setTimeout(sayacArtir,3000);
-  }
   addToGallery(composed);
   if(yazicivar){
-    var pa=$("#printArea");pa.innerHTML="";
-    var bekle=[];
-    for(var i=0;i<copies;i++){
-      var im=prImg(composed);pa.appendChild(im);
-      bekle.push(im._hazir);
-    }
-    /* görseller çözülmeden yazdırırsak boş kağıt çıkıyordu — bekle, ama en fazla 6 sn */
-    var yazdirildi=false;
-    function yazdir(){if(yazdirildi)return;yazdirildi=true;try{window.print()}catch(e){}}
-    Promise.all(bekle).then(function(){setTimeout(yazdir,120)});
-    setTimeout(yazdir,6000);
+    var kare=composed,kopya=copies;
+    baskiYolu().then(function(yol){
+      if(yol==="tarayici")tarayiciylaBas(kare,kopya);
+      else kopruIleBas(kare,kopya,true);
+    });
   }
+}
+/* Mac + DNP: köprü (pencere yok). Başarısızsa kare kaybolmaz: bekleyen baskılara yazılır, görevli uyarılır. */
+function kopruIleBas(kare,kopya,kuyrugaAl,sonra){
+  baskiYuzeyi(kare).then(function(u){return kopruBas(u,kopya)}).then(function(s){
+    if(s&&s.ok){
+      S.printFail=0;S.prints++;S.sheets+=kopya;sayacKaydet();save();
+      kopruIzle(s.is,function(m){hataYaz("yazıcı",m);gorevliUyar(m)});
+      if(sonra)sonra(true,s);return;
+    }
+    var m=(s&&s.hata)||"baskı gönderilemedi";
+    S.printFail=(S.printFail|0)+1;save();hataYaz("yazıcı","köprü: "+m);
+    if(kuyrugaAl)pendPut({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      t:Date.now(),d:kare,kopya:kopya,ev:(S.profName||S.evt||"")},function(){updPend()});
+    gorevliUyar(m+(kuyrugaAl?" — kare bekleyen baskılara alındı":""));
+    if(sonra)sonra(false,s);
+  });
+}
+function gorevliUyar(m){
+  var d=document.getElementById("gorevliUyari");
+  if(!d){d=document.createElement("div");d.id="gorevliUyari";
+    d.style.cssText="position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99;max-width:min(92vw,720px);background:#7a1f12;color:#fff;font:600 14px/1.4 var(--ui);padding:10px 16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)";
+    document.body.appendChild(d);}
+  d.textContent="Görevliye — yazıcı: "+m;d.style.display="block";
+  clearTimeout(d._t);d._t=setTimeout(function(){d.style.display="none"},25000);
+}
+/* tarayıcının yazdır ekranı (Windows'ta DNP dahil çalışır; Mac'te DNP 4x6'yı basamaz) */
+function tarayiciylaBas(kare,kopya){
+  var sayildi=false,geldi=false;
+  function sayacArtir(){if(sayildi)return;sayildi=true;S.prints++;S.sheets+=kopya;sayacKaydet();save();}
+  if("onafterprint" in window){
+    var h=function(){window.removeEventListener("afterprint",h);geldi=true;S.printFail=0;save();sayacArtir()};
+    window.addEventListener("afterprint",h);
+    setTimeout(function(){
+      if(!geldi){ /* yazdırma penceresi hiç kapanmadı — sessiz yazıcı arızasının tipik izi */
+        S.printFail=(S.printFail|0)+1;save();
+        hataYaz("yazıcı","yazdırma penceresi 20 sn içinde kapanmadı ("+S.printFail+". kez)");
+        if(S.printFail>=3)yaziciUyar();
+      }
+      sayacArtir();
+    },20000);
+  }else setTimeout(sayacArtir,3000);
+  var pa=$("#printArea");pa.innerHTML="";
+  var bekle=[];
+  for(var i=0;i<kopya;i++){
+    var im=prImg(kare);pa.appendChild(im);
+    bekle.push(im._hazir);
+  }
+  /* görseller çözülmeden yazdırırsak boş kağıt çıkıyordu — bekle, ama en fazla 6 sn */
+  var yazdirildi=false;
+  function yazdir(){if(yazdirildi)return;yazdirildi=true;try{window.print()}catch(e){}}
+  Promise.all(bekle).then(function(){setTimeout(yazdir,120)});
+  setTimeout(yazdir,6000);
 }
 function yaziciUyar(){
   var st=$("#s-done .stage");if(!st)return;
@@ -2768,6 +2864,18 @@ function pendHepsiniBas(){
       if(i>=list.length){pendBasiyor=false;updPend();$("#pendPrintBtn").textContent="Hepsini bas";return}
       var r=list[i++];
       $("#pendPrintBtn").textContent="Basılıyor "+i+"/"+list.length;
+      baskiYolu().then(function(yol){
+        if(yol!=="tarayici"){
+          kopruIleBas(r.d,r.kopya||1,false,function(tamam){
+            if(tamam)pendDel(r.id,function(){updPend();setTimeout(sonraki,1500)});
+            else{pendBasiyor=false;$("#pendPrintBtn").textContent="Hepsini bas";updPend();}
+          });
+          return;
+        }
+        tarayiciTek(r);
+      });
+    }
+    function tarayiciTek(r){
       var pa=$("#printArea");pa.innerHTML="";
       var bekle=[];
       for(var k=0;k<(r.kopya||1);k++){
@@ -3008,6 +3116,24 @@ function kBaski(){
   return {m:m+" · gerçek baskı açık"};
 }
 function kYazici(){
+  var ya=yaziciAyar(),mac=/Mac/i.test(navigator.platform||navigator.userAgent||"");
+  if(S.realPrint&&!S.printDown&&ya.profil!=="std"&&ya.yol!=="tarayici")return kopruDurum(true).then(function(d){
+    if(!d.ok){
+      if(mac)return {ok:false,m:"baskı köprüsü yok — Mac'te Chrome DNP 4x6 basamaz",
+        o:"yazici.html → Baskı köprüsü bölümündeki tek satırı Terminal'e yapıştır (bir kere). Hata: "+(d.hata||"")};
+      return {uyari:true,m:"baskı köprüsü yok — tarayıcı yazdırma kullanılacak",o:d.hata||""};
+    }
+    var neden=String(d.nedenler||"none");
+    if(d.durum==="durdu"||/error|offline|media-(empty|needed|jam)|marker-supply-empty/i.test(neden))
+      return {ok:false,m:"köprü bağlı ama yazıcı hazır değil: "+(d.mesaj||neden),o:"Kağıt/şerit, kapak ve USB kablosunu kontrol et; yazıcıyı kapatıp aç."};
+    var k=kopruKesim(d,ya.dnpKesim);
+    if(ya.dnpKesim&&!(k&&k.secim))return {ok:false,m:"kesici açık ama sürücüde 2 inç kesim seçeneği bulunamadı",o:"yazici.html → Baskı köprüsü → seçenekleri kontrol et."};
+    var m="köprü bağlı · "+d.yazici+" · kağıt "+(d.kagit4x6&&d.kagit4x6.ad)+" · "+(d.durum||"")+" · kuyruk "+(d.kuyruk|0);
+    return new Promise(function(res){pendSay(function(n,kg){
+      if(n)return res({uyari:true,m:m+" · "+n+" kare bekliyor ("+kg+" kağıt)",o:"Panel → Yazıcı kurtarma → \"Hepsini bas\"."});
+      res({m:m});
+    })});
+  });
   if(S.printDown)return {ok:false,m:"panelde \"yazıcı arızalı\" açık — kağıt basılmıyor",
     o:"Yazıcıyı düzelttiysen bu anahtarı kapat, sonra \"Hepsini bas\" ile bekleyenleri al."};
   if((S.printFail|0)>=3)return {ok:false,m:"son "+(S.printFail|0)+" baskıda yazdırma penceresi kapanmadı",
@@ -3247,7 +3373,14 @@ function fillAdmin(){
   tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
   (function(){var a=yaziciAyar(),n=$("#yaziciNot");if(!n)return;
     n.innerHTML="Yazıcı: <b>"+(PROFIL[a.profil]||PROFIL.dnp).ad+"</b> · <b>"+(a.dnpKesim?"kesici AÇIK — yalnız Çift Şerit":"tek parça")+"</b>"
-      +((+a.olcek!==100||+a.x||+a.y)?" · ince ayar %"+a.olcek+", "+a.x+"/"+a.y+" mm":"");})();
+      +((+a.olcek!==100||+a.x||+a.y)?" · ince ayar %"+a.olcek+", "+a.x+"/"+a.y+" mm":"");
+    if(a.profil!=="std"&&a.yol!=="tarayici")kopruDurum(true).then(function(d){
+      var k=d.ok?kopruKesim(d,a.dnpKesim):null;
+      n.insertAdjacentHTML("beforeend","<br>Baskı yolu: "+(d.ok
+        ?"<b>köprü bağlı</b> · "+d.yazici+" · kağıt "+(d.kagit4x6&&d.kagit4x6.ad)+" · "+(d.durum||"")+" · kuyruk "+(d.kuyruk|0)
+          +(a.dnpKesim?" · kesim: "+((k&&k.secim)?k.yazi:"<b>sürücüde bulunamadı</b>"):"")
+        :"<b>köprü yok</b> — tarayıcı yazdırma kullanılır (Mac'te DNP 4x6 basılamaz; yazici.html → Baskı köprüsü)"));
+    });})();
   tg($("#tgOnay"),S.onayOn);tg($("#tgOnayZor"),S.onayZorunlu!==false);
   if($("#fOnayMetni"))$("#fOnayMetni").value=S.onayMetni||"";
   ["Ad","Mail","Tel"].forEach(function(k){var e2=$("#fVeri"+k);if(e2)e2.value=S["veri"+k]||"kapali"});
@@ -3261,7 +3394,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.57 · DNP yatay 156×105 · baskı 4×6 · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.58 · DNP baskı köprüsü · baskı 4×6 · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -3504,8 +3637,14 @@ $("#testPrint").onclick=function(){
   x.fillStyle="#F6F0E6";x.font="600 40px Figtree,sans-serif";x.textAlign="center";
   x.fillText("10 × 15 KENARLIKSIZ TEST",W/2,H-90);
   composed=c.toDataURL("image/jpeg",.95);copies=1;$("#emergeImg").src=composed;
-  var pa=$("#printArea");pa.innerHTML="";var im=prImg(composed);pa.appendChild(im);
-  im._hazir.then(function(){setTimeout(function(){try{window.print()}catch(e){}},120)});
+  var kare=composed;
+  baskiYolu().then(function(yol){
+    if(yol!=="tarayici"){baskiYuzeyi(kare).then(function(u){return kopruBas(u,1)}).then(function(s){
+      $("#yaziciNot").insertAdjacentHTML("beforeend","<br>Test: "+(s.ok?"köprüye gönderildi ("+(s.is||"")+")":"<b>gönderilemedi</b> — "+(s.hata||"")));
+      if(!s.ok)hataYaz("yazıcı","test: "+s.hata);});return}
+    var pa=$("#printArea");pa.innerHTML="";var im=prImg(kare);pa.appendChild(im);
+    im._hazir.then(function(){setTimeout(function(){try{window.print()}catch(e){}},120)});
+  });
 };
 
 /* ---------- kütüphane (çerçeve + arka plan) ---------- */
@@ -4577,7 +4716,7 @@ function hataYaz(kaynak,msg){
 }
 window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
 window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
-window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_bas:function(d,k){composed=d;copies=k||1;doPrint()},_pendHepsiniBas:pendHepsiniBas,_kopruDurum:kopruDurum,_kopruBas:kopruBas,_baskiYolu:baskiYolu,_kopruKesim:kopruKesim,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 
