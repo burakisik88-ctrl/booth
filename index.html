@@ -726,6 +726,7 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="sw"><div class="t">Misafire açık<div class="note">Tüm modlarda görünür (tek/şerit/dörtlü)</div></div><div class="tg" id="tgAi"><i></i></div></div>
           <div class="sw"><div class="t">İnce rötuş<div class="note">AI üretimlerde profesyonel dokunuş: iyi ışık, temiz cilt, hafif fit duruş — abartısız, kişi kendisi kalır</div></div><div class="tg" id="tgFlatter"><i></i></div></div>
           <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="password" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
+          <div class="fld"><div class="lbl">OpenAI API anahtarı (yalnız "Konuk figürle kare" sahnelerinde motor GPT seçilirse)</div><input type="password" id="fGptKey" placeholder="sk-…" autocomplete="off"></div>
           <div class="fld"><div class="lbl">AI modeli — kalite / hız / maliyet</div>
             <select id="fAiModel">
               <option value="gemini-2.5-flash-image">2.5 Flash — ÖNERİLEN, benzerlikte en iyi · ~8 sn · ~4 kuruş</option>
@@ -752,6 +753,7 @@ h1 em{font-style:italic;color:var(--amber)}
           <div id="sceneImgList" style="display:flex;flex-direction:column;gap:8px"></div>
           <div class="row" style="justify-content:flex-start"><button class="btn ghost mini" id="sceneImgBtn">Arka plan görseli yükle</button></div>
           <input type="file" id="sceneImgFile" accept="image/*" multiple hidden>
+          <div class="note"><b>Konuk figürle kare</b> (sanatçıyla kare, 10 Kasım anma): sahneyi yükle, altındaki <b>Figür ekle</b> ile sabit kişinin onaylı fotoğrafını ekle. Figür ortada değişmeden durur, misafir yanına yerleşir; renk (sepya) ve "Yapay zekâ ile oluşturulmuştur" etiketini program ekler, modele yazdırılmaz.</div>
           <div class="note">Yüklediğin görsel arka plan AYNEN korunur; AI sadece kişiyi mekâna uygun kıyafet ve doğal pozla yerleştirir. Her görselin altındaki kutuya kıyafet/poz tarifi yazabilirsin.</div>
           <div class="lbl" style="margin-top:14px">Hazır sahneler (arka planı AI üretir)</div>
           <div id="sceneList" style="display:flex;flex-direction:column;gap:10px"></div>
@@ -2255,7 +2257,7 @@ function openAi(m){
     /* önce yüklediğin arka plan görsellerini (aiscene) al, hazır sahnelerle birleştir */
     libAll(function(list){
       var imgs=list.filter(function(r){return r.kind==="aiscene"}).map(function(r){
-        return {id:r.id,e:"\u{1F5BC}\u{FE0F}",n:r.name,on:true,p:r.p||"",img:r.dataUrl};
+        return {id:r.id,e:r.fig?"\u{2B50}":"\u{1F5BC}\u{FE0F}",n:r.name,on:true,p:r.p||"",img:r.dataUrl,fig:r.fig||"",sepya:!!r.sepya,motor:r.motor||"gemini",etiket:r.etiket||""};
       });
       var txt=S.aiScenes.filter(function(st){return st.on});
       buildAiGrid(imgs.concat(txt));
@@ -2471,6 +2473,65 @@ function geminiImage(parts,outW,outH){
     throw e;
   });
 }
+/* ===== KONUK FİGÜRLE KARE (sanatçıyla kare / 10 Kasım anma) =====
+   Formül (denemelerle bulundu): KISA prompt + her üretim hafızasız + poz kabinden + renk/etiket kodla.
+   Uzun kural listesi, poz değiştirme ve "siyah-beyaz yap" talimatı modeli yüzü yeniden çizmeye itiyordu. */
+var FIGUR_PROMPT="Image 1 is the scene. Put the person from image 2 in the center, exactly as they are, and the person or people from image 3 standing beside them with a small gap, in front of the backdrop. Realistic heights, matching the scene's light and shadows. Keep everyone's faces and clothes exactly the same. It must look like one real photograph.";
+var FIG_W=1024,FIG_H=1536; /* 2:3 — 6x4 baskı; Instagram 4:5 bundan kırpılır */
+function figurKare(src,st){
+  return Promise.all([loadImg(st.img),loadImg(st.fig)]).then(function(im){
+    var p=(st.motor==="gpt")?gptImage([im[0],im[1],src],FIGUR_PROMPT,FIG_W,FIG_H)
+      :geminiImage([
+        {inline_data:{mime_type:"image/jpeg",data:toB64(im[0],1536)}},
+        {inline_data:{mime_type:"image/jpeg",data:toB64(im[1],1536)}},
+        {inline_data:{mime_type:"image/jpeg",data:toB64(src,1536)}},
+        {text:FIGUR_PROMPT}],FIG_W,FIG_H);
+    return p.then(function(cv){if(st.sepya)sepyaYap(cv);if(st.etiket)etiketYaz(cv,st.etiket);return cv});
+  });
+}
+/* yüzlere dokunmayan, piksel bazlı ton dönüşümü */
+function sepyaYap(cv){
+  var x=cv.getContext("2d"),d=x.getImageData(0,0,cv.width,cv.height),a=d.data;
+  for(var i=0;i<a.length;i+=4){
+    var g=(0.299*a[i]+0.587*a[i+1]+0.114*a[i+2])/255;g=Math.min(1,Math.max(0,(g-.5)*1.08+.5));
+    a[i]=255*(.16+.84*g);a[i+1]=255*(.12+.83*g);a[i+2]=255*(.09+.77*g);
+  }
+  x.putImageData(d,0,0);return cv;
+}
+function etiketYaz(cv,t){
+  var x=cv.getContext("2d"),fs=Math.max(11,Math.round(cv.height*.013));
+  x.font="500 "+fs+"px Figtree,-apple-system,sans-serif";x.textAlign="right";x.textBaseline="bottom";
+  x.fillStyle="rgba(0,0,0,.45)";var w=x.measureText(t).width;
+  x.fillRect(cv.width-w-fs*1.6,cv.height-fs*2.1,w+fs*1.2,fs*1.6);
+  x.fillStyle="rgba(255,255,255,.9)";x.fillText(t,cv.width-fs,cv.height-fs*.7);return cv;
+}
+function _blob(img,max){
+  var sc=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement("canvas");
+  c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+  return new Promise(function(res){c.toBlob(function(b){res(b)},"image/png")});
+}
+/* OpenAI görsel düzenleme: birden çok referans görsel + kısa prompt, her çağrı hafızasız */
+function gptImage(imgs,prompt,outW,outH){
+  if(aiKalan()<=0)return Promise.reject(new Error("Bu etkinlik için ayrılan AI hakkı doldu."));
+  if(!S.gptKey)return Promise.reject(new Error("OpenAI anahtarı yok — panel → Yapay Zekâ → OpenAI API anahtarı"));
+  return Promise.all(imgs.map(function(im){return _blob(im,1536)})).then(function(bl){
+    var fd=new FormData();fd.append("model",S.gptModel||"gpt-image-1");fd.append("prompt",prompt);
+    fd.append("size","1024x1536");fd.append("quality","high");fd.append("input_fidelity","high");fd.append("n","1");
+    bl.forEach(function(b,i){fd.append("image[]",b,"g"+(i+1)+".png")});
+    var ctrl=new AbortController(),tmo=setTimeout(function(){ctrl.abort()},150000);
+    return fetch("https://api.openai.com/v1/images/edits",{method:"POST",headers:{"Authorization":"Bearer "+S.gptKey},body:fd,signal:ctrl.signal})
+      .then(function(r){clearTimeout(tmo);return r.json().catch(function(){return {}}).then(function(j){
+        if(!r.ok){var m=(j&&j.error&&j.error.message)?String(j.error.message).slice(0,180):"";
+          if(r.status===401)throw new Error("OpenAI anahtarı geçersiz"+(m?" — "+m:""));
+          if(r.status===429)throw new Error("OpenAI kota/kredi yok (429)"+(m?" — "+m:""));
+          throw new Error("OpenAI hatası ("+r.status+")"+(m?" — "+m:""));}
+        var b=j&&j.data&&j.data[0]&&j.data[0].b64_json;if(!b)throw new Error("OpenAI görsel döndürmedi");
+        S.aiUsed=(S.aiUsed|0)+1;try{localStorage.setItem("booth.aiused",String(S.aiUsed))}catch(e){}save();
+        return loadImg("data:image/png;base64,"+b).then(function(im){
+          var out=document.createElement("canvas");out.width=outW;out.height=outH;cover(out.getContext("2d"),im,0,0,outW,outH);return out;});
+      })}).catch(function(e){clearTimeout(tmo);if(e.name==="AbortError")throw new Error("OpenAI süre aşıldı");throw e});
+  });
+}
 var aiCache=new Map();
 function aiStyled(src,st,force){
   if(!src||!src.width)return Promise.reject(new Error("kare hazır değil"));
@@ -2482,6 +2543,7 @@ function aiTransform(src,st){
   var ret2=" Natural, honest school-photo lighting; do not glamorise, do not slim, do not stylise the face.";
   var ret=S.flatter?" Render the person at their best, like a professional photographer would: flattering studio-quality light, smooth healthy skin, confident posture, a subtly fit look — very natural, never exaggerated.":"";
   /* AI SAHNE — kendi yüklediğin arka plan görseli: arka planı AYNEN koru, kişiyi giydir+poz ver */
+  if(aiMode==="scene"&&st.img&&st.fig)return figurKare(src,st);
   if(aiMode==="scene"&&st.img){
     /* kıyafet: tarif YAZILMIŞSA giydir; boşsa misafirin kendi kıyafeti AYNEN kalır (kongre misafiri zaten şıktır) */
     var attire=(st.p||"").trim();
@@ -3391,7 +3453,7 @@ function sahaKontrol(aiDahil){
 }
 
 /* ---------- ETKİNLİK MODU: etkinliğin ortasında ayar kaymasın ---------- */
-var EV_KILIT=["#tgPrint","#tgSerit8","#fAiKey","#fAiModel","#fCldName","#fCldPreset","#fBgMode",
+var EV_KILIT=["#tgPrint","#tgSerit8","#fAiKey","#fGptKey","#fAiModel","#fCldName","#fCldPreset","#fBgMode",
               "#fFilterMode","#fFrame","#fEnh","#libFrFile","#libBgFile","#tupluFile","#sceneImgFile",
               "#cfgFile","#cldGetBtn","#cfgBox","#stilHepAc","#stilHepKapa","#libFrBtn","#libBgBtn",
               "#fOnayMetni","#fVeriAd","#fVeriMail","#fVeriTel","#veriSilBtn","#fMailUrl","#fMailKey","#fSablon"];
@@ -3439,7 +3501,7 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
-  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fFilterMode").value=S.filterMode;
+  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fGptKey").value=S.gptKey||"";$("#fFilterMode").value=S.filterMode;
   if($("#fAiBudget"))$("#fAiBudget").value=S.aiBudget||"";
   if($("#fAiBirim"))$("#fAiBirim").value=S.aiBirim||"";
   tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
@@ -3471,7 +3533,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.59 · baskı istasyonu + kurulum linki · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.60 · konuk figürle kare (sanatçı / anma) · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -4330,6 +4392,7 @@ $("#profSel").addEventListener("change",function(){
 /* ---------- AI ayar bağları ---------- */
 $("#tgAi").onclick=function(){S.aiOn=!S.aiOn;tg(this,S.aiOn);save()};
 $("#fAiKey").addEventListener("input",function(){S.aiKey=this.value.trim();save()});
+$("#fGptKey").addEventListener("input",function(){S.gptKey=this.value.trim();save()});
 $("#fFilterMode").addEventListener("change",function(){S.filterMode=this.value;save()});
 $("#sceneAddBtn").onclick=function(){
   S.aiScenes.push({id:"s"+Date.now().toString(36),e:"\u{1F4CD}",n:"Yeni sahne",on:true,cust:true,
@@ -4414,7 +4477,29 @@ function buildSceneImgRows(){
       nm.addEventListener("input",function(){r.name=nm.value;libPut(r)});
       var ta=document.createElement("textarea");ta.value=r.p||"";ta.placeholder="Kıyafet tarifi — BOŞ bırak: misafirin kendi kıyafeti aynen kalır. Yazarsan (ör. 1920'ler smokin) sahneye göre giydirir.";
       ta.addEventListener("input",function(){r.p=ta.value;libPut(r)});
-      col.appendChild(nm);col.appendChild(ta);d.appendChild(col);
+      col.appendChild(nm);col.appendChild(ta);
+      /* KONUK FİGÜR: sabit kişi (sanatçı/Atatürk) — ortada, değişmeden */
+      var fr=document.createElement("div");fr.style.cssText="display:flex;gap:8px;align-items:center;flex-wrap:wrap";
+      if(r.fig){var fi=new Image();fi.src=r.fig;fi.style.cssText="width:44px;height:60px;object-fit:cover;border-radius:6px";fr.appendChild(fi);}
+      var fb=document.createElement("button");fb.className="btn ghost mini";fb.textContent=r.fig?"Figürü değiştir":"Figür ekle (sanatçı/Atatürk)";
+      var fin=document.createElement("input");fin.type="file";fin.accept="image/*";fin.hidden=true;
+      fb.onclick=function(){fin.click()};
+      fin.onchange=function(){var fl=fin.files&&fin.files[0];if(!fl)return;readFileDataUrl(fl).then(function(u){r.fig=u;if(r.etiket===undefined)r.etiket="Yapay zekâ ile oluşturulmuştur";libPut(r,buildSceneImgRows)})};
+      fr.appendChild(fb);fr.appendChild(fin);
+      if(r.fig){
+        var fx=document.createElement("button");fx.className="btn ghost mini";fx.textContent="Figürü kaldır";
+        fx.onclick=function(){delete r.fig;libPut(r,buildSceneImgRows)};fr.appendChild(fx);
+        var sp=document.createElement("label");sp.style.cssText="display:flex;gap:4px;align-items:center;font-size:13px";
+        var sc=document.createElement("input");sc.type="checkbox";sc.checked=!!r.sepya;sc.onchange=function(){r.sepya=sc.checked;libPut(r)};
+        sp.appendChild(sc);sp.appendChild(document.createTextNode("Sepya (anma)"));fr.appendChild(sp);
+        var mo=document.createElement("select");
+        [["gemini","Motor: Gemini"],["gpt","Motor: GPT (OpenAI)"]].forEach(function(o){var op=document.createElement("option");op.value=o[0];op.textContent=o[1];mo.appendChild(op)});
+        mo.value=r.motor||"gemini";mo.onchange=function(){r.motor=mo.value;libPut(r)};fr.appendChild(mo);
+        var et=document.createElement("input");et.type="text";et.value=r.etiket||"";et.placeholder="Alt etiket";et.style.flex="1";
+        et.addEventListener("input",function(){r.etiket=et.value;libPut(r)});fr.appendChild(et);
+      }
+      col.appendChild(fr);
+      d.appendChild(col);
       var del=document.createElement("button");del.className="btn ghost mini";del.textContent="Sil";
       del.onclick=function(){libDel(r.id,buildSceneImgRows)};
       d.appendChild(del);
@@ -4862,7 +4947,7 @@ function istasyonEsitle(){
 }
 try{linkKurulum()}catch(e){hataYaz("kurulum linki",e&&e.message)}
 setTimeout(istasyonEsitle,1500);
-window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_linkKurulum:linkKurulum,_kurulumLinki:kurulumLinki,_kodAyikla:kodAyikla,_istasyonDurum:istasyonDurum,_istasyonEsitle:istasyonEsitle,_bas:function(d,k){composed=d;copies=k||1;doPrint()},_pendHepsiniBas:pendHepsiniBas,_kopruDurum:kopruDurum,_kopruBas:kopruBas,_baskiYolu:baskiYolu,_kopruKesim:kopruKesim,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_figurKare:figurKare,_loadImg:loadImg,_linkKurulum:linkKurulum,_kurulumLinki:kurulumLinki,_kodAyikla:kodAyikla,_istasyonDurum:istasyonDurum,_istasyonEsitle:istasyonEsitle,_bas:function(d,k){composed=d;copies=k||1;doPrint()},_pendHepsiniBas:pendHepsiniBas,_kopruDurum:kopruDurum,_kopruBas:kopruBas,_baskiYolu:baskiYolu,_kopruKesim:kopruKesim,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 
