@@ -92,10 +92,10 @@ button.b:hover{border-color:var(--amber)}
           <code>dnpphoto.com/en-us/New-Drivers-Landing</code> → DS-RX1HS → işletim sistemine uygun sürücüyü indir, kur. RX1 sürücüsü RX1HS ile de çalışıyor.</li>
         <li><b>Yazıcıyı USB ile bağla, aç.</b> Bilgisayar yazıcıyı "DS-RX1" adıyla görmeli. Görmezse sürücü kurulumunu yazıcı takılıyken tekrarla.</li>
         <li><b>Sürücü ayarı</b> (Windows: Ayarlar → Yazıcılar → DS-RX1 → Yazdırma tercihleri):
-          kağıt boyutu <code>PC 4x6</code> (4×6 inç — 10×15 değil), yön <b>Dikey</b>, kalite en yüksek. "Bunu varsayılan yazıcı yap" işaretle.</li>
+          kağıt boyutu <code>PC 4x6</code> (4×6 inç — 10×15 değil), kalite en yüksek. Yön ayarına dokunma: kabin sayfayı sürücünün tanıdığı gibi yatay gönderir. "Bunu varsayılan yazıcı yap" işaretle.</li>
         <li><b>2 inç kesim</b> — sadece <b>şerit etkinliğinde</b> aç. Aynı menüde "Cutting / 2 inch cut" seçeneği. Açıkken yazıcı <u>her</u> 10×15'i ortadan ikiye keser; o yüzden sağdaki "Kesici" anahtarını da aç, kabin o etkinlikte sadece şerit modunu gösterir.</li>
         <li><b>Chrome'da kabini aç</b>, panel (⚙ · PIN) → Baskı → <b>Gerçek baskı: AÇIK</b>.</li>
-        <li><b>İlk baskıda</b> Chrome'un yazdır ekranında: Hedef <b>Dai Nippon Printing DS…</b>, Kağıt boyutu <b>156 x 105 mm</b> (DNP 4x6'yı böyle, yatay ve kesim paylı listeler), Kenar boşlukları <b>Yok</b>, Ölçek <b>100</b>, "Arka plan grafikleri" <b>işaretli</b>. Chrome bunları hatırlar.</li>
+        <li><b>İlk baskıda</b> Chrome'un yazdır ekranında: Hedef <b>Dai Nippon Printing DS…</b>, Kağıt boyutu <b>156 x 105 mm</b> (DNP 4x6'yı böyle, yatay ve kesim paylı listeler), Kenar boşlukları <b>Yok</b>, Ölçek <b>Varsayılan</b>. Önizlemede sayfa <b>yatay</b>, fotoğraf <b>yan yatmış</b> görünür — doğrusu bu; sağ üstte <b>1 kağıt</b> yazmalı. Chrome bunları hatırlar.</li>
         <li><b>Aşağıdaki testleri bas</b>, sonuçlara göre ince ayarı yap.</li>
       </ol>
       <div class="bilgi"><b>Her baskıda pencere çıkmasın:</b> Chrome'u <code>--kiosk-printing</code> ile başlatırsan yazdır ekranı açılmadan doğrudan varsayılan yazıcıya basar. Önce testleri pencereli bas, ayarlar oturunca bu moda geç.</div>
@@ -108,7 +108,7 @@ button.b:hover{border-color:var(--amber)}
         <h2>2 · Kabin ayarı</h2>
         <p class="aciklama">Buradaki ayar kabine kaydedilir. Kabin sekmesi açıksa ayardan sonra onu bir kez yenile.</p>
         <div class="profil" role="group" aria-label="Yazıcı">
-          <button id="prDnp" aria-pressed="true">DNP RX1HS<small>Kağıt boyutu: 156 x 105 mm</small></button>
+          <button id="prDnp" aria-pressed="true">DNP RX1HS<small>Kağıt: 156 x 105 mm · yatay</small></button>
           <button id="prStd" aria-pressed="false">Diğer yazıcı<small>4×6 / 10×15 dikey</small></button>
         </div>
         <div class="sw">
@@ -162,15 +162,23 @@ var $=function(s){return document.querySelector(s)};
 var a=oku();
 function yaziciAyar(){return a}
 /* ===== BASKI YÜZEYİ (aynısı yazici.html'de — ikisi birlikte değişir) =====
-   DNP RX1HS 4x6 kağıdı sürücüde "156 x 105 mm" (yatay, kesim paylı) olarak tanımlı; Chrome dikey
-   sayfada bunu 105×156 kullanıyor. Yazıcı 105×156 basıp 101,6×152,4'e (tam 4×6) keser, her kenardan
-   ~1,7 mm pay gider. Yüzey 105×156 mm @300 dpi = 1240×1843 px: fotoğraf (1200×1800 = tam 4×6) ortaya
-   BİREBİR oturur, pay alanı aynı fotoğrafın büyütülmüşüyle doldurulur — kesim kayarsa kenarda beyaz
-   çizgi yerine fotoğrafın devamı görünür. İnce ayar (ölçek/kaydırma) fotoğrafın kendi yönünde uygulanır. */
+   DNP RX1HS 4x6 kağıdı sürücüde "156 x 105 mm" = YATAY tanımlı (6 inç kafa boyunca, 4 inç ilerleme,
+   kesim paylı). v0.56'da sayfa dikey 105×156 idi: Chrome dikey sayfa için kağıdı 105×156'ya çeviriyor,
+   Mac bu ölçüyü sürücüde bulamayıp "özel kağıt" gönderiyor, DNP de "The selected paper size is not
+   compatible with installed media" deyip basmıyordu. Artık sayfa sürücüdeki gibi YATAY 156×105:
+   fotoğraf dikey kurulur (105×156 mm @300 dpi = 1240×1843 px; tam 4×6 = 1200×1800 ortada birebir,
+   pay alanı aynı fotoğrafın büyütülmüşü), sonra 90° saat yönünde çevrilip 1843×1240 basılır.
+   Yazıcı 156×105 basıp 152,4×101,6'ya (tam 4×6) keser; 2 inç kesim tam ortadan geçer (dikeyde x=600).
+   PAY_TIRA: kutu sayfadan 0,6 mm kısa — Chrome kağıt ölçüsünü yuvarlayınca birebir eşit kutu taşıp
+   boş 2. kağıt çıkarıyordu. Kırpılan 0,3+0,3 mm kesim payının içinde, fotoğrafa değmez. */
 var PROFIL={
-  dnp:{ad:"DNP RX1HS — kağıt 156 x 105 mm",mmW:105,mmH:156,pxW:1240,pxH:1843},
+  dnp:{ad:"DNP RX1HS — kağıt 156 x 105 mm (yatay)",mmW:105,mmH:156,pxW:1240,pxH:1843,yatay:true},
   std:{ad:"Diğer yazıcı — 4×6 dikey",mmW:101.6,mmH:152.4,pxW:1200,pxH:1800}
 };
+var PAY_TIRA=0.6;
+function kagit(P){ /* sürücüdeki kağıt yönünde sayfa ölçüsü (mm) */
+  return P.yatay?{w:P.mmH,h:P.mmW}:{w:P.mmW,h:P.mmH};
+}
 var _yuzeyOnb={k:null,p:null};
 function baskiYuzeyi(src,a){
   a=a||yaziciAyar();
@@ -195,6 +203,10 @@ function baskiYuzeyi(src,a){
         var f=Math.min(ew/im.naturalWidth,eh/im.naturalHeight),w=im.naturalWidth*f,h=im.naturalHeight*f;
         x.drawImage(im,cx-w/2,cy-h/2,w,h);
       }
+      if(P.yatay){ /* 90° saat yönünde: fotoğrafın üstü kağıdın sağına gelir */
+        var r=document.createElement("canvas");r.width=P.pxH;r.height=P.pxW;var y=r.getContext("2d");
+        y.translate(P.pxH,0);y.rotate(Math.PI/2);y.drawImage(c,0,0);c=r;
+      }
       res(c.toDataURL("image/jpeg",.95));
     };
     im.onerror=function(){res(src)};
@@ -204,13 +216,18 @@ function baskiYuzeyi(src,a){
   return p;
 }
 function sayfaStili(){
-  var P=PROFIL[yaziciAyar().profil]||PROFIL.dnp,st=document.getElementById("sayfaStil");
+  var P=PROFIL[yaziciAyar().profil]||PROFIL.dnp,K=kagit(P),st=document.getElementById("sayfaStil");
   if(!st){st=document.createElement("style");st.id="sayfaStil";}
   /* her seferinde EN SONA taşı: kabinde ana stil <body> içinde, ondan sonra gelmezse @page kuralı kaybediyor */
   (document.body||document.head||document.documentElement).appendChild(st);
-  st.textContent="@page{size:"+P.mmW+"mm "+P.mmH+"mm;margin:0}"
-    +"@media print{#printArea img,.sayfa,.sayfa img{width:"+P.mmW+"mm!important;height:"+P.mmH+"mm!important}"
-    +"#printArea img{object-fit:fill!important}}";
+  var W=K.w+"mm",H=(K.h-PAY_TIRA).toFixed(2)+"mm";
+  st.textContent="@page{size:"+K.w+"mm "+K.h+"mm;margin:0}"
+    +"@media print{"
+    +"html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}"
+    +"#printArea img,.sayfa,.sayfa>img{display:block!important;width:"+W+"!important;height:"+H+"!important;margin:0!important}"
+    +"#printArea img,.sayfa>img{object-fit:cover!important;object-position:50% 50%!important}"
+    +".sayfa{position:relative!important;overflow:hidden!important}"
+    +"}";
 }
 /* ===== /BASKI YÜZEYİ ===== */
 function goster(){
@@ -231,7 +248,7 @@ $("#kesici").onclick=function(){a.dnpKesim=!a.dnpKesim;goster();al();
 $("#kaydet").onclick=function(){al();goster();not(yaz(a)?"Kaydedildi: ölçek %"+a.olcek+", sağa "+a.x+" mm, aşağı "+a.y+" mm.":"Kaydedilemedi (gizli pencere olabilir).",false)};
 $("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim,profil:a.profil};yaz(a);goster();not("İnce ayar sıfırlandı.")};
 function profilSec(pr){al();a.profil=pr;goster();
-  not(yaz(a)?(pr==="std"?"Diğer yazıcı seçildi — sayfa 4×6 dikey.":"DNP seçildi — Chrome'da kağıt boyutu 156 x 105 mm olmalı."):"Kaydedilemedi (gizli pencere olabilir).",false)}
+  not(yaz(a)?(pr==="std"?"Diğer yazıcı seçildi — sayfa 4×6 dikey.":"DNP seçildi — Chrome'da kağıt boyutu 156 x 105 mm olmalı (önizleme yatay görünür)."):"Kaydedilemedi (gizli pencere olabilir).",false)}
 $("#prDnp").onclick=function(){profilSec("dnp")};
 $("#prStd").onclick=function(){profilSec("std")};
 
@@ -244,13 +261,17 @@ function kalib(el){ /* kabin ince ayarını test sayfalarına da uygula: ayar so
   return el;
 }
 function sayfa(ic){
+  /* Test içeriği dikey 4×6 düzeninde (mm) çizilir. DNP: dikey yüzey 105×156, tam 4×6 ortada, çevresi
+     açık pembe pay — kesimden sonra kenarda pembe görünürse kesim o yandan dışarı kaymış, 1 mm çizgisi
+     yoksa içeri kaymış demektir. Sonra kabin baskısıyla aynı şekilde 90° çevrilip yatay 156×105 sayfaya
+     oturur (sayfa PAY_TIRA kadar kısa; kırpılan pay ortadan eşit). */
   var P=PROFIL[a.profil]||PROFIL.dnp,d=document.createElement("div");d.className="sayfa";
-  /* DNP: sayfa 105×156, tam 4×6 ortada; çevresindeki pay alanı açık pembe — kesimden sonra kenarda
-     pembe görünürse kesim o yandan dışarı kaymış, 1 mm çizgisi yoksa içeri kaymış demektir */
-  if(P!==PROFIL.std)d.style.background="#F4CFC4";
+  var dik=document.createElement("div");
+  dik.style.cssText="position:absolute;left:0;top:0;width:"+mm(P.mmW)+";height:"+mm(P.mmH)+";overflow:hidden;transform-origin:0 0;background:"+(P!==PROFIL.std?"#F4CFC4":"#fff");
+  dik.style.transform=P.yatay?"translate("+mm(P.mmH)+","+mm(-PAY_TIRA/2)+") rotate(90deg)":"translateY("+mm(-PAY_TIRA/2)+")";
   var i=document.createElement("div");
   i.style.cssText="position:absolute;left:"+mm((P.mmW-PW)/2)+";top:"+mm((P.mmH-PH)/2)+";width:"+mm(PW)+";height:"+mm(PH)+";background:#fff;overflow:hidden";
-  i.innerHTML=ic;d.appendChild(kalib(i));return d}
+  i.innerHTML=ic;dik.appendChild(kalib(i));d.appendChild(dik);return d}
 function cizgi(x,y,w,h,renk){return '<div style="position:absolute;left:'+mm(x)+';top:'+mm(y)+';width:'+mm(w)+';height:'+mm(h)+';background:'+(renk||"#000")+'"></div>'}
 function yazi(x,y,t,boy,ek){return '<div style="position:absolute;left:'+mm(x)+';top:'+mm(y)+';font-size:'+boy+'pt;line-height:1;white-space:nowrap;'+(ek||"")+'">'+t+'</div>'}
 
