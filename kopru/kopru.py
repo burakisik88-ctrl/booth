@@ -10,12 +10,23 @@ kağıt ölçüsünde bir PDF'e koyup CUPS'a (lp) verir. Pencere çıkmaz.
 Yalnız bu bilgisayardan (127.0.0.1) bağlantı kabul eder; baskı isteği yalnız izinli adreslerden
 (kabin sitesi) gelir. Sadece Python'un kendi kütüphanesi kullanılır, ek kurulum yok.
 
+BASKI İSTASYONU (iPad'ler için, yalnız DIŞARI bağlanır — Mac'e dışarıdan erişim açılmaz):
+iPad'deki kabin baskı görüntüsünü kendi Cloudinary hesabına yükler, adresini bu istasyonun özel ntfy
+kanalına (obskura-KOD) yazar. Köprü kanalı dinler, görüntüyü indirir (yalnız res.cloudinary.com), basar,
+sonucu obskura-KOD-d kanalına yazar. iPad linki: https://burakisik88-ctrl.github.io/booth/#istasyon=KOD
+
+Uçlar:
+  POST /ayar  {secenek:{..}, kesici:bool}   iPad'lerden gelen baskılarda kullanılacak sürücü ayarları
+  GET  /durum                     yazıcı, 4x6 kağıt adı, sürücü seçenekleri, yazıcı durumu, kuyruk, istasyon
+  POST /bas?kopya=N&o=Anahtar=Secim   gövde: image/jpeg (kabin yüzeyi, 1843x1240)  -> {ok, is}
+  GET  /is?no=123                 iş hâlâ kuyrukta mı
+
 """
 import json, os, re, subprocess, sys, time, threading, struct, glob
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-SURUM = "1.1"
+SURUM = "1.2"
 PORT = int(os.environ.get("OBSKURA_PORT", "8740"))
 EV = os.path.expanduser("~/OBSKURA-Baski")
 ISLER = os.path.join(EV, "isler")
@@ -33,6 +44,7 @@ SRGB_ADAYLAR = [
 ]
 NTFY = os.environ.get("OBSKURA_NTFY", "https://ntfy.sh").rstrip("/")
 KABIN = "https://burakisik88-ctrl.github.io/booth/"
+RESIM_IZINLI = tuple(filter(None, os.environ.get("OBSKURA_RESIM_IZINLI", "https://res.cloudinary.com/").split(",")))
 os.makedirs(ISLER, exist_ok=True)
 _kilit = threading.Lock()
 
@@ -55,6 +67,26 @@ def istasyon_kodu():
 
 
 KOD = istasyon_kodu()
+AYAR_YOL = os.path.join(EV, "ayar.json")
+
+
+def ayar_oku():
+    try:
+        with open(AYAR_YOL, encoding="utf-8") as f:
+            a = json.load(f)
+    except Exception:
+        a = {}
+    a.setdefault("secenek", {})
+    a.setdefault("kesici", False)
+    return a
+
+
+def ayar_yaz(a):
+    with open(AYAR_YOL, "w", encoding="utf-8") as f:
+        json.dump(a, f, ensure_ascii=False)
+
+
+_ist = {"bagli": False, "sonMesaj": 0, "sonBaski": None, "hata": "", "basilan": 0}
 
 
 def gunluk(*a):
@@ -159,7 +191,9 @@ def durum(taze=False):
         return _onbellek["v"]
     y = yazici_bul()
     d = {"ok": False, "surum": SURUM, "yazici": y,
-         "istasyon": {"kod": KOD}}
+         "istasyon": {"kod": KOD, "link": KABIN + "#istasyon=" + KOD, "bagli": _ist["bagli"], "hata": _ist["hata"],
+                      "sonBaski": _ist["sonBaski"], "basilan": _ist["basilan"]},
+         "ayar": ayar_oku()}
     if not y:
         d["hata"] = "DNP yazıcı bulunamadı (lpstat -e listesinde yok). Yazıcı açık ve USB takılı mı?"
     else:
@@ -287,6 +321,131 @@ def _temizle():
             pass
 
 
+# ---------------------------------------------------------------- istasyon (ntfy, yalnız dışarı)
+def kesim_secimi(d, acik):
+    """Sürücüdeki 'cut' seçeneği: açıkken adında 2 geçen seçim, kapalıyken normal/off (kabindeki kopruKesim ile aynı)."""
+    for s_ in d.get("secenekler") or []:
+        if re.search(r"cut", s_["anahtar"] + " " + s_["yazi"], re.I):
+            for c in s_["secimler"]:
+                metin = c["ad"] + " " + c["yazi"]
+                if (acik and re.search(r"2", metin)) or (not acik and re.search(r"normal|off|none|standard|disable|^no", metin, re.I)):
+                    return s_["anahtar"], c["ad"]
+            return s_["anahtar"], None
+    return None, None
+
+
+def ntfy_yaz(konu, veri):
+    import urllib.request
+    r = urllib.request.Request(NTFY + "/" + konu, data=json.dumps(veri, ensure_ascii=False).encode("utf-8"), method="POST")
+    with urllib.request.urlopen(r, timeout=15) as y:
+        return y.status == 200
+
+
+def nabiz():
+    d = durum(taze=True)
+    a = ayar_oku()
+    try:
+        ntfy_yaz("obskura-%s-d" % KOD, {"tip": "nabiz", "t": int(time.time()), "surum": SURUM, "ok": d.get("ok"),
+                                         "yazici": {k: d.get(k) for k in ("durum", "nedenler", "kuyruk", "mesaj")},
+                                         "hata": d.get("hata", ""), "kesici": bool(a.get("kesici"))})
+    except Exception as e:
+        _ist["hata"] = "nabız gönderilemedi: " + str(e)[:120]
+
+
+def _islenen():
+    yol = os.path.join(EV, "islenen.json")
+    try:
+        with open(yol, encoding="utf-8") as f:
+            v = json.load(f)
+            return v.get("idler", []), v.get("son", "")
+    except Exception:
+        return [], ""
+
+
+def _islenen_yaz(idler, son):
+    with open(os.path.join(EV, "islenen.json"), "w", encoding="utf-8") as f:
+        json.dump({"idler": idler[-400:], "son": son}, f)
+
+
+def istasyon_isi(m):
+    """ntfy mesajı -> baskı. m: {v,id,url,kopya,kesim,t}"""
+    import urllib.request
+    url = str(m.get("url") or "")
+    if not url.startswith(RESIM_IZINLI):
+        return {"ok": False, "hata": "izinsiz görüntü adresi"}
+    with urllib.request.urlopen(url, timeout=30) as y:
+        jpeg = y.read(25_000_001)
+    if len(jpeg) > 25_000_000 or jpeg[:2] != b"\xff\xd8":
+        return {"ok": False, "hata": "görüntü JPEG değil ya da çok büyük"}
+    d = durum(taze=True)
+    a = ayar_oku()
+    secim = ["%s=%s" % (k, v) for k, v in (a.get("secenek") or {}).items() if v]
+    kesim_acik = bool(m["kesim"]) if "kesim" in m else bool(a.get("kesici"))
+    anahtar, deger = kesim_secimi(d, kesim_acik)
+    if kesim_acik and not deger:
+        return {"ok": False, "hata": "sürücüde 2 inç kesim seçeneği yok"}
+    if anahtar and deger:
+        secim = [x for x in secim if not x.startswith(anahtar + "=")] + ["%s=%s" % (anahtar, deger)]
+    return bas(jpeg, m.get("kopya") or 1, secim)
+
+
+def istasyon_dongusu():
+    import urllib.request
+    idler, son = _islenen()
+    ilk = True
+    son_nabiz = 0
+    while True:
+        try:
+            since = son or "10m"
+            r = urllib.request.Request(NTFY + "/obskura-%s/json?since=%s" % (KOD, since))
+            with urllib.request.urlopen(r, timeout=120) as y:
+                _ist.update(bagli=True, hata="")
+                if ilk or time.time() - son_nabiz > 1800:
+                    nabiz(); son_nabiz = time.time(); ilk = False
+                while True:
+                    satir = y.readline()
+                    if not satir:
+                        break
+                    if time.time() - son_nabiz > 1800:
+                        nabiz(); son_nabiz = time.time()
+                    try:
+                        o = json.loads(satir.decode("utf-8"))
+                    except Exception:
+                        continue
+                    if o.get("event") != "message":
+                        continue
+                    son = o.get("id") or son
+                    try:
+                        m = json.loads(o.get("message") or "{}")
+                    except Exception:
+                        m = {}
+                    no = str(m.get("id") or o.get("id"))
+                    if no in idler:
+                        continue
+                    idler.append(no)
+                    _ist["sonMesaj"] = time.time()
+                    if time.time() - float(m.get("t") or o.get("time") or 0) > 6 * 3600:
+                        _islenen_yaz(idler, son)
+                        continue  # 6 saatten eski iş basılmaz
+                    try:
+                        sonuc = istasyon_isi(m)
+                    except Exception as e:
+                        sonuc = {"ok": False, "hata": "istasyon: " + str(e)[:160]}
+                    _islenen_yaz(idler, son)
+                    if sonuc.get("ok"):
+                        _ist["basilan"] += 1
+                    _ist["sonBaski"] = {"t": int(time.time()), "ok": sonuc.get("ok"), "hata": sonuc.get("hata"), "is": sonuc.get("is")}
+                    gunluk("istasyon işi", no, "->", sonuc.get("ok"), sonuc.get("is") or sonuc.get("hata"))
+                    try:
+                        ntfy_yaz("obskura-%s-d" % KOD, {"tip": "sonuc", "id": no, "t": int(time.time()), "ok": bool(sonuc.get("ok")),
+                                                         "is": sonuc.get("is"), "hata": sonuc.get("hata", "")})
+                    except Exception as e:
+                        _ist["hata"] = "sonuç gönderilemedi: " + str(e)[:120]
+        except Exception as e:
+            _ist.update(bagli=False, hata="kanal: " + str(e)[:140])
+        time.sleep(3)
+
+
 # ---------------------------------------------------------------- HTTP
 class Isleyici(BaseHTTPRequestHandler):
     server_version = "OBSKURA-Kopru/" + SURUM
@@ -327,12 +486,26 @@ class Isleyici(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path)
-        if u.path != "/bas":
+        if u.path not in ("/bas", "/ayar"):
             return self._json(404, {"ok": False, "hata": "yok"})
         koken = self.headers.get("Origin")
         if koken and not (koken in IZINLI or koken.startswith("http://127.0.0.1") or koken.startswith("http://localhost")):
             gunluk("reddedildi", koken)
             return self._json(403, {"ok": False, "hata": "izinsiz adres: " + koken})
+        if u.path == "/ayar":
+            uz = int(self.headers.get("Content-Length") or 0)
+            try:
+                gelen = json.loads(self.rfile.read(min(uz, 20000)).decode("utf-8") or "{}")
+                a = ayar_oku()
+                if isinstance(gelen.get("secenek"), dict):
+                    a["secenek"] = {str(k): str(v) for k, v in gelen["secenek"].items() if v}
+                if "kesici" in gelen:
+                    a["kesici"] = bool(gelen["kesici"])
+                ayar_yaz(a)
+                threading.Thread(target=nabiz, daemon=True).start()  # iPad'ler kesici durumunu hemen görsün
+                return self._json(200, {"ok": True, "ayar": a})
+            except Exception as e:
+                return self._json(400, {"ok": False, "hata": str(e)[:160]})
         uz = int(self.headers.get("Content-Length") or 0)
         if uz <= 0 or uz > 25_000_000:
             return self._json(400, {"ok": False, "hata": "görüntü yok ya da çok büyük"})
@@ -354,6 +527,8 @@ def main():
         return
     sunucu = ThreadingHTTPServer(("127.0.0.1", PORT), Isleyici)
     gunluk("OBSKURA köprü %s dinliyor 127.0.0.1:%d · istasyon %s" % (SURUM, PORT, KOD))
+    if os.environ.get("OBSKURA_ISTASYON", "1") != "0":
+        threading.Thread(target=istasyon_dongusu, daemon=True).start()
     sunucu.serve_forever()
 
 

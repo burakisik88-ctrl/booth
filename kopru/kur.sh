@@ -36,6 +36,7 @@ for i in 1 2 3 4 5 6 7 8; do
   sleep 1
   curl -fs "http://127.0.0.1:8740/durum?taze" -o "$DIZIN/durum.json" 2>/dev/null && break
 done
+sleep 3; curl -fs "http://127.0.0.1:8740/durum?taze" -o "$DIZIN/durum.json" 2>/dev/null || true  # iPad kanalı bağlansın
 [ -s "$DIZIN/durum.json" ] || { echo "HATA: köprü başlamadı. Son satırlar:"; tail -n 15 "$DIZIN/launchd.log" 2>/dev/null; exit 1; }
 "$PY" - "$DIZIN/durum.json" <<'PYEOF'
 import json, sys
@@ -48,6 +49,11 @@ print("yazıcı hali  :", d.get("durum"), "| nedenler:", d.get("nedenler"), "| k
 print("kağıtlar     :", ", ".join("%s=%sx%s" % (x["ad"], x["mm"][0], x["mm"][1]) for x in d.get("kagitlar", [])))
 for s in d.get("secenekler", []):
     print("seçenek      : %s (%s) varsayılan=%s -> %s" % (s["anahtar"], s["yazi"], s.get("varsayilan"), ", ".join(c["ad"] for c in s["secimler"])))
+i = d.get("istasyon") or {}
+print("istasyon kodu:", i.get("kod"), "| iPad kanalı:", "bağlı" if i.get("bagli") else ("bağlanıyor… " + str(i.get("hata") or "")))
 print()
 print("KURULUM TAMAM — köprü çalışıyor." if d.get("ok") else "DİKKAT: " + str(d.get("hata")))
+print()
+print("iPad LİNKİ (yalnız yazıcıyı bağlar; kabin ayarlarıyla birlikte göndermek için kabin panelinde 'Kurulum linki üret'):")
+print("  " + str(i.get("link")))
 PYEOF
