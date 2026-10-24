@@ -45,6 +45,10 @@ code{background:rgba(30,24,19,.06);padding:1px 6px;border-radius:4px;font-size:1
 button.b{font:600 14px var(--ui);padding:10px 14px;border-radius:8px;border:1px solid var(--cizgi);background:#fff;color:var(--mur);cursor:pointer}
 button.b.ana{background:var(--mur);color:#fff;border-color:var(--mur)}
 button.b:hover{border-color:var(--amber)}
+.profil{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:4px 0 6px}
+.profil button{font:600 14px var(--ui);padding:10px 12px;border-radius:8px;border:1px solid var(--cizgi);background:#fff;color:var(--mur);cursor:pointer;text-align:left}
+.profil button small{display:block;font-weight:400;color:var(--soluk);font-size:12px;margin-top:2px}
+.profil button[aria-pressed="true"]{border-color:var(--yesil);box-shadow:inset 0 0 0 1px var(--yesil);background:#F1F7F2}
 .durum{font-size:13px;color:var(--yesil);min-height:1.4em;margin-top:8px}
 .testler{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 @media (max-width:480px){.testler{grid-template-columns:1fr}}
@@ -91,7 +95,7 @@ button.b:hover{border-color:var(--amber)}
           kağıt boyutu <code>PC 4x6</code> (4×6 inç — 10×15 değil), yön <b>Dikey</b>, kalite en yüksek. "Bunu varsayılan yazıcı yap" işaretle.</li>
         <li><b>2 inç kesim</b> — sadece <b>şerit etkinliğinde</b> aç. Aynı menüde "Cutting / 2 inch cut" seçeneği. Açıkken yazıcı <u>her</u> 10×15'i ortadan ikiye keser; o yüzden sağdaki "Kesici" anahtarını da aç, kabin o etkinlikte sadece şerit modunu gösterir.</li>
         <li><b>Chrome'da kabini aç</b>, panel (⚙ · PIN) → Baskı → <b>Gerçek baskı: AÇIK</b>.</li>
-        <li><b>İlk baskıda</b> Chrome'un yazdır ekranında: Hedef <b>DS-RX1</b>, Kağıt <b>4x6</b>, Kenar boşlukları <b>Yok</b>, Ölçek <b>100</b>, "Arka plan grafikleri" <b>işaretli</b>. Chrome bunları hatırlar.</li>
+        <li><b>İlk baskıda</b> Chrome'un yazdır ekranında: Hedef <b>Dai Nippon Printing DS…</b>, Kağıt boyutu <b>156 x 105 mm</b> (DNP 4x6'yı böyle, yatay ve kesim paylı listeler), Kenar boşlukları <b>Yok</b>, Ölçek <b>100</b>, "Arka plan grafikleri" <b>işaretli</b>. Chrome bunları hatırlar.</li>
         <li><b>Aşağıdaki testleri bas</b>, sonuçlara göre ince ayarı yap.</li>
       </ol>
       <div class="bilgi"><b>Her baskıda pencere çıkmasın:</b> Chrome'u <code>--kiosk-printing</code> ile başlatırsan yazdır ekranı açılmadan doğrudan varsayılan yazıcıya basar. Önce testleri pencereli bas, ayarlar oturunca bu moda geç.</div>
@@ -103,6 +107,10 @@ button.b:hover{border-color:var(--amber)}
       <section>
         <h2>2 · Kabin ayarı</h2>
         <p class="aciklama">Buradaki ayar kabine kaydedilir. Kabin sekmesi açıksa ayardan sonra onu bir kez yenile.</p>
+        <div class="profil" role="group" aria-label="Yazıcı">
+          <button id="prDnp" aria-pressed="true">DNP RX1HS<small>Kağıt boyutu: 156 x 105 mm</small></button>
+          <button id="prStd" aria-pressed="false">Diğer yazıcı<small>4×6 / 10×15 dikey</small></button>
+        </div>
         <div class="sw">
           <div><div class="t">Kesici (2 inç kesim) açık</div><div class="n">Açıksa kabin sadece Çift Şerit gösterir, makas çizgisi basılmaz. Kapalıysa her mod 10×15 tek parça çıkar.</div></div>
           <button class="tg" id="kesici" aria-pressed="false" aria-label="Kesici"><i></i></button>
@@ -148,12 +156,68 @@ button.b:hover{border-color:var(--amber)}
 <script>
 (function(){
 var ANAH="booth.yazici";
-function oku(){var d={olcek:100,x:0,y:0,dnpKesim:false};try{var o=JSON.parse(localStorage.getItem(ANAH)||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}return d}
+function oku(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp"};try{var o=JSON.parse(localStorage.getItem(ANAH)||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}return d}
 function yaz(d){try{localStorage.setItem(ANAH,JSON.stringify(d));return true}catch(e){return false}}
 var $=function(s){return document.querySelector(s)};
 var a=oku();
+function yaziciAyar(){return a}
+/* ===== BASKI YÜZEYİ (aynısı yazici.html'de — ikisi birlikte değişir) =====
+   DNP RX1HS 4x6 kağıdı sürücüde "156 x 105 mm" (yatay, kesim paylı) olarak tanımlı; Chrome dikey
+   sayfada bunu 105×156 kullanıyor. Yazıcı 105×156 basıp 101,6×152,4'e (tam 4×6) keser, her kenardan
+   ~1,7 mm pay gider. Yüzey 105×156 mm @300 dpi = 1240×1843 px: fotoğraf (1200×1800 = tam 4×6) ortaya
+   BİREBİR oturur, pay alanı aynı fotoğrafın büyütülmüşüyle doldurulur — kesim kayarsa kenarda beyaz
+   çizgi yerine fotoğrafın devamı görünür. İnce ayar (ölçek/kaydırma) fotoğrafın kendi yönünde uygulanır. */
+var PROFIL={
+  dnp:{ad:"DNP RX1HS — kağıt 156 x 105 mm",mmW:105,mmH:156,pxW:1240,pxH:1843},
+  std:{ad:"Diğer yazıcı — 4×6 dikey",mmW:101.6,mmH:152.4,pxW:1200,pxH:1800}
+};
+var _yuzeyOnb={k:null,p:null};
+function baskiYuzeyi(src,a){
+  a=a||yaziciAyar();
+  var P=PROFIL[a.profil]||PROFIL.dnp;
+  var key=src.length+"|"+src.slice(-64)+"|"+JSON.stringify(a);
+  if(_yuzeyOnb.k===key)return _yuzeyOnb.p;           /* 10 kopyada 10 kez çizme */
+  var p=new Promise(function(res){
+    var im=new Image();
+    im.onload=function(){
+      var c=document.createElement("canvas");c.width=P.pxW;c.height=P.pxH;var x=c.getContext("2d");
+      x.fillStyle="#fff";x.fillRect(0,0,P.pxW,P.pxH);
+      var PXMM=300/25.4,s=(+a.olcek||100)/100,dx=(+a.x||0)*PXMM,dy=(+a.y||0)*PXMM;
+      var cx=P.pxW/2+dx,cy=P.pxH/2+dy,ew=1200*s,eh=1800*s;
+      var oran=im.naturalWidth/im.naturalHeight;
+      if(Math.abs(oran-2/3)<0.01){
+        if(P!==PROFIL.std){ /* pay alanı: fotoğrafın kendisi, kaydırma dahil her kenarı örtecek kadar büyük */
+          var k=Math.max((P.pxW+2*Math.abs(dx))/ew,(P.pxH+2*Math.abs(dy))/eh);
+          x.drawImage(im,cx-ew*k/2,cy-eh*k/2,ew*k,eh*k);
+        }
+        x.drawImage(im,cx-ew/2,cy-eh/2,ew,eh);
+      }else{ /* 4×6 oranında olmayan görsel (insta 4:5 vb.): esnetme yok, beyaz zeminde ortala */
+        var f=Math.min(ew/im.naturalWidth,eh/im.naturalHeight),w=im.naturalWidth*f,h=im.naturalHeight*f;
+        x.drawImage(im,cx-w/2,cy-h/2,w,h);
+      }
+      res(c.toDataURL("image/jpeg",.95));
+    };
+    im.onerror=function(){res(src)};
+    im.src=src;
+  });
+  _yuzeyOnb={k:key,p:p};
+  return p;
+}
+function sayfaStili(){
+  var P=PROFIL[yaziciAyar().profil]||PROFIL.dnp,st=document.getElementById("sayfaStil");
+  if(!st){st=document.createElement("style");st.id="sayfaStil";}
+  /* her seferinde EN SONA taşı: kabinde ana stil <body> içinde, ondan sonra gelmezse @page kuralı kaybediyor */
+  (document.body||document.head||document.documentElement).appendChild(st);
+  st.textContent="@page{size:"+P.mmW+"mm "+P.mmH+"mm;margin:0}"
+    +"@media print{#printArea img,.sayfa,.sayfa img{width:"+P.mmW+"mm!important;height:"+P.mmH+"mm!important}"
+    +"#printArea img{object-fit:fill!important}}";
+}
+/* ===== /BASKI YÜZEYİ ===== */
 function goster(){
   $("#kesici").setAttribute("aria-pressed",a.dnpKesim?"true":"false");
+  $("#prDnp").setAttribute("aria-pressed",a.profil!=="std"?"true":"false");
+  $("#prStd").setAttribute("aria-pressed",a.profil==="std"?"true":"false");
+  sayfaStili();
   $("#olcek").value=a.olcek;$("#kx").value=a.x;$("#ky").value=a.y;
 }
 goster();
@@ -165,7 +229,11 @@ function not(t,hata){var d=$("#durum");d.style.color=hata?"var(--kirmizi)":"var(
 $("#kesici").onclick=function(){a.dnpKesim=!a.dnpKesim;goster();al();
   not(yaz(a)?(a.dnpKesim?"Kesici açık kaydedildi — kabin sadece Çift Şerit gösterecek. Sürücüde 2 inç kesimi de aç.":"Kesici kapalı kaydedildi — tüm modlar 10×15 tek parça."):"Kaydedilemedi (gizli pencere olabilir).",false)};
 $("#kaydet").onclick=function(){al();goster();not(yaz(a)?"Kaydedildi: ölçek %"+a.olcek+", sağa "+a.x+" mm, aşağı "+a.y+" mm.":"Kaydedilemedi (gizli pencere olabilir).",false)};
-$("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim};yaz(a);goster();not("İnce ayar sıfırlandı.")};
+$("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim,profil:a.profil};yaz(a);goster();not("İnce ayar sıfırlandı.")};
+function profilSec(pr){al();a.profil=pr;goster();
+  not(yaz(a)?(pr==="std"?"Diğer yazıcı seçildi — sayfa 4×6 dikey.":"DNP seçildi — Chrome'da kağıt boyutu 156 x 105 mm olmalı."):"Kaydedilemedi (gizli pencere olabilir).",false)}
+$("#prDnp").onclick=function(){profilSec("dnp")};
+$("#prStd").onclick=function(){profilSec("std")};
 
 /* ---------- test sayfaları (mm ile — tarayıcı ölçeği dışında hiçbir şeye bağlı değil) ---------- */
 var mm=function(v){return v+"mm"};
@@ -175,8 +243,14 @@ function kalib(el){ /* kabin ince ayarını test sayfalarına da uygula: ayar so
   if(s!==1||a.x||a.y){el.style.transform="translate("+a.x+"mm,"+a.y+"mm) scale("+s+")";el.style.transformOrigin="50% 50%";}
   return el;
 }
-function sayfa(ic){var d=document.createElement("div");d.className="sayfa";var i=document.createElement("div");
-  i.style.cssText="position:absolute;inset:0";i.innerHTML=ic;d.appendChild(kalib(i));return d}
+function sayfa(ic){
+  var P=PROFIL[a.profil]||PROFIL.dnp,d=document.createElement("div");d.className="sayfa";
+  /* DNP: sayfa 105×156, tam 4×6 ortada; çevresindeki pay alanı açık pembe — kesimden sonra kenarda
+     pembe görünürse kesim o yandan dışarı kaymış, 1 mm çizgisi yoksa içeri kaymış demektir */
+  if(P!==PROFIL.std)d.style.background="#F4CFC4";
+  var i=document.createElement("div");
+  i.style.cssText="position:absolute;left:"+mm((P.mmW-PW)/2)+";top:"+mm((P.mmH-PH)/2)+";width:"+mm(PW)+";height:"+mm(PH)+";background:#fff;overflow:hidden";
+  i.innerHTML=ic;d.appendChild(kalib(i));return d}
 function cizgi(x,y,w,h,renk){return '<div style="position:absolute;left:'+mm(x)+';top:'+mm(y)+';width:'+mm(w)+';height:'+mm(h)+';background:'+(renk||"#000")+'"></div>'}
 function yazi(x,y,t,boy,ek){return '<div style="position:absolute;left:'+mm(x)+';top:'+mm(y)+';font-size:'+boy+'pt;line-height:1;white-space:nowrap;'+(ek||"")+'">'+t+'</div>'}
 
@@ -260,8 +334,11 @@ kabin:function(){
   x.font="600 "+(9*0.3528*px)+"px sans-serif";x.fillText("130 mm",60*px,76*px);
   x.strokeStyle="#000";x.lineWidth=0.3*px;x.strokeRect(12*px,108*px,30*px,30*px);
   x.font=(6*0.3528*px)+"px sans-serif";x.fillText("30×30 mm kare",12*px,142*px);
-  var im=new Image();im.src=c.toDataURL("image/jpeg",.95);
-  var d=document.createElement("div");d.className="sayfa";kalib(im);d.appendChild(im);return d;
+  var d=document.createElement("div");d.className="sayfa";var im=new Image();d.appendChild(im);
+  d._hazir=baskiYuzeyi(c.toDataURL("image/jpeg",.95),a).then(function(u){
+    return new Promise(function(r){im.onload=r;im.onerror=r;im.src=u;setTimeout(r,5000)});
+  });
+  return d;
 }
 };
 
@@ -270,9 +347,9 @@ function bas(t){
   var r=TEST[t]();
   var el=(typeof r==="string")?sayfa(r):r;
   hedef.appendChild(el);
-  var img=el.querySelector("img");
+  sayfaStili();
   var git=function(){setTimeout(function(){try{window.print()}catch(e){}},150)};
-  if(img&&img.decode)img.decode().then(git,git);else git();
+  if(el._hazir)el._hazir.then(git,git);else git();
 }
 Array.prototype.forEach.call(document.querySelectorAll("[data-t]"),function(b){b.onclick=function(){bas(b.getAttribute("data-t"))}});
 })();

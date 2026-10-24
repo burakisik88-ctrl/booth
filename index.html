@@ -1302,13 +1302,69 @@ function sablonUygula(id){
 /* ---------- YAZICI (DNP DS-RX1HS) ----------
    İnce ayar ve kesici durumu yazici.html sayfasında ayarlanır, AYRI anahtarda durur:
    kabin sekmesi açıkken S'nin üstüne yazılıp kaybolmasın diye her baskıda taze okunur. */
-function yaziciAyar(){var d={olcek:100,x:0,y:0,dnpKesim:false};
+function yaziciAyar(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp"};
   try{var o=JSON.parse(localStorage.getItem("booth.yazici")||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}
   return d}
-function prImg(src){var a=yaziciAyar(),im=new Image();im.src=src;
-  var sc=(+a.olcek||100)/100,dx=+a.x||0,dy=+a.y||0;
-  if(sc!==1||dx||dy){im.style.transform="translate("+dx+"mm,"+dy+"mm) scale("+sc+")";im.style.transformOrigin="50% 50%";}
+/* ===== BASKI YÜZEYİ (aynısı yazici.html'de — ikisi birlikte değişir) =====
+   DNP RX1HS 4x6 kağıdı sürücüde "156 x 105 mm" (yatay, kesim paylı) olarak tanımlı; Chrome dikey
+   sayfada bunu 105×156 kullanıyor. Yazıcı 105×156 basıp 101,6×152,4'e (tam 4×6) keser, her kenardan
+   ~1,7 mm pay gider. Yüzey 105×156 mm @300 dpi = 1240×1843 px: fotoğraf (1200×1800 = tam 4×6) ortaya
+   BİREBİR oturur, pay alanı aynı fotoğrafın büyütülmüşüyle doldurulur — kesim kayarsa kenarda beyaz
+   çizgi yerine fotoğrafın devamı görünür. İnce ayar (ölçek/kaydırma) fotoğrafın kendi yönünde uygulanır. */
+var PROFIL={
+  dnp:{ad:"DNP RX1HS — kağıt 156 x 105 mm",mmW:105,mmH:156,pxW:1240,pxH:1843},
+  std:{ad:"Diğer yazıcı — 4×6 dikey",mmW:101.6,mmH:152.4,pxW:1200,pxH:1800}
+};
+var _yuzeyOnb={k:null,p:null};
+function baskiYuzeyi(src,a){
+  a=a||yaziciAyar();
+  var P=PROFIL[a.profil]||PROFIL.dnp;
+  var key=src.length+"|"+src.slice(-64)+"|"+JSON.stringify(a);
+  if(_yuzeyOnb.k===key)return _yuzeyOnb.p;           /* 10 kopyada 10 kez çizme */
+  var p=new Promise(function(res){
+    var im=new Image();
+    im.onload=function(){
+      var c=document.createElement("canvas");c.width=P.pxW;c.height=P.pxH;var x=c.getContext("2d");
+      x.fillStyle="#fff";x.fillRect(0,0,P.pxW,P.pxH);
+      var PXMM=300/25.4,s=(+a.olcek||100)/100,dx=(+a.x||0)*PXMM,dy=(+a.y||0)*PXMM;
+      var cx=P.pxW/2+dx,cy=P.pxH/2+dy,ew=1200*s,eh=1800*s;
+      var oran=im.naturalWidth/im.naturalHeight;
+      if(Math.abs(oran-2/3)<0.01){
+        if(P!==PROFIL.std){ /* pay alanı: fotoğrafın kendisi, kaydırma dahil her kenarı örtecek kadar büyük */
+          var k=Math.max((P.pxW+2*Math.abs(dx))/ew,(P.pxH+2*Math.abs(dy))/eh);
+          x.drawImage(im,cx-ew*k/2,cy-eh*k/2,ew*k,eh*k);
+        }
+        x.drawImage(im,cx-ew/2,cy-eh/2,ew,eh);
+      }else{ /* 4×6 oranında olmayan görsel (insta 4:5 vb.): esnetme yok, beyaz zeminde ortala */
+        var f=Math.min(ew/im.naturalWidth,eh/im.naturalHeight),w=im.naturalWidth*f,h=im.naturalHeight*f;
+        x.drawImage(im,cx-w/2,cy-h/2,w,h);
+      }
+      res(c.toDataURL("image/jpeg",.95));
+    };
+    im.onerror=function(){res(src)};
+    im.src=src;
+  });
+  _yuzeyOnb={k:key,p:p};
+  return p;
+}
+function sayfaStili(){
+  var P=PROFIL[yaziciAyar().profil]||PROFIL.dnp,st=document.getElementById("sayfaStil");
+  if(!st){st=document.createElement("style");st.id="sayfaStil";}
+  /* her seferinde EN SONA taşı: kabinde ana stil <body> içinde, ondan sonra gelmezse @page kuralı kaybediyor */
+  (document.body||document.head||document.documentElement).appendChild(st);
+  st.textContent="@page{size:"+P.mmW+"mm "+P.mmH+"mm;margin:0}"
+    +"@media print{#printArea img,.sayfa,.sayfa img{width:"+P.mmW+"mm!important;height:"+P.mmH+"mm!important}"
+    +"#printArea img{object-fit:fill!important}}";
+}
+/* ===== /BASKI YÜZEYİ ===== */
+/* printArea görseli: yüzey hazırlanınca src atanır; im._hazir çözülünce yazdırılabilir */
+function prImg(src){sayfaStili();var im=new Image();
+  im._hazir=baskiYuzeyi(src).then(function(u){
+    return new Promise(function(r){im.onload=r;im.onerror=r;im.src=u;setTimeout(r,5000);})
+      .then(function(){return im.decode?im.decode().catch(function(){}):null});
+  });
   return im}
+sayfaStili();
 /* ---------- modlar ---------- */
 var MODES=[
   {id:"tek",name:"Tek Kare",desc:"Tek fotoğraf, tam sayfa baskı.",shots:1,cells:[[1]]},
@@ -2383,9 +2439,7 @@ function doPrint(){
     var bekle=[];
     for(var i=0;i<copies;i++){
       var im=prImg(composed);pa.appendChild(im);
-      bekle.push(im.decode?im.decode().catch(function(){}):new Promise(function(r){
-        im.onload=r;im.onerror=r;setTimeout(r,4000);
-      }));
+      bekle.push(im._hazir);
     }
     /* görseller çözülmeden yazdırırsak boş kağıt çıkıyordu — bekle, ama en fazla 6 sn */
     var yazdirildi=false;
@@ -2701,7 +2755,7 @@ function pendHepsiniBas(){
       var bekle=[];
       for(var k=0;k<(r.kopya||1);k++){
         var im=prImg(r.d);pa.appendChild(im);
-        bekle.push(im.decode?im.decode().catch(function(){}):new Promise(function(res){im.onload=res;im.onerror=res;setTimeout(res,4000)}));
+        bekle.push(im._hazir);
       }
       Promise.all(bekle).then(function(){
         try{window.print()}catch(e){}
@@ -2929,6 +2983,7 @@ function kBaski(){
   if(n<50||mx-mn<10)return {ok:false,m:"sayfa boş çıkıyor",o:"Baskı kurgusu çalışmıyor — bu haliyle yazıcıdan boş kâğıt çıkar. Çerçeve ayarını 'bant' yapıp tekrar dene."};
   var ya=yaziciAyar();
   var m=(S.serit8?"şerit (2 kopya)":"dörtlü")+" · 10×15 cm · sayfa doluyor"
+    +" · "+(PROFIL[ya.profil]||PROFIL.dnp).ad
     +(ya.dnpKesim?" · DNP kesici açık (yalnız şerit)":"")
     +((+ya.olcek!==100||+ya.x||+ya.y)?" · ince ayar %"+ya.olcek:"");
   if(!S.realPrint)return {uyari:true,m:m+" · SİMÜLASYON",
@@ -3174,7 +3229,7 @@ function fillAdmin(){
   if($("#fAiBirim"))$("#fAiBirim").value=S.aiBirim||"";
   tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
   (function(){var a=yaziciAyar(),n=$("#yaziciNot");if(!n)return;
-    n.innerHTML="Yazıcı ayarı: <b>"+(a.dnpKesim?"kesici AÇIK — yalnız Çift Şerit":"10×15 tek parça")+"</b>"
+    n.innerHTML="Yazıcı: <b>"+(PROFIL[a.profil]||PROFIL.dnp).ad+"</b> · <b>"+(a.dnpKesim?"kesici AÇIK — yalnız Çift Şerit":"tek parça")+"</b>"
       +((+a.olcek!==100||+a.x||+a.y)?" · ince ayar %"+a.olcek+", "+a.x+"/"+a.y+" mm":"");})();
   tg($("#tgOnay"),S.onayOn);tg($("#tgOnayZor"),S.onayZorunlu!==false);
   if($("#fOnayMetni"))$("#fOnayMetni").value=S.onayMetni||"";
@@ -3189,7 +3244,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.55 · DNP · baskı 10×15 cm · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.56 · DNP 156×105 · baskı 4×6 · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -3433,7 +3488,7 @@ $("#testPrint").onclick=function(){
   x.fillText("10 × 15 KENARLIKSIZ TEST",W/2,H-90);
   composed=c.toDataURL("image/jpeg",.95);copies=1;$("#emergeImg").src=composed;
   var pa=$("#printArea");pa.innerHTML="";var im=prImg(composed);pa.appendChild(im);
-  setTimeout(function(){try{window.print()}catch(e){}},400);
+  im._hazir.then(function(){setTimeout(function(){try{window.print()}catch(e){}},120)});
 };
 
 /* ---------- kütüphane (çerçeve + arka plan) ---------- */
@@ -4505,7 +4560,7 @@ function hataYaz(kaynak,msg){
 }
 window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
 window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
-window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 
