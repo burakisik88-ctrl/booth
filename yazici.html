@@ -79,6 +79,7 @@ button.b:hover{border-color:var(--amber)}
   .sayfa img{width:4in;height:6in;display:block}
 }
 </style>
+<script src="qrmini.js"></script>
 </head>
 <body>
 <div class="sar">
@@ -118,6 +119,7 @@ button.b:hover{border-color:var(--amber)}
         <div class="kod"><code id="kKur">curl -fsSL https://burakisik88-ctrl.github.io/booth/kopru/kur.sh | bash</code><button class="b" id="kKopyala">Kopyala</button></div>
         <p class="aciklama" style="margin:8px 0 0">Kurulum: Spotlight'ta <b>Terminal</b>'i aç, satırı yapıştır, Enter. Şifre istemez. Sonunda "KURULUM TAMAM" yazar. Chrome "yerel ağdaki cihazlara erişim" izni sorarsa <b>İzin ver</b>.</p>
         <div class="secenek" id="kSecenek"></div>
+        <div class="kopru" id="kIstasyon" style="margin-top:10px;display:none"></div>
         <div class="satir"><button class="b" id="kYenile">Yeniden kontrol et</button></div>
       </section>
 
@@ -173,7 +175,7 @@ button.b:hover{border-color:var(--amber)}
 <script>
 (function(){
 var ANAH="booth.yazici";
-function oku(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp",yol:"oto",secenek:{}};try{var o=JSON.parse(localStorage.getItem(ANAH)||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}return d}
+function oku(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp",yol:"oto",secenek:{},istasyon:""};try{var o=JSON.parse(localStorage.getItem(ANAH)||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}return d}
 function yaz(d){try{localStorage.setItem(ANAH,JSON.stringify(d));return true}catch(e){return false}}
 var $=function(s){return document.querySelector(s)};
 var a=oku();
@@ -251,11 +253,18 @@ function sayfaStili(){
    Mac'te arka planda çalışan OBSKURA köprüsü (kopru/kopru.py, yalnız 127.0.0.1:8740). Chrome'un yazdır
    ekranı Mac'te DNP 4x6'yı (156x105, eni boyundan büyük) kendi içinde dik çevirip "özel kağıt" gönderiyor
    (Chromium hata 40267436), DNP basmıyor. Köprü fotoğrafı sürücünün KENDİ kağıt adıyla, kağıt ölçüsünde
-   PDF'e koyup basar; pencere çıkmaz. a.yol: "oto" (köprü varsa köprü, yoksa tarayıcı) | "kopru" | "tarayici". */
+   PDF'e koyup basar; pencere çıkmaz. a.yol: "oto" (köprü varsa köprü, yoksa tarayıcı) | "kopru" | "tarayici".
+   BASKI İSTASYONU (iPad): DNP'de AirPrint yok, iPad doğrudan basamaz. a.istasyon kodu varsa baskı görüntüsü
+   Cloudinary'ye yüklenir, adresi istasyonun özel ntfy kanalına (obskura-KOD) yazılır; yazıcının takılı olduğu
+   Mac'teki köprü kanalı dinler, basar, sonucu obskura-KOD-d'ye yazar. Mac'e dışarıdan erişim açılmaz. */
 var KOPRU="http://127.0.0.1:8740";
+var NTFY=(function(){try{return localStorage.getItem("booth.ntfy")||"https://ntfy.sh"}catch(e){return "https://ntfy.sh"}})();
+function ipadMi(){return /iPad|iPhone|iPod/.test(navigator.userAgent||"")||(/Mac/.test(navigator.platform||"")&&navigator.maxTouchPoints>1)}
+function istasyonKodu(){var k=String(yaziciAyar().istasyon||"").toLowerCase().replace(/[^a-z0-9]/g,"");return k.length>=8?k:""}
 var _kopruOnb={t:0,v:null};
 function kopruDurum(taze){
   if(!taze&&_kopruOnb.v&&Date.now()-_kopruOnb.t<8000)return Promise.resolve(_kopruOnb.v);
+  if(ipadMi())return Promise.resolve({ok:false,yok:true,hata:"iPad'de yerel köprü yok — baskı istasyonu kullanılır"});
   var kont=("AbortController" in window)?new AbortController():null;
   var zaman=setTimeout(function(){if(kont)kont.abort()},2500);
   return fetch(KOPRU+"/durum"+(taze?"?taze":""),{cache:"no-store",signal:kont?kont.signal:undefined})
@@ -281,9 +290,16 @@ function kopruSecenekleri(d,a){
 function baskiYolu(){
   var a=yaziciAyar(),mac=/Mac/i.test(navigator.platform||navigator.userAgent||"");
   if(a.yol==="tarayici"||a.profil==="std")return Promise.resolve("tarayici");
-  /* Mac'te tarayıcı yolu DNP'de zaten basmaz: köprü yoksa "kopru-yok" (kare kuyruğa alınır). Windows'ta Chrome çalışır. */
-  return kopruDurum().then(function(d){return d&&d.ok?"kopru":((a.yol==="kopru"||mac)?"kopru-yok":"tarayici")});
+  /* Mac'te tarayıcı yolu DNP'de zaten basmaz: köprü yoksa "kopru-yok" (kare kuyruğa alınır). Windows'ta Chrome çalışır.
+     iPad: istasyon kodu varsa istasyon; yoksa "kopru-yok" (AirPrint'siz DNP'ye tarayıcıdan basılamaz). */
+  return kopruDurum().then(function(d){
+    if(d&&d.ok)return "kopru";
+    if(istasyonKodu())return "istasyon";
+    return (a.yol==="kopru"||mac||ipadMi())?"kopru-yok":"tarayici";
+  });
 }
+/* tek giriş: yol "kopru" -> yerel köprü, "istasyon" -> iPad'den istasyona */
+function baskiGonder(yol,dataUrl,kopya,a){return yol==="istasyon"?istasyonBas(dataUrl,kopya,a):kopruBas(dataUrl,kopya,a)}
 /* dataUrl: baskiYuzeyi çıktısı (1843x1240 JPEG). Promise<{ok,is,hata}> */
 function kopruBas(dataUrl,kopya,a){
   a=a||yaziciAyar();
@@ -312,6 +328,54 @@ function kopruIzle(no,bildir){
     }).catch(function(){});
   })();
 }
+/* ---- baskı istasyonu (iPad) ---- */
+function bulutAyar(){try{var s=JSON.parse(localStorage.getItem("booth.v1")||"{}");return {ad:s.cldName||"",on:s.cldPreset||""}}catch(e){return {ad:"",on:""}}}
+function _ntfyOku(konu,since){
+  return fetch(NTFY+"/"+konu+"/json?poll=1&since="+encodeURIComponent(since),{cache:"no-store"}).then(function(r){return r.text()}).then(function(t){
+    var out=[];t.split("\n").forEach(function(l){try{var o=JSON.parse(l);if(o.event==="message"){var m=JSON.parse(o.message||"{}");m._t=o.time;out.push(m)}}catch(e){}});return out;
+  });
+}
+var _istOnb={t:0,v:null};
+/* istasyonun son nabzı / sonucu (30 dk'da bir nabız atar). Promise<{canli,yas,kesici,yazici,hata}> */
+function istasyonDurum(taze){
+  var kod=istasyonKodu();if(!kod)return Promise.resolve({canli:false,yok:true,hata:"istasyon kodu yok"});
+  if(!taze&&_istOnb.v&&Date.now()-_istOnb.t<30000)return Promise.resolve(_istOnb.v);
+  return _ntfyOku("obskura-"+kod+"-d","40m").then(function(l){
+    var nb=l.filter(function(m){return m.tip==="nabiz"}).pop(),son=l.pop();
+    var yas=son?Math.round(Date.now()/1000-(son._t||son.t||0)):null;
+    var v={canli:!!son&&yas<35*60,yas:yas,kesici:nb?!!nb.kesici:undefined,yazici:nb?nb.yazici:null,ok:nb?nb.ok:undefined,hata:nb?nb.hata:""};
+    if(!son)v.hata="istasyon son 40 dakikada hiç ses vermedi — yazıcının bağlı olduğu Mac açık ve köprü kurulu mu?";
+    _istOnb={t:Date.now(),v:v};return v;
+  }).catch(function(){return {canli:false,hata:"istasyona ulaşılamadı (internet?)"}});
+}
+/* Promise<{ok,is,hata,bekliyor}>: yükle -> kanala yaz -> sonucu bekle (en çok 30 sn) */
+function istasyonBas(dataUrl,kopya,a){
+  a=a||yaziciAyar();var kod=istasyonKodu(),bl=bulutAyar();
+  if(!kod)return Promise.resolve({ok:false,hata:"istasyon kodu yok"});
+  if(!bl.ad||!bl.on)return Promise.resolve({ok:false,hata:"Cloudinary ayarı yok — iPad istasyona fotoğrafı bulut üzerinden yollar (kurulum linkiyle gelir)"});
+  var no=Date.now().toString(36)+Math.random().toString(36).slice(2,7),t0=Math.floor(Date.now()/1000);
+  var api=(function(){try{return localStorage.getItem("booth.cldApi")||"https://api.cloudinary.com"}catch(e){return "https://api.cloudinary.com"}})();
+  return fetch(dataUrl).then(function(r){return r.blob()}).then(function(blob){
+    var fd=new FormData();fd.append("file",blob,"baski-"+no+".jpg");fd.append("upload_preset",bl.on);fd.append("folder","booth/_baski/"+kod);
+    var ct=new AbortController(),tm=setTimeout(function(){ct.abort()},30000);
+    return fetch(api+"/v1_1/"+encodeURIComponent(bl.ad)+"/image/upload",{method:"POST",body:fd,signal:ct.signal})
+      .then(function(r){clearTimeout(tm);if(!r.ok)throw new Error("fotoğraf buluta yüklenemedi ("+r.status+")");return r.json()});
+  }).then(function(j){
+    if(!j.secure_url)throw new Error("bulut adres döndürmedi");
+    return fetch(NTFY+"/obskura-"+kod,{method:"POST",body:JSON.stringify({v:1,id:no,url:j.secure_url,kopya:Math.max(1,kopya|0||1),kesim:!!a.dnpKesim,t:t0,cihaz:ipadMi()?"ipad":"diger"})})
+      .then(function(r){if(!r.ok)throw new Error("istasyona iletilemedi ("+r.status+")")});
+  }).then(function(){
+    return new Promise(function(res){
+      var n=0;(function bak(){
+        n++;_ntfyOku("obskura-"+kod+"-d",String(t0-5)).then(function(l){
+          var s=l.filter(function(m){return m.tip==="sonuc"&&m.id===no})[0];
+          if(s)return res({ok:!!s.ok,is:s.is,hata:s.hata||"",istasyon:true});
+          if(n<20)setTimeout(bak,1500);else res({ok:false,bekliyor:true,hata:"istasyon 30 sn içinde yanıt vermedi — iş bulutta bekliyor, Mac açılınca basılır"});
+        }).catch(function(){if(n<20)setTimeout(bak,1500);else res({ok:false,bekliyor:true,hata:"istasyondan yanıt alınamadı"})});
+      })();
+    });
+  }).catch(function(e){return {ok:false,hata:(e&&e.name==="AbortError")?"internet çok yavaş":((e&&e.message)||String(e))}});
+}
 /* ===== /BASKI KÖPRÜSÜ ===== */
 function goster(){
   $("#kesici").setAttribute("aria-pressed",a.dnpKesim?"true":"false");
@@ -326,10 +390,10 @@ function al(){
   a.olcek=n("#olcek",100,90,105);a.x=n("#kx",0,-5,5);a.y=n("#ky",0,-5,5);
 }
 function not(t,hata){var d=$("#durum");d.style.color=hata?"var(--kirmizi)":"var(--yesil)";d.textContent=t;}
-$("#kesici").onclick=function(){a.dnpKesim=!a.dnpKesim;goster();al();
+$("#kesici").onclick=function(){a.dnpKesim=!a.dnpKesim;goster();al();setTimeout(ayarIstasyonaYaz,0);
   not(yaz(a)?(a.dnpKesim?"Kesici açık kaydedildi — kabin sadece Çift Şerit gösterecek. Köprü 2 inç kesimi her baskıda kendisi açar (Windows'ta sürücüden aç).":"Kesici kapalı kaydedildi — tüm modlar 10×15 tek parça."):"Kaydedilemedi (gizli pencere olabilir).",false)};
 $("#kaydet").onclick=function(){al();goster();not(yaz(a)?"Kaydedildi: ölçek %"+a.olcek+", sağa "+a.x+" mm, aşağı "+a.y+" mm.":"Kaydedilemedi (gizli pencere olabilir).",false)};
-$("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim,profil:a.profil,yol:a.yol||"oto",secenek:a.secenek||{}};yaz(a);goster();not("İnce ayar sıfırlandı.")};
+$("#sifirla").onclick=function(){a={olcek:100,x:0,y:0,dnpKesim:a.dnpKesim,profil:a.profil,yol:a.yol||"oto",secenek:a.secenek||{},istasyon:a.istasyon||""};yaz(a);goster();not("İnce ayar sıfırlandı.")};
 function profilSec(pr){al();a.profil=pr;goster();
   not(yaz(a)?(pr==="std"?"Diğer yazıcı seçildi — sayfa 4×6 dikey.":"DNP seçildi — Chrome'da kağıt boyutu 156 x 105 mm olmalı (önizleme yatay görünür)."):"Kaydedilemedi (gizli pencere olabilir).",false)}
 $("#prDnp").onclick=function(){profilSec("dnp")};
@@ -479,22 +543,51 @@ function bas(t){
       if(el._hazir)el._hazir.then(git,git);else git();
       return;
     }
-    if(yol==="kopru-yok")return not("Köprü yanıt vermiyor — yukarıdaki kurulum satırını Terminal'e yapıştır.",true);
-    not("Köprüye gönderiliyor…",false);
+    if(yol==="kopru-yok")return not(ipadMi()?"Bu iPad'de baskı istasyonu tanımlı değil — istasyon linkiyle aç.":"Köprü yanıt vermiyor — yukarıdaki kurulum satırını Terminal'e yapıştır.",true);
+    not(yol==="istasyon"?"Baskı istasyonuna gönderiliyor (buluta yükleme + yazıcıya iletim)…":"Köprüye gönderiliyor…",false);
     var resim=el._hazir?el._hazir.then(function(){return el.querySelector("img").src}):dikResim(el.firstChild);
-    resim.then(function(u){return kopruBas(u,1)}).then(function(s){
-      if(!s.ok)return not("Basılamadı: "+s.hata,true);
-      not("Yazıcıya gitti (iş "+(s.is||"?")+"). Kağıt ~15 sn içinde çıkar.",false);
-      kopruIzle(s.is,function(m){not(m,true)});
+    resim.then(function(u){return baskiGonder(yol,u,1)}).then(function(s){
+      if(!s.ok)return not((s.bekliyor?"Gönderildi ama teyit gelmedi: ":"Basılamadı: ")+s.hata,true);
+      not((yol==="istasyon"?"İstasyon bastı":"Yazıcıya gitti")+" (iş "+(s.is||"?")+"). Kağıt ~15 sn içinde çıkar.",false);
+      if(yol==="kopru")kopruIzle(s.is,function(m){not(m,true)});
     }).catch(function(e){not("Basılamadı: "+((e&&e.message)||e),true)});
   });
 }
 function esc(v){return String(v==null?"":v).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function istasyonKutusu(d){
+  var b=$("#kIstasyon"),i=d.istasyon||{};if(!i.kod){b.style.display="none";return}
+  b.style.display="block";
+  b.innerHTML='<b>Baskı istasyonu</b> · kod <b>'+esc(i.kod)+'</b> · iPad kanalı '+(i.bagli?'<b style="color:var(--yesil)">bağlı</b>':'<b style="color:var(--kirmizi)">bağlı değil</b>'+(i.hata?' ('+esc(i.hata)+')':''))
+    +(i.basilan?' · iPad\'lerden basılan: '+i.basilan:'')
+    +(i.sonBaski?'<br>Son iPad işi: '+(i.sonBaski.ok?'basıldı':'<b>basılamadı</b> — '+esc(i.sonBaski.hata||'')):'')
+    +'<br><b>iPad linki</b> (yalnız yazıcıyı bağlar): <div class="kod"><code id="ipadLink">'+esc(i.link)+'</code><button class="b" id="ipadKopyala">Kopyala</button></div>'
+    +'<canvas id="ipadQR" width="200" height="200" style="margin-top:8px;border-radius:6px;background:#fff"></canvas>'
+    +'<div style="font-size:13px;margin-top:6px">Kabin ayarlarını (çerçeve, fon, bulut) da taşımak için kabin panelinde <b>Kurulum linki üret</b>\'e bas — istasyon koda otomatik eklenir. Ortağın tek linkle hem kurulur hem bu yazıcıya basar.</div>';
+  try{var q=qrcode(0,"M");q.addData(i.link);q.make();var cv=$("#ipadQR"),x=cv.getContext("2d"),n=q.getModuleCount(),c=Math.floor(cv.width/(n+4)),o=Math.floor((cv.width-c*n)/2);
+    x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);x.fillStyle="#12100E";for(var r=0;r<n;r++)for(var cc=0;cc<n;cc++)if(q.isDark(r,cc))x.fillRect(o+cc*c,o+r*c,c,c);}catch(e){}
+  $("#ipadKopyala").onclick=function(){var m=$("#ipadLink").textContent;(navigator.clipboard?navigator.clipboard.writeText(m):Promise.reject()).then(function(){not("iPad linki kopyalandı.",false)},function(){not("Linki elle seç ve kopyala.",true)})};
+}
+/* iPad'lerden gelen işler istasyonun ayarıyla basılır: kesici ve sürücü seçenekleri köprüye yazılır */
+function ayarIstasyonaYaz(){
+  return kopruDurum().then(function(d){if(!d.ok)return;
+    return fetch(KOPRU+"/ayar",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({secenek:a.secenek||{},kesici:!!a.dnpKesim})}).catch(function(){});
+  });
+}
 function kopruGoster(){
   var k=$("#kDurum"),sc=$("#kSecenek");k.textContent="Köprü kontrol ediliyor…";
   kopruDurum(true).then(function(d){
+    if(d.ok){istasyonKutusu(d);var ay=d.ayar||{};if(JSON.stringify(ay.secenek||{})!==JSON.stringify(a.secenek||{})||!!ay.kesici!==!!a.dnpKesim)ayarIstasyonaYaz();}
+    if(!d.ok&&istasyonKodu()){
+      sc.innerHTML="";$("#kIstasyon").style.display="none";k.textContent="Baskı istasyonu "+istasyonKodu()+" kontrol ediliyor…";
+      return istasyonDurum(true).then(function(v){
+        k.innerHTML='Bu cihaz <b>baskı istasyonu '+esc(istasyonKodu())+'</b> üzerinden basar · '+(v.canli
+          ?'<b style="color:var(--yesil)">çevrimiçi</b> ('+Math.round((v.yas||0)/60)+' dk önce ses verdi)'+(v.yazici?' · yazıcı '+esc(v.yazici.durum||'')+' · kuyruk '+(v.yazici.kuyruk|0):'')+(v.kesici?' · kesici açık':'')
+          :'<b style="color:var(--kirmizi)">ses yok</b> — '+esc(v.hata||''))
+          +(bulutAyar().ad?'':'<br><b style="color:var(--kirmizi)">Cloudinary ayarı yok</b> — iPad fotoğrafı istasyona bulut üzerinden yollar; kabin panelinden ya da kurulum linkiyle gelir.');
+      });
+    }
     if(!d.ok){
-      sc.innerHTML="";
+      sc.innerHTML="";$("#kIstasyon").style.display="none";
       k.innerHTML=d.yok?'<b style="color:var(--kirmizi)">Köprü kurulu değil ya da kapalı.</b> Aşağıdaki satırı bu Mac\'te Terminal\'e yapıştır. (Windows\'ta köprüye gerek yok, Chrome yazdırma çalışır.)'
                       :'<b style="color:var(--kirmizi)">Köprü çalışıyor ama:</b> '+esc(d.hata);
       return;
@@ -515,6 +608,7 @@ function kopruGoster(){
       a.secenek=a.secenek||{};var n=se.getAttribute("data-k");
       if(se.value)a.secenek[n]=se.value;else delete a.secenek[n];
       not(yaz(a)?"Sürücü seçeneği kaydedildi: "+n+" = "+(se.value||"varsayılan"):"Kaydedilemedi.",false);
+      ayarIstasyonaYaz();
     }});
   });
 }

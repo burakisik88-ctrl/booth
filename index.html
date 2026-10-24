@@ -685,8 +685,8 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="grp">
           <h3>Ayarları başka cihaza taşı (ortak / tablet)</h3>
           <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap">
-            <button class="btn gold mini" id="cldSendBtn">Buluta gönder (kod üret)</button>
-            <button class="btn gold mini" id="cldGetBtn">Buluttan yükle (koddan)</button>
+            <button class="btn gold mini" id="cldSendBtn">Kurulum linki üret (iPad için)</button>
+            <button class="btn gold mini" id="cldGetBtn">Linkten/koddan yükle</button>
           </div>
           <div class="row" style="justify-content:flex-start;gap:10px;flex-wrap:wrap;margin-top:8px">
             <button class="btn ghost mini" id="cfgFileBtn">Dosya indir (görseller DAHİL)</button>
@@ -697,7 +697,7 @@ h1 em{font-style:italic;color:var(--amber)}
             <button class="btn ghost mini" id="cfgImportBtn">Kodu içe aktar</button>
           </div>
           <input type="file" id="cfgFile" accept=".json,application/json" hidden>
-          <textarea id="cfgBox" placeholder="Kurulum kodu burada görünür / buraya yapıştır" style="width:100%;min-height:70px;margin-top:8px;font-family:monospace;font-size:11px"></textarea>
+          <textarea id="cfgBox" placeholder="Kurulum linki/kodu burada görünür — ya da buraya yapıştır" style="width:100%;min-height:70px;margin-top:8px;font-family:monospace;font-size:11px"></textarea>
           <div class="note" id="cfgNote">En kolay yol <b>Bulut</b>: "Buluta gönder" tüm kurulumu (ayarlar + çerçeveler + fonlar + AI sahneler + profiller) şifreleyip kendi Cloudinary hesabına yükler ve kısa bir <b>kurulum kodu</b> verir. Karşı cihazda (telefon dahil) linki aç → dişli → kodu yapıştır → "Buluttan yükle" — dosya taşımak yok. Dosya yöntemi, internetin zayıf olduğu durumlar için yedek. Kod ve dosya API anahtarını içerir — yalnız güvendiğin kişiye gönder. Gerçek baskı karşı cihazda kapalı gelir.</div>
         </div>
 
@@ -1302,7 +1302,7 @@ function sablonUygula(id){
 /* ---------- YAZICI (DNP DS-RX1HS) ----------
    İnce ayar ve kesici durumu yazici.html sayfasında ayarlanır, AYRI anahtarda durur:
    kabin sekmesi açıkken S'nin üstüne yazılıp kaybolmasın diye her baskıda taze okunur. */
-function yaziciAyar(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp",yol:"oto",secenek:{}};
+function yaziciAyar(){var d={olcek:100,x:0,y:0,dnpKesim:false,profil:"dnp",yol:"oto",secenek:{},istasyon:""};
   try{var o=JSON.parse(localStorage.getItem("booth.yazici")||"null");if(o)for(var k in d)if(k in o)d[k]=o[k];}catch(e){}
   return d}
 /* ===== BASKI YÜZEYİ (aynısı yazici.html'de — ikisi birlikte değişir) =====
@@ -1378,11 +1378,18 @@ function sayfaStili(){
    Mac'te arka planda çalışan OBSKURA köprüsü (kopru/kopru.py, yalnız 127.0.0.1:8740). Chrome'un yazdır
    ekranı Mac'te DNP 4x6'yı (156x105, eni boyundan büyük) kendi içinde dik çevirip "özel kağıt" gönderiyor
    (Chromium hata 40267436), DNP basmıyor. Köprü fotoğrafı sürücünün KENDİ kağıt adıyla, kağıt ölçüsünde
-   PDF'e koyup basar; pencere çıkmaz. a.yol: "oto" (köprü varsa köprü, yoksa tarayıcı) | "kopru" | "tarayici". */
+   PDF'e koyup basar; pencere çıkmaz. a.yol: "oto" (köprü varsa köprü, yoksa tarayıcı) | "kopru" | "tarayici".
+   BASKI İSTASYONU (iPad): DNP'de AirPrint yok, iPad doğrudan basamaz. a.istasyon kodu varsa baskı görüntüsü
+   Cloudinary'ye yüklenir, adresi istasyonun özel ntfy kanalına (obskura-KOD) yazılır; yazıcının takılı olduğu
+   Mac'teki köprü kanalı dinler, basar, sonucu obskura-KOD-d'ye yazar. Mac'e dışarıdan erişim açılmaz. */
 var KOPRU="http://127.0.0.1:8740";
+var NTFY=(function(){try{return localStorage.getItem("booth.ntfy")||"https://ntfy.sh"}catch(e){return "https://ntfy.sh"}})();
+function ipadMi(){return /iPad|iPhone|iPod/.test(navigator.userAgent||"")||(/Mac/.test(navigator.platform||"")&&navigator.maxTouchPoints>1)}
+function istasyonKodu(){var k=String(yaziciAyar().istasyon||"").toLowerCase().replace(/[^a-z0-9]/g,"");return k.length>=8?k:""}
 var _kopruOnb={t:0,v:null};
 function kopruDurum(taze){
   if(!taze&&_kopruOnb.v&&Date.now()-_kopruOnb.t<8000)return Promise.resolve(_kopruOnb.v);
+  if(ipadMi())return Promise.resolve({ok:false,yok:true,hata:"iPad'de yerel köprü yok — baskı istasyonu kullanılır"});
   var kont=("AbortController" in window)?new AbortController():null;
   var zaman=setTimeout(function(){if(kont)kont.abort()},2500);
   return fetch(KOPRU+"/durum"+(taze?"?taze":""),{cache:"no-store",signal:kont?kont.signal:undefined})
@@ -1408,9 +1415,16 @@ function kopruSecenekleri(d,a){
 function baskiYolu(){
   var a=yaziciAyar(),mac=/Mac/i.test(navigator.platform||navigator.userAgent||"");
   if(a.yol==="tarayici"||a.profil==="std")return Promise.resolve("tarayici");
-  /* Mac'te tarayıcı yolu DNP'de zaten basmaz: köprü yoksa "kopru-yok" (kare kuyruğa alınır). Windows'ta Chrome çalışır. */
-  return kopruDurum().then(function(d){return d&&d.ok?"kopru":((a.yol==="kopru"||mac)?"kopru-yok":"tarayici")});
+  /* Mac'te tarayıcı yolu DNP'de zaten basmaz: köprü yoksa "kopru-yok" (kare kuyruğa alınır). Windows'ta Chrome çalışır.
+     iPad: istasyon kodu varsa istasyon; yoksa "kopru-yok" (AirPrint'siz DNP'ye tarayıcıdan basılamaz). */
+  return kopruDurum().then(function(d){
+    if(d&&d.ok)return "kopru";
+    if(istasyonKodu())return "istasyon";
+    return (a.yol==="kopru"||mac||ipadMi())?"kopru-yok":"tarayici";
+  });
 }
+/* tek giriş: yol "kopru" -> yerel köprü, "istasyon" -> iPad'den istasyona */
+function baskiGonder(yol,dataUrl,kopya,a){return yol==="istasyon"?istasyonBas(dataUrl,kopya,a):kopruBas(dataUrl,kopya,a)}
 /* dataUrl: baskiYuzeyi çıktısı (1843x1240 JPEG). Promise<{ok,is,hata}> */
 function kopruBas(dataUrl,kopya,a){
   a=a||yaziciAyar();
@@ -1438,6 +1452,54 @@ function kopruIzle(no,bildir){
       if(s.bekliyor&&n<40)setTimeout(tur,4000);
     }).catch(function(){});
   })();
+}
+/* ---- baskı istasyonu (iPad) ---- */
+function bulutAyar(){try{var s=JSON.parse(localStorage.getItem("booth.v1")||"{}");return {ad:s.cldName||"",on:s.cldPreset||""}}catch(e){return {ad:"",on:""}}}
+function _ntfyOku(konu,since){
+  return fetch(NTFY+"/"+konu+"/json?poll=1&since="+encodeURIComponent(since),{cache:"no-store"}).then(function(r){return r.text()}).then(function(t){
+    var out=[];t.split("\n").forEach(function(l){try{var o=JSON.parse(l);if(o.event==="message"){var m=JSON.parse(o.message||"{}");m._t=o.time;out.push(m)}}catch(e){}});return out;
+  });
+}
+var _istOnb={t:0,v:null};
+/* istasyonun son nabzı / sonucu (30 dk'da bir nabız atar). Promise<{canli,yas,kesici,yazici,hata}> */
+function istasyonDurum(taze){
+  var kod=istasyonKodu();if(!kod)return Promise.resolve({canli:false,yok:true,hata:"istasyon kodu yok"});
+  if(!taze&&_istOnb.v&&Date.now()-_istOnb.t<30000)return Promise.resolve(_istOnb.v);
+  return _ntfyOku("obskura-"+kod+"-d","40m").then(function(l){
+    var nb=l.filter(function(m){return m.tip==="nabiz"}).pop(),son=l.pop();
+    var yas=son?Math.round(Date.now()/1000-(son._t||son.t||0)):null;
+    var v={canli:!!son&&yas<35*60,yas:yas,kesici:nb?!!nb.kesici:undefined,yazici:nb?nb.yazici:null,ok:nb?nb.ok:undefined,hata:nb?nb.hata:""};
+    if(!son)v.hata="istasyon son 40 dakikada hiç ses vermedi — yazıcının bağlı olduğu Mac açık ve köprü kurulu mu?";
+    _istOnb={t:Date.now(),v:v};return v;
+  }).catch(function(){return {canli:false,hata:"istasyona ulaşılamadı (internet?)"}});
+}
+/* Promise<{ok,is,hata,bekliyor}>: yükle -> kanala yaz -> sonucu bekle (en çok 30 sn) */
+function istasyonBas(dataUrl,kopya,a){
+  a=a||yaziciAyar();var kod=istasyonKodu(),bl=bulutAyar();
+  if(!kod)return Promise.resolve({ok:false,hata:"istasyon kodu yok"});
+  if(!bl.ad||!bl.on)return Promise.resolve({ok:false,hata:"Cloudinary ayarı yok — iPad istasyona fotoğrafı bulut üzerinden yollar (kurulum linkiyle gelir)"});
+  var no=Date.now().toString(36)+Math.random().toString(36).slice(2,7),t0=Math.floor(Date.now()/1000);
+  var api=(function(){try{return localStorage.getItem("booth.cldApi")||"https://api.cloudinary.com"}catch(e){return "https://api.cloudinary.com"}})();
+  return fetch(dataUrl).then(function(r){return r.blob()}).then(function(blob){
+    var fd=new FormData();fd.append("file",blob,"baski-"+no+".jpg");fd.append("upload_preset",bl.on);fd.append("folder","booth/_baski/"+kod);
+    var ct=new AbortController(),tm=setTimeout(function(){ct.abort()},30000);
+    return fetch(api+"/v1_1/"+encodeURIComponent(bl.ad)+"/image/upload",{method:"POST",body:fd,signal:ct.signal})
+      .then(function(r){clearTimeout(tm);if(!r.ok)throw new Error("fotoğraf buluta yüklenemedi ("+r.status+")");return r.json()});
+  }).then(function(j){
+    if(!j.secure_url)throw new Error("bulut adres döndürmedi");
+    return fetch(NTFY+"/obskura-"+kod,{method:"POST",body:JSON.stringify({v:1,id:no,url:j.secure_url,kopya:Math.max(1,kopya|0||1),kesim:!!a.dnpKesim,t:t0,cihaz:ipadMi()?"ipad":"diger"})})
+      .then(function(r){if(!r.ok)throw new Error("istasyona iletilemedi ("+r.status+")")});
+  }).then(function(){
+    return new Promise(function(res){
+      var n=0;(function bak(){
+        n++;_ntfyOku("obskura-"+kod+"-d",String(t0-5)).then(function(l){
+          var s=l.filter(function(m){return m.tip==="sonuc"&&m.id===no})[0];
+          if(s)return res({ok:!!s.ok,is:s.is,hata:s.hata||"",istasyon:true});
+          if(n<20)setTimeout(bak,1500);else res({ok:false,bekliyor:true,hata:"istasyon 30 sn içinde yanıt vermedi — iş bulutta bekliyor, Mac açılınca basılır"});
+        }).catch(function(){if(n<20)setTimeout(bak,1500);else res({ok:false,bekliyor:true,hata:"istasyondan yanıt alınamadı"})});
+      })();
+    });
+  }).catch(function(e){return {ok:false,hata:(e&&e.name==="AbortError")?"internet çok yavaş":((e&&e.message)||String(e))}});
 }
 /* ===== /BASKI KÖPRÜSÜ ===== */
 /* printArea görseli: yüzey hazırlanınca src atanır; im._hazir çözülünce yazdırılabilir */
@@ -2505,17 +2567,21 @@ function doPrint(){
     var kare=composed,kopya=copies;
     baskiYolu().then(function(yol){
       if(yol==="tarayici")tarayiciylaBas(kare,kopya);
-      else kopruIleBas(kare,kopya,true);
+      else kopruIleBas(kare,kopya,true,null,yol);
     });
   }
 }
 /* Mac + DNP: köprü (pencere yok). Başarısızsa kare kaybolmaz: bekleyen baskılara yazılır, görevli uyarılır. */
-function kopruIleBas(kare,kopya,kuyrugaAl,sonra){
-  baskiYuzeyi(kare).then(function(u){return kopruBas(u,kopya)}).then(function(s){
+function kopruIleBas(kare,kopya,kuyrugaAl,sonra,yol){
+  yol=yol||"kopru";
+  baskiYuzeyi(kare).then(function(u){return baskiGonder(yol,u,kopya)}).then(function(s){
     if(s&&s.ok){
       S.printFail=0;S.prints++;S.sheets+=kopya;sayacKaydet();save();
-      kopruIzle(s.is,function(m){hataYaz("yazıcı",m);gorevliUyar(m)});
+      if(yol==="kopru")kopruIzle(s.is,function(m){hataYaz("yazıcı",m);gorevliUyar(m)});
       if(sonra)sonra(true,s);return;
+    }
+    if(s&&s.bekliyor){ /* istasyon: iş bulutta, Mac açılınca basılır — kuyruğa alırsak iki kez basılır */
+      hataYaz("yazıcı","istasyon: "+s.hata);gorevliUyar(s.hata);if(sonra)sonra(true,s);return;
     }
     var m=(s&&s.hata)||"baskı gönderilemedi";
     S.printFail=(S.printFail|0)+1;save();hataYaz("yazıcı","köprü: "+m);
@@ -2869,7 +2935,7 @@ function pendHepsiniBas(){
           kopruIleBas(r.d,r.kopya||1,false,function(tamam){
             if(tamam)pendDel(r.id,function(){updPend();setTimeout(sonraki,1500)});
             else{pendBasiyor=false;$("#pendPrintBtn").textContent="Hepsini bas";updPend();}
-          });
+          },yol);
           return;
         }
         tarayiciTek(r);
@@ -3118,6 +3184,12 @@ function kBaski(){
 function kYazici(){
   var ya=yaziciAyar(),mac=/Mac/i.test(navigator.platform||navigator.userAgent||"");
   if(S.realPrint&&!S.printDown&&ya.profil!=="std"&&ya.yol!=="tarayici")return kopruDurum(true).then(function(d){
+    if(!d.ok&&istasyonKodu())return istasyonDurum(true).then(function(v){
+      if(!bulutAyar().ad)return {ok:false,m:"istasyon kodu var ama Cloudinary ayarı yok",o:"Kurulum linkini yeniden aç ya da panelde Dijital Teslim alanlarını doldur — iPad fotoğrafı istasyona bulut üzerinden yollar."};
+      if(!v.canli)return {ok:false,m:"baskı istasyonu "+istasyonKodu()+" ses vermiyor",o:(v.hata||"")+" Yazıcının bağlı olduğu Mac açık, köprü kurulu ve internete bağlı olmalı."};
+      if(v.ok===false||(v.yazici&&/error|offline|media/i.test(String(v.yazici.nedenler||""))))return {ok:false,m:"istasyon çevrimiçi ama yazıcı hazır değil: "+((v.yazici&&v.yazici.mesaj)||v.hata||""),o:"Mac'teki yazıcıyı kontrol et (kağıt, şerit, USB)."};
+      return {m:"baskı istasyonu "+istasyonKodu()+" çevrimiçi · "+Math.round((v.yas||0)/60)+" dk önce ses verdi"+(v.yazici?" · kuyruk "+(v.yazici.kuyruk|0):"")};
+    });
     if(!d.ok){
       if(mac)return {ok:false,m:"baskı köprüsü yok — Mac'te Chrome DNP 4x6 basamaz",
         o:"yazici.html → Baskı köprüsü bölümündeki tek satırı Terminal'e yapıştır (bir kere). Hata: "+(d.hata||"")};
@@ -3375,6 +3447,11 @@ function fillAdmin(){
     n.innerHTML="Yazıcı: <b>"+(PROFIL[a.profil]||PROFIL.dnp).ad+"</b> · <b>"+(a.dnpKesim?"kesici AÇIK — yalnız Çift Şerit":"tek parça")+"</b>"
       +((+a.olcek!==100||+a.x||+a.y)?" · ince ayar %"+a.olcek+", "+a.x+"/"+a.y+" mm":"");
     if(a.profil!=="std"&&a.yol!=="tarayici")kopruDurum(true).then(function(d){
+      if(!d.ok&&istasyonKodu())return istasyonDurum(true).then(function(v){
+        n.insertAdjacentHTML("beforeend","<br>Baskı yolu: <b>istasyon "+istasyonKodu()+"</b> · "+(v.canli
+          ?"çevrimiçi ("+Math.round((v.yas||0)/60)+" dk önce ses verdi)"+(v.yazici?" · yazıcı "+(v.yazici.durum||"")+" · kuyruk "+(v.yazici.kuyruk|0):"")+(v.kesici?" · kesici açık":"")
+          :"<b>ses yok</b> — "+(v.hata||"")));
+      });
       var k=d.ok?kopruKesim(d,a.dnpKesim):null;
       n.insertAdjacentHTML("beforeend","<br>Baskı yolu: "+(d.ok
         ?"<b>köprü bağlı</b> · "+d.yazici+" · kağıt "+(d.kagit4x6&&d.kagit4x6.ad)+" · "+(d.durum||"")+" · kuyruk "+(d.kuyruk|0)
@@ -3394,7 +3471,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.58 · DNP baskı köprüsü · baskı 4×6 · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.59 · baskı istasyonu + kurulum linki · PIN 1234 · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -3639,7 +3716,7 @@ $("#testPrint").onclick=function(){
   composed=c.toDataURL("image/jpeg",.95);copies=1;$("#emergeImg").src=composed;
   var kare=composed;
   baskiYolu().then(function(yol){
-    if(yol!=="tarayici"){baskiYuzeyi(kare).then(function(u){return kopruBas(u,1)}).then(function(s){
+    if(yol!=="tarayici"){baskiYuzeyi(kare).then(function(u){return baskiGonder(yol,u,1)}).then(function(s){
       $("#yaziciNot").insertAdjacentHTML("beforeend","<br>Test: "+(s.ok?"köprüye gönderildi ("+(s.is||"")+")":"<b>gönderilemedi</b> — "+(s.hata||"")));
       if(!s.ok)hataYaz("yazıcı","test: "+s.hata);});return}
     var pa=$("#printArea");pa.innerHTML="";var im=prImg(kare);pa.appendChild(im);
@@ -4589,26 +4666,36 @@ $("#cldSendBtn").onclick=function(){
     })
     .then(function(r){
       var code="OBSK1."+S.cldName+"."+r.j.public_id+"."+r.j.version+"."+r.key;
-      $("#cfgBox").value=code;
-      try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(code).catch(function(){});}catch(e){}
-      $("#cfgNote").textContent="Kurulum kodu hazır ve kopyalandı ✓ — WhatsApp'tan yazı olarak gönder. Karşı cihaz (telefon/tablet/bilgisayar): linki açar → dişli → PIN → kodu kutuya yapıştırır → \"Buluttan yükle\". Kod API anahtarını da taşır — yalnız güvendiğin kişiye.";
+      return kurulumLinki(code).then(function(L){
+        $("#cfgBox").value=L.link;
+        try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(L.link).catch(function(){});}catch(e){}
+        linkKarekod(L.link);
+        $("#cfgNote").innerHTML="<b>Kurulum linki hazır ve kopyalandı ✓</b> — WhatsApp'tan ortağına gönder ya da iPad'le karekodu okut. iPad linki açınca kendini kurar"
+          +(L.istasyon?" ve bu yazıcıya (<b>istasyon "+L.istasyon+"</b>) basar.":". (Bu cihazda baskı köprüsü/istasyon yok — link yalnız kabin ayarlarını taşır.)")
+          +" Link API anahtarını da taşır — yalnız güvendiğin kişiye.";
+      });
     })
     .catch(function(e){$("#cfgNote").textContent="Olmadı: "+((e&&e.message)||"hata")+". İnterneti kontrol edip tekrar dene."})
     .then(function(){btn.disabled=false});
   });
 };
-$("#cldGetBtn").onclick=function(){
-  var code=($("#cfgBox").value||"").trim();
-  if(!code){$("#cfgNote").textContent="Önce kutuya kurulum kodunu yapıştır.";return}
-  if(code.slice(0,6)!=="OBSK1."){$("#cfgNote").textContent="Bu bir bulut kurulum kodu değil — kod OBSK1 ile başlar. (Eski usül ayar kodu için \"Kodu içe aktar\" butonunu kullan.)";return}
-  if(!(window.crypto&&crypto.subtle)){$("#cfgNote").textContent="Bu tarayıcı şifrelemeyi desteklemiyor — dosya yöntemini kullan.";return}
+/* OBSK1 kodu ya da onu taşıyan kurulum linki -> cihaza uygula. yaz(m): ilerleme metni. Promise (bitince sayfa yenilenir) */
+function kodAyikla(metin){
+  metin=String(metin||"").trim();
+  var m=metin.match(/[#&]kur=([^&\s]+)/);if(m)metin=decodeURIComponent(m[1]);
+  return metin;
+}
+function bulutKurulumYukle(metin,yaz){
+  var code=kodAyikla(metin);
+  if(!code)return Promise.reject(new Error("kutu boş"));
+  if(code.slice(0,6)!=="OBSK1.")return Promise.reject(new Error("bu bir bulut kurulum kodu değil — kod OBSK1 ile başlar"));
+  if(!(window.crypto&&crypto.subtle))return Promise.reject(new Error("bu tarayıcı şifrelemeyi desteklemiyor — dosya yöntemini kullan"));
   var p=code.split(".");
-  if(p.length!==5||!p[1]||!p[2]||!p[3]||!p[4]){$("#cfgNote").textContent="Kod eksik görünüyor — tamamını kopyaladığından emin ol.";return}
-  var cloud=p[1],pid=p[2],ver=p[3],key=p[4],btn=this;
-  btn.disabled=true;
-  $("#cfgNote").textContent="Paket buluttan alınıyor…";
+  if(p.length!==5||!p[1]||!p[2]||!p[3]||!p[4])return Promise.reject(new Error("kod eksik görünüyor — tamamını kopyaladığından emin ol"));
+  var cloud=p[1],pid=p[2],ver=p[3],key=p[4];
+  yaz("Paket buluttan alınıyor…");
   var ctrl=new AbortController();var tmo=setTimeout(function(){ctrl.abort()},60000);
-  fetch("https://res.cloudinary.com/"+encodeURIComponent(cloud)+"/raw/upload/v"+encodeURIComponent(ver)+"/"+pid,{signal:ctrl.signal})
+  return fetch("https://res.cloudinary.com/"+encodeURIComponent(cloud)+"/raw/upload/v"+encodeURIComponent(ver)+"/"+pid,{signal:ctrl.signal})
     .then(function(r){clearTimeout(tmo);if(!r.ok)throw new Error("paket bulunamadı ("+r.status+") — kod yanlış olabilir");return r.arrayBuffer()})
     .then(function(buf){return decPkg(buf,key)})
     .then(function(str){
@@ -4618,14 +4705,20 @@ $("#cldGetBtn").onclick=function(){
       return runPool(marks,function(m){
         var u=m.slice(7);
         return dlDataUrl(u).catch(function(){return dlDataUrl(u)}).then(function(d){return {m:m,d:d}});
-      },function(d,t){$("#cfgNote").textContent="Görseller iniyor "+d+"/"+t+"…"})
+      },function(d,t){yaz("Görseller iniyor "+d+"/"+t+"…")})
       .then(function(pairs){
         var map={};pairs.forEach(function(x){map[x.m]=x.d});
         return mapDeep(manifest,function(s){return map[s]||s});
       });
     })
-    .then(function(pkg){$("#cfgNote").textContent="Cihaza yazılıyor…";importPkg(pkg)})
-    .catch(function(e){clearTimeout(tmo);$("#cfgNote").textContent="Olmadı: "+((e&&e.message)||"hata");btn.disabled=false});
+    .then(function(pkg){yaz("Cihaza yazılıyor…");return dbHazir().then(function(){importPkg(pkg)})})
+    .catch(function(e){clearTimeout(tmo);throw e});
+}
+function dbHazir(){return new Promise(function(res){var n=0;(function b(){if(db||n++>100)return res();setTimeout(b,100)})()})}
+$("#cldGetBtn").onclick=function(){
+  var btn=this;btn.disabled=true;
+  bulutKurulumYukle($("#cfgBox").value,function(m){$("#cfgNote").textContent=m})
+    .catch(function(e){$("#cfgNote").textContent="Olmadı: "+((e&&e.message)||"hata");btn.disabled=false});
 };
 $("#cldTestBtn").onclick=function(){
   if(!cldReady()){$("#cldNote").textContent="Önce iki alanı da doldur.";return}
@@ -4716,7 +4809,60 @@ function hataYaz(kaynak,msg){
 }
 window.addEventListener("error",function(e){hataYaz("kod",(e&&e.message)||"bilinmeyen")});
 window.addEventListener("unhandledrejection",function(e){hataYaz("işlem",(e&&e.reason&&(e.reason.message||e.reason))||"bilinmeyen")});
-window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_bas:function(d,k){composed=d;copies=k||1;doPrint()},_pendHepsiniBas:pendHepsiniBas,_kopruDurum:kopruDurum,_kopruBas:kopruBas,_baskiYolu:baskiYolu,_kopruKesim:kopruKesim,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+/* ---------- KURULUM LİNKİ: https://…/booth/#kur=OBSK1…&istasyon=KOD ---------- */
+function kurulumLinki(code){
+  var base=location.href.split(/[?#]/)[0];
+  return kopruDurum(true).then(function(d){
+    var ist=(d&&d.ok&&d.istasyon&&d.istasyon.kod)||istasyonKodu();
+    return {link:base+"#kur="+encodeURIComponent(code)+(ist?"&istasyon="+ist:""),istasyon:ist};
+  });
+}
+function linkKarekod(link){
+  var cv=document.getElementById("linkQR");
+  if(!cv){cv=document.createElement("canvas");cv.id="linkQR";cv.width=260;cv.height=260;cv.style.cssText="display:block;margin:10px 0;border-radius:8px";
+    var not=$("#cfgNote");if(not&&not.parentNode)not.parentNode.insertBefore(cv,not.nextSibling);}
+  var x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);
+  try{var q=qrcode(0,"L");q.addData(link);q.make();var n=q.getModuleCount(),cell=Math.floor(cv.width/(n+4)),off=Math.floor((cv.width-cell*n)/2);
+    x.fillStyle="#12100E";for(var r=0;r<n;r++)for(var c=0;c<n;c++)if(q.isDark(r,c))x.fillRect(off+c*cell,off+r*cell,cell,cell);
+  }catch(e){x.fillStyle="#12100E";x.font="14px sans-serif";x.fillText("karekod çizilemedi",20,130)}
+}
+function linkKurulum(){
+  var h=(location.hash||"").replace(/^#/,"");if(!h)return;
+  var p={};h.split("&").forEach(function(kv){var i=kv.indexOf("=");if(i>0){try{p[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1))}catch(e){}}});
+  if(!p.istasyon&&!p.kur)return;
+  try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}
+  if(p.istasyon){
+    var a=yaziciAyar();a.istasyon=String(p.istasyon).toLowerCase().replace(/[^a-z0-9]/g,"");a.profil="dnp";if(a.yol==="tarayici")a.yol="oto";
+    try{localStorage.setItem("booth.yazici",JSON.stringify(a))}catch(e){}
+    S.realPrint=true;S.printDown=false;save(); /* istasyonlu link = bu cihaz gerçekten bassın */
+  }
+  if(p.kur){
+    var ov=document.createElement("div");ov.id="kurulumEkrani";
+    ov.style.cssText="position:fixed;inset:0;z-index:999;background:#12100E;color:#F6F0E6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font:600 22px var(--ui);text-align:center;padding:24px";
+    ov.innerHTML='<div>OBSKURA kuruluyor…</div><div id="kurNot" style="font-weight:400;font-size:15px;opacity:.85;max-width:520px">Ayarlar, çerçeveler ve fonlar indiriliyor. Bu ekranı kapatma.</div>';
+    document.body.appendChild(ov);
+    bulutKurulumYukle(p.kur,function(m){var e=document.getElementById("kurNot");if(e)e.textContent=m})
+      .catch(function(e){var x=document.getElementById("kurNot");if(x){x.textContent="Kurulum olmadı: "+((e&&e.message)||e)+". İnterneti kontrol edip linki yeniden aç.";}
+        var b=document.createElement("button");b.className="btn gold";b.textContent="Kapat";b.onclick=function(){ov.remove()};ov.appendChild(b);});
+  }else if(p.istasyon){
+    var d=document.createElement("div");
+    d.style.cssText="position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99;background:#24412f;color:#fff;font:600 14px var(--ui);padding:10px 16px;border-radius:12px";
+    d.textContent="Baskı istasyonu bağlandı: "+a.istasyon+" — baskılar o yazıcıdan çıkacak.";document.body.appendChild(d);setTimeout(function(){d.remove()},8000);
+  }
+}
+/* iPad: kesici durumu istasyondan gelir (mod listesi yazıcıyla aynı olsun) */
+function istasyonEsitle(){
+  if(!istasyonKodu())return;
+  kopruDurum().then(function(d){if(d&&d.ok)return;
+    istasyonDurum(true).then(function(v){
+      if(v.kesici===undefined)return;var a=yaziciAyar();
+      if(!!a.dnpKesim!==!!v.kesici){a.dnpKesim=!!v.kesici;try{localStorage.setItem("booth.yazici",JSON.stringify(a))}catch(e){}try{buildModes()}catch(e){}}
+    });
+  });
+}
+try{linkKurulum()}catch(e){hataYaz("kurulum linki",e&&e.message)}
+setTimeout(istasyonEsitle,1500);
+window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_linkKurulum:linkKurulum,_kurulumLinki:kurulumLinki,_kodAyikla:kodAyikla,_istasyonDurum:istasyonDurum,_istasyonEsitle:istasyonEsitle,_bas:function(d,k){composed=d;copies=k||1;doPrint()},_pendHepsiniBas:pendHepsiniBas,_kopruDurum:kopruDurum,_kopruBas:kopruBas,_baskiYolu:baskiYolu,_kopruKesim:kopruKesim,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 
