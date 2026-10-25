@@ -30,14 +30,15 @@ body{margin:0;background:#12100E;color:#F6F0E6;font-family:Figtree,-apple-system
   <button class="btn ghost" id="mail">✉︎ E-posta ile gönder</button>
   <button class="btn ghost" id="open">Yeni sekmede aç</button>
   <p class="note" id="note">Kaydet'e bas — fotoğraf telefonuna iner.</p>
-  <p class="brand">OBSKURA</p>
+  <p class="brand" id="brandNo">OBSKURA</p>
 </div>
 <script>
 (function(){
   var q=new URLSearchParams(location.search);
-  var u=q.get("u")||"", evt=q.get("e")||"";
+  var u=q.get("u")||"", evt=q.get("e")||"", no=(q.get("n")||"").replace(/\D/g,"");
   var img=document.getElementById("ph"), note=document.getElementById("note");
   if(evt)document.getElementById("evt").textContent=evt;
+  if(no)document.getElementById("brandNo").textContent="OBSKURA "+no;
   if(!u||u.indexOf("https://")!==0){
     note.className="note err";note.textContent="Bağlantı eksik görünüyor. Karekodu tekrar okut.";
     document.getElementById("save").style.display="none";
@@ -63,7 +64,7 @@ body{margin:0;background:#12100E;color:#F6F0E6;font-family:Figtree,-apple-system
     if(gifMi){document.title="Hareketli görüntün hazır";note.textContent="Kaydet'e bas — hareketli görüntü telefonuna iner."}
   }
   var temiz=(evt?evt.replace(/[^\wçğıöşüÇĞİÖŞÜ ]+/g,"").trim().replace(/\s+/g,"-"):"obskura");
-  var ad=temiz+"-"+Date.now().toString(36)+"."+(videoMu?(uz||"mp4"):(gifMi?"gif":"jpg"));
+  var ad=(no?("OBSKURA-"+no):(temiz+"-"+Date.now().toString(36)))+"."+(videoMu?(uz||"mp4"):(gifMi?"gif":"jpg"));
   function ekle(el){document.body.appendChild(el)}
   function indirBlob(b){
     var url=URL.createObjectURL(b), a=document.createElement("a");

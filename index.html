@@ -233,6 +233,14 @@ h1 em{font-style:italic;color:var(--amber)}
   display:grid;place-items:center;font-size:24px;color:var(--muted);opacity:.5;
   box-shadow:inset 0 0 0 1.5px var(--line)}
 .gear:active{opacity:1}
+/* v0.69: çark misafiri kurcalamaya davet etmesin; başlangıçta canlı kamera yazıları bastırmasın */
+.gear{opacity:.08!important;box-shadow:none!important}
+#liveBg{filter:blur(10px) brightness(.45) saturate(.8)}
+.aicard img.th{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:10px;display:block}
+.aicard.thc{padding:8px 8px 12px}
+.ptabs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 14px}
+.ptabs button{flex:1;min-width:120px;min-height:48px;border-radius:12px;background:var(--ink2);color:var(--muted);font:600 15px var(--ui);box-shadow:inset 0 0 0 1px var(--line)}
+.ptabs button.on{background:var(--amber);color:#12100E}
 .librow{display:flex;align-items:center;gap:12px;background:var(--ink3);border-radius:12px;padding:10px 12px}
 .librow img{width:52px;height:70px;object-fit:cover;border-radius:6px;background:#fff;flex:none}
 .librow .nm{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -379,6 +387,7 @@ h1 em{font-style:italic;color:var(--amber)}
       <div class="qr"><canvas id="qrCanvas" width="480" height="480"></canvas></div>
       <div class="lede" id="qrSwap" style="display:none"></div>
       <div class="lede">Kamerayı karekoda tut, fotoğrafın telefonuna insin.</div>
+      <div class="lede" id="noYaz" style="letter-spacing:.18em;font-weight:600;opacity:.8"></div>
       <div class="row">
         <button class="btn" id="againBtn">Yeniden çek</button>
         <button class="btn ghost" id="doneBtn">Bitir</button>
@@ -674,7 +683,7 @@ h1 em{font-style:italic;color:var(--amber)}
           <h3>Filtreler</h3>
           <div class="fld"><div class="lbl">Misafire açık filtreler</div>
             <select id="fFilterMode">
-              <option value="temel">Temel 8 — önerilen</option>
+              <option value="temel">Temel 9 — önerilen</option>
               <option value="hepsi">Hepsi — 38 filtre</option>
               <option value="klasik">Sadece klasik 6</option>
               <option value="kapali">Kapalı</option>
@@ -936,6 +945,7 @@ if(S.stilSet!=="v67"){
     S.stilSet="v67";save();
   }catch(e){}
 }
+if(S.filtreSet!=="v69"){S.filterMode="temel";(S.aiScenes||[]).forEach(function(x){if(x.id==="anit"||x.id==="kar"||/Anıtkabir/.test(x.n||""))x.on=false;});S.filtreSet="v69";try{save()}catch(e){}}
 if(!S.aiScenes||!S.aiScenes.length)S.aiScenes=JSON.parse(JSON.stringify(DEFSCENES));
 S.silinenSahne=S.silinenSahne||[];
 /* aynı adlı mükerrer sahneleri tek kayda indir (Anıtkabir önü iki kez görünüyordu) */
@@ -980,7 +990,7 @@ function clearGuestData(){
   aiGen++;
   ["#previewImg","#emergeImg","#aiImg"].forEach(function(s){var el=$(s);if(el)el.removeAttribute("src");});
   shots=[];shotsEnh=[];aiShots=[];aiSel=[];aiDone=[];aiForce=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;composed="";storyComposed="";
-  try{aiResult=null;lastTekStyle=null;figurHakKul=false;figurOnayli=false;}catch(e){}
+  try{aiResult=null;lastTekStyle=null;figurHakKul=false;figurOnayli=false;misafirNo=null;}catch(e){}
   /* RAM: 8'li şeritte onlarca tam boy canvas birikiyordu — misafir gidince bırak */
   try{aiCache=new Map();aiBgCache=new Map();aiCutCache=new Map();}catch(e){}
   try{var bb=$("#bgBusy");if(bb)bb.hidden=true;}catch(e){}
@@ -1968,7 +1978,7 @@ function applyFilter(src,f){
 function visibleFilters(){
   if(S.filterMode==="kapali")return [FILTERS[0]];
   if(S.filterMode==="klasik")return FILTERS.filter(function(f){return f.cat==="Klasik"});
-  if(S.filterMode==="temel"){var T=["dogal","sicak","canli","kodak","sinema","glam","sb","sepya"];return FILTERS.filter(function(f){return T.indexOf(f.id)>=0});}
+  if(S.filterMode==="temel"){var T=["dogal","sicak","kontrast","canli","kodak","sinema","glam","sb","sepya"];return FILTERS.filter(function(f){return T.indexOf(f.id)>=0});}
   return FILTERS;
 }
 function currentFilter(){
@@ -2303,8 +2313,8 @@ function openAi(m){
   if(aiMode==="scene"){
     /* önce yüklediğin arka plan görsellerini (aiscene) al, hazır sahnelerle birleştir */
     libAll(function(list){
-      var imgs=list.filter(function(r){return r.kind==="aiscene"&&!r.fig}).map(function(r){
-        return {id:r.id,e:r.fig?"\u{2B50}":"\u{1F5BC}\u{FE0F}",n:r.name,on:true,p:r.p||"",img:r.dataUrl,fig:r.fig||"",sepya:!!r.sepya,motor:r.motor||"gemini",etiket:r.etiket||""};
+      var imgs=list.filter(function(r){return r.kind==="aiscene"&&!r.fig&&!r.arsiv}).map(function(r){
+        return {id:r.id,e:"",n:temizAd(r),on:true,p:r.p||"",img:r.dataUrl,fig:r.fig||"",sepya:!!r.sepya,motor:r.motor||"gemini",etiket:r.etiket||""};
       });
       var txt=S.aiScenes.filter(function(st){return st.on});
       buildAiGrid(imgs.concat(txt));
@@ -2317,7 +2327,8 @@ function buildAiGrid(items){
   var g=$("#aiGrid");g.innerHTML="";
   items.forEach(function(st){
     var b=document.createElement("button");b.className="aicard";b.dataset.sid=st.id;
-    b.innerHTML="<b>"+st.e+"</b><span>"+st.n+"</span>";
+    if(st.img){b.className+=" thc";b.innerHTML='<img class="th" src="'+st.img+'" alt=""><span>'+esc(st.n)+'</span>';}
+    else b.innerHTML="<span>"+esc(st.n)+"</span>";
     b.onclick=function(){
       if(!multiMode()){runStyle(st);return}
       if(aiDone[aiCell]===st.id){
@@ -2687,6 +2698,26 @@ function composeFigur(){
   storyComposed=st.toDataURL("image/jpeg",.92);
   $("#previewImg").src=composed;$("#emergeImg").src=composed;$("#aiBadge").hidden=true;
 }
+/* v0.69 PANEL SADELEŞTİRME: bölümler 4 sekmede; ilk açılışta yalnız "Etkinlik" görünür */
+var PANEL_SEKME={
+  "Etkinlik":["Etkinlik","Marka","Etkinlik modu","Etkinlik profilleri","Çerçeve","Çekim","Dijital Teslim (QR)","Bu cihazda ne var"],
+  "Yazıcı":["Baskı","Yazıcı kurtarma","Baskı Kurtarma","Saha kontrolü"],
+  "Yapay Zekâ":["AI Dönüşüm"],
+  "Gelişmiş":null
+};
+function panelSekmeleri(){
+  var pn=document.querySelector("#s-admin .panel");if(!pn||pn.querySelector(".ptabs"))return;
+  var bar=document.createElement("div");bar.className="ptabs";
+  var grps=[].slice.call(pn.querySelectorAll(":scope > .grp"));
+  function sekmeOf(g){var h=g.querySelector("h3"),t=h?h.textContent.trim():"";
+    for(var k in PANEL_SEKME){var L=PANEL_SEKME[k];if(L&&L.some(function(a){return t.indexOf(a)===0}))return k;}return "Gelişmiş";}
+  function goster(k){S.panelSekme=k;try{save()}catch(e){}
+    grps.forEach(function(g){g.style.display=(sekmeOf(g)===k)?"":"none"});
+    [].forEach.call(bar.children,function(b){b.classList.toggle("on",b.dataset.k===k)});}
+  Object.keys(PANEL_SEKME).forEach(function(k){var b=document.createElement("button");b.textContent=k;b.dataset.k=k;b.onclick=function(){goster(k)};bar.appendChild(b);});
+  var st=pn.querySelector(".stat");pn.insertBefore(bar,st?st.nextSibling:pn.firstChild);
+  goster(S.panelSekme&&PANEL_SEKME.hasOwnProperty(S.panelSekme)?S.panelSekme:"Etkinlik");
+}
 function figurPanel(){
   var sel=$("#fFigurMod");if(!sel)return;
   libAll(function(list){
@@ -2695,6 +2726,34 @@ function figurPanel(){
     sel.value=S.figurMod||"";if(sel.value!==(S.figurMod||"")){S.figurMod="";save()}
   });
   tg($("#tgFigurHak"),!!S.figurHak);$("#fFigurCerceve").value=S.figurCerceve||"ani";
+}
+/* ===== v0.69 KÜTÜPHANE KÜRASYONU — üç incelemenin ortak + Claude kararları =====
+   Silinmez, "arsiv" işaretlenir: misafir görmez, panelden geri açılır. Misafire dosya adı değil temiz Türkçe ad görünür. */
+var LIB_TUT={ /* ad önekine göre: tutulan → görünen ad */
+  "06_BG_OLD_CINEMA_FOYER":"Sinema Fuayesi","12_BG_CONTINENTAL_RAILWAY":"Demiryolu Salonu",
+  "B01_":"Kırmızı Halı","B02_":"Altın Perde","B03_":"Balo Salonu","B04_":"Boğaz Gecesi","B05_":"Kapadokya",
+  "B06_":"Karlı Orman","B08_":"Neon Tünel","B09_":"Çiçek Duvarı","B13_":"Kongre Sahnesi",
+  "A01_":"Art Deco","A02_":"Düğün","A04_":"Neon Parti","A05_":"Yılbaşı","A08_":"Mezuniyet","A10_":"Sinema","A12_":"Teknoloji",
+  "C02_":"Boğaz Yalısı","C03_":"Kapadokya Terası","C04_":"Gala Sahnesi","C06_":"Caz Kulübü","C08_":"Antik Tiyatro","C09_":"Çiçek Köşkü","C10_":"Kayak Terası"
+};
+function temizAd(r){
+  if(r.ad)return r.ad;
+  var n=String(r.name||"").replace(/^[A-Z]?\d+_?(BG_)?/i,"").replace(/_/g," ").trim();
+  return n?n.charAt(0).toLocaleUpperCase("tr")+n.slice(1).toLocaleLowerCase("tr"):"Görsel";
+}
+function libKurasyon(){
+  if(S.libSet==="v69")return;
+  libAll(function(list){
+    var n=0;
+    list.forEach(function(r){
+      if(r.kind==="aiscene"&&r.fig)return; /* figür sahneleri (Simge, 10 Kasım) etkinlik modunda — dokunma */
+      if(r.kind!=="bg"&&r.kind!=="frame"&&r.kind!=="aiscene")return;
+      var ad=null;for(var k in LIB_TUT)if(String(r.name||"").indexOf(k)===0){ad=LIB_TUT[k];break;}
+      if(ad){r.ad=ad;r.arsiv=false;}else r.arsiv=true;
+      libPut(r);n++;
+    });
+    S.libSet="v69";save();try{renderLib();}catch(e){}
+  });
 }
 var aiCache=new Map();
 function aiStyled(src,st,force){
@@ -2767,7 +2826,13 @@ function aiCutout(shot){
 $("#printBtn").onclick=function(){if(mode&&mode.id==="figur"&&!figurOnayli){figurOnayIste();return}doPrint()};
 var lastPrinted="";
 var lastKesim=false;
+var numaraBasildi="";
 function doPrint(kesimZorla){
+  if(composed&&composed!==numaraBasildi&&!(mode&&(mode.id==="boom"||mode.id==="video"))&&kesimZorla===undefined){
+    var kz=kesimZorla;return numaraliKare(composed).then(function(u){composed=u;numaraBasildi=u;
+      if(storyComposed&&mode&&mode.id==="figur"){return numaraliKare(storyComposed).then(function(s2){storyComposed=s2;doPrint(kz)})}
+      doPrint(kz);});
+  }
   var kesimNiyet=(kesimZorla!==undefined)?!!kesimZorla:!!(mode&&mode.id==="serit");
   lastPrinted=composed;lastKesim=kesimNiyet;
   go("printing");
@@ -2869,10 +2934,25 @@ function finish(){
   deliverQR();
 }
 /* QR ham JPG yerine kendi teslim sayfamıza gider: misafir tek dokunuşla telefonuna kaydeder */
+/* her misafir çıktısının numarası — misafirin gördüğü tek ad: OBSKURA 1000 */
+var misafirNo=null;
+function siraNo(){if(misafirNo)return misafirNo;var n=Math.max(1000,(S.seriNo|0)||1000);misafirNo=n;S.seriNo=n+1;save();return n}
+function numaraliKare(du){
+  return new Promise(function(res){
+    if(!du||du.indexOf("data:image")!==0)return res(du);
+    var im=new Image();im.onload=function(){
+      var c=document.createElement("canvas");c.width=im.width;c.height=im.height;var x=c.getContext("2d");x.drawImage(im,0,0);
+      var fs=Math.max(14,Math.round(c.height*.012)),t="OBSKURA "+siraNo();
+      x.font="600 "+fs+"px Figtree,-apple-system,sans-serif";x.textAlign="right";x.textBaseline="bottom";
+      x.fillStyle="rgba(0,0,0,.35)";x.fillText(t,c.width-fs*1.05+1,c.height-fs*.55+1);x.fillStyle="rgba(255,255,255,.82)";x.fillText(t,c.width-fs*1.05,c.height-fs*.55);
+      res(c.toDataURL("image/jpeg",.95));
+    };im.onerror=function(){res(du)};im.src=du;
+  });
+}
 function fotoSayfa(u){
   try{
     var base=location.href.split(/[?#]/)[0].replace(/[^\/]*$/,"");
-    return base+"foto.html?u="+encodeURIComponent(u)+(S.evt?("&e="+encodeURIComponent(String(S.evt).slice(0,60))):"");
+    return base+"foto.html?u="+encodeURIComponent(u)+(S.evt?("&e="+encodeURIComponent(String(S.evt).slice(0,60))):"")+(misafirNo?("&n="+misafirNo):"");
   }catch(e){return u}
 }
 function drawQR(text){
@@ -3668,7 +3748,7 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
-  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fGptKey").value=S.gptKey||"";$("#fPin").value="";figurPanel();$("#fFilterMode").value=S.filterMode;
+  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fGptKey").value=S.gptKey||"";$("#fPin").value="";try{panelSekmeleri()}catch(e){}figurPanel();$("#fFilterMode").value=S.filterMode;
   if($("#fAiBudget"))$("#fAiBudget").value=S.aiBudget||"";
   if($("#fAiBirim"))$("#fAiBirim").value=S.aiBirim||"";
   tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
@@ -3700,7 +3780,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.68 · v0.67 açılış hatası düzeltildi (mükerrer sahne) · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.69 · kütüphane sadeleşti, OBSKURA sıra no, panel sekmeleri · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -3988,8 +4068,11 @@ function renderLib(){
       var d=document.createElement("div");d.className="librow";
       var im=new Image();im.src=r.dataUrl;d.appendChild(im);
       var nm=document.createElement("div");nm.className="nm";
-      nm.innerHTML=r.name+(r.kind==="frame"?' <span class="md">'+(names[r.mode]||"")+'</span>':"");
-      d.appendChild(nm);
+      nm.innerHTML=esc(temizAd(r))+(r.kind==="frame"?' <span class="md">'+(names[r.mode]||"")+'</span>':"")+(r.arsiv?' <span class="md" style="color:var(--muted)">arşivde</span>':"");
+      if(r.arsiv)d.style.opacity=".55";
+      var ar=document.createElement("button");ar.className="btn ghost mini";ar.textContent=r.arsiv?"Geri aç":"Arşive al";
+      ar.onclick=function(){r.arsiv=!r.arsiv;libPut(r,renderLib)};d.appendChild(nm);d.appendChild(ar);nm=null;
+      if(nm)d.appendChild(nm);
       if(r.kind==="frame"){
         var use=document.createElement("button");use.className="btn ghost mini";use.textContent="Kullan";
         use.onclick=function(){saveOverlay(r.mode,r.dataUrl).then(function(){S.frame="png";save();fillAdmin();})};
@@ -4218,7 +4301,7 @@ function buildFrameStrip(){
   libAll(function(list){
     /* kenar süsü çerçeveler tam sayfa çalışır: 4'lü mod, Tek Kare çerçevelerini de kullanabilir.
        Şerit hariç — şerit çerçevesi iki ayrı şeride göre tasarlanır, tam sayfa çerçeve şeridi ortadan böler. */
-    var frs=list.filter(function(r){return r.kind==="frame"&&(r.mode===mode.id||(mode.id==="kare4"&&r.mode==="tek"))});
+    var frs=list.filter(function(r){return r.kind==="frame"&&!r.arsiv&&(r.mode===mode.id||(mode.id==="kare4"&&r.mode==="tek"))});
     if(!S.frameChoice||!frs.length){wrap.hidden=true;return}
     wrap.hidden=false;strip.innerHTML="";
     function mk(label,rec,on){
@@ -4249,14 +4332,14 @@ function buildFrameStrip(){
       for(var fi=0;fi<frs.length;fi++){if(frs[fi].dataUrl===ovRaw[mode.id]){actId=frs[fi].id;break}}
     }
     mk("Standart",null,gStd||(!gFrameId&&!actId));
-    frs.forEach(function(r){mk(r.name.slice(0,10),r,gFrameId===r.id||actId===r.id)});
+    frs.forEach(function(r){mk(temizAd(r),r,gFrameId===r.id||actId===r.id)});
   });
 }
 function buildBgStrip(){
   var wrap=$("#bgWrap"),strip=$("#bgStrip");
   if(!wrap)return;
   libAll(function(list){
-    var bgs=list.filter(function(r){return r.kind==="bg"});
+    var bgs=list.filter(function(r){return r.kind==="bg"&&!r.arsiv});
     /* duo_ fonları fon şeridinde görünmez (kendi modu var); birlikte çekimde şerit tamamen kapalı */
     /* AI uygulanmışsa fon seçimi kapalı — karışık sonuç olmasın (çerçeve ve filtre serbest) */
     if(!S.bgOn||!bgs.length||!shotsEnh[0]||aiShots.some(Boolean)){wrap.hidden=true;return}
@@ -4278,7 +4361,7 @@ function buildBgStrip(){
     }
     thumbBtn("Yok",null,function(){bgSel=null;shotsBg=null;compose();},!bgSel);
     bgs.forEach(function(r){
-      thumbBtn(r.name.slice(0,10),r.dataUrl,function(){applyBg(r)},bgSel===r.id);
+      thumbBtn(temizAd(r),r.dataUrl,function(){applyBg(r)},bgSel===r.id);
     });
   });
 }
@@ -4399,6 +4482,9 @@ function qrMessage(lines){
 }
 var lastUrl=null;
 function deliverQR(){
+  if(composed&&composed!==numaraBasildi&&!(mode&&(mode.id==="boom"||mode.id==="video"))){
+    return numaraliKare(composed).then(function(u){composed=u;numaraBasildi=u;deliverQR()});
+  }
   lastUrl=null;
   var qrGen=aiGen; /* misafir değiştiyse geç gelen yükleme bu ekrana yazmasın */
   function benimMi(){return qrGen===aiGen}
@@ -4411,7 +4497,8 @@ function deliverQR(){
     return;
   }
   qrMessage(["Fotoğraf yükleniyor…","birkaç saniye"]);
-  var myCode=Date.now().toString(36);
+  try{$("#noYaz").textContent=misafirNo?("OBSKURA "+misafirNo):"";}catch(e){}
+  var myCode="OBSKURA-"+siraNo();
   var sw=$("#qrSwap");if(sw){sw.style.display="none";sw.textContent=""}
   /* INSTAGRAM: post + story birlikte yüklenir; karekoda dokununca ikisi arasında geçilir */
   if(mode&&(mode.id==="insta"||mode.id==="figur")&&storyComposed){
@@ -4565,7 +4652,7 @@ $("#fPin").addEventListener("input",function(){var v=this.value.replace(/\D/g,""
 $("#fFigurMod").addEventListener("change",function(){S.figurMod=this.value;save();figurSahneYukle(buildModes)});
 $("#tgFigurHak").onclick=function(){S.figurHak=!S.figurHak;tg(this,S.figurHak);save()};
 $("#fFigurCerceve").addEventListener("change",function(){S.figurCerceve=this.value;save()});
-setTimeout(function(){(function b(n){if(db||n>50)return figurSahneYukle(buildModes);setTimeout(function(){b(n+1)},100)})(0)},0);
+setTimeout(function(){(function b(n){if(db||n>50){libKurasyon();return figurSahneYukle(buildModes);}setTimeout(function(){b(n+1)},100)})(0)},0);
 $("#fFilterMode").addEventListener("change",function(){S.filterMode=this.value;save()});
 $("#sceneAddBtn").onclick=function(){
   S.aiScenes.push({id:"s"+Date.now().toString(36),e:"\u{1F4CD}",n:"Yeni sahne",on:true,cust:true,
@@ -5129,7 +5216,7 @@ function istasyonEsitle(){
 }
 try{linkKurulum()}catch(e){hataYaz("kurulum linki",e&&e.message)}
 setTimeout(istasyonEsitle,1500);
-window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_PINI:PINI,_visibleFilters:visibleFilters,_figurKare:figurKare,_composeFigur:composeFigur,_figurAkis:figurAkis,_figurSahneYukle:figurSahneYukle,_figurDurum:function(){return {sahne:figurSahne,hak:figurHakKul,mode:mode&&mode.id,story:storyComposed.length,comp:composed.length}},_loadImg:loadImg,_linkKurulum:linkKurulum,_kurulumLinki:kurulumLinki,_kodAyikla:kodAyikla,_istasyonDurum:istasyonDurum,_istasyonEsitle:istasyonEsitle,_bas:function(d,k){composed=d;copies=k||1;doPrint()},_pendHepsiniBas:pendHepsiniBas,_kopruDurum:kopruDurum,_kopruBas:kopruBas,_baskiYolu:baskiYolu,_kopruKesim:kopruKesim,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
+window.BOOTH={S:S,save:save,_composeOn:composeOn,_buildModes:buildModes,_prImg:prImg,_yaziciAyar:yaziciAyar,_baskiYuzeyi:baskiYuzeyi,_PROFIL:PROFIL,_PINI:PINI,_temizAd:temizAd,_siraNo:function(){return misafirNo},_visibleFilters:visibleFilters,_figurKare:figurKare,_composeFigur:composeFigur,_figurAkis:figurAkis,_figurSahneYukle:figurSahneYukle,_figurDurum:function(){return {sahne:figurSahne,hak:figurHakKul,mode:mode&&mode.id,story:storyComposed.length,comp:composed.length}},_loadImg:loadImg,_linkKurulum:linkKurulum,_kurulumLinki:kurulumLinki,_kodAyikla:kodAyikla,_istasyonDurum:istasyonDurum,_istasyonEsitle:istasyonEsitle,_bas:function(d,k){composed=d;copies=k||1;doPrint()},_pendHepsiniBas:pendHepsiniBas,_kopruDurum:kopruDurum,_kopruBas:kopruBas,_baskiYolu:baskiYolu,_kopruKesim:kopruKesim,_hatalar:function(){return HATALAR},evSlug:evSlug,uploadPhoto:uploadPhoto,fillAdmin:fillAdmin,updGalLink:updGalLink,go:go,overlays:overlays,ovRaw:ovRaw,clearOverlay:clearOverlay,renderLib:renderLib,libAll:libAll,profAll:profAll,assetsAll:assetsAll,_chroma:chromaComposite,_keyPerson:keyPerson,_aiCutComposite:aiCutComposite,_poster:posterBasligi,_fotoSayfa:fotoSayfa,_buildPkg:buildPkg,_importPkg:importPkg,libPut:libPut,SABLONLAR:SABLONLAR,sablonUygula:sablonUygula,guestAll:guestAll,guestCSV:guestCSV,upqAll:upqAll,upqDene:upqDene,_gifYap:gifYap,_boomSira:boomerangSirasi,_gifIndeks:gifIndeksle,pendAll:pendAll,pendPut:pendPut,slaytLink:slaytLink,galLink:galLink,sahaKontrol:sahaKontrol,_kontroller:{kamera:kKamera,depolama:kDepolama,gorselDeposu:kGorselDeposu,bosAlan:kBosAlan,kutuphane:kKutuphane,baski:kBaski,yazici:kYazici,veri:kMisafirVerisi,kuyruk:kTeslimKuyrugu,video:kVideoDestek,eposta:kEposta,aiButce:kAiButce,uyanik:kUyanik,stil:kStil,internet:kInternet,teslim:kTeslimSayfa,bulut:kBulut,ai:kAI}};
 })();
 </script>
 
