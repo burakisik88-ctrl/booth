@@ -945,7 +945,7 @@ DEFSCENES.forEach(function(d){
   var s=null;for(var i3=0;i3<S.aiScenes.length;i3++)if(S.aiScenes[i3].id===d.id)s=S.aiScenes[i3];
   var adAyni=S.aiScenes.some(function(x){return x.id!==d.id&&(x.n||"").trim()===d.n});
   if(!s&&!adAyni)S.aiScenes.push(JSON.parse(JSON.stringify(d)));
-  else if(!s.cust&&s.p!==d.p)s.p=d.p;
+  else if(s&&!s.cust&&s.p!==d.p)s.p=d.p;
 });
 function save(){
   try{localStorage.setItem("booth.v1",JSON.stringify(S));}
@@ -3700,7 +3700,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.67 · stil temizliği, kısa prompt, görevli onayı, PIN, güvenli kesim · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.68 · v0.67 açılış hatası düzeltildi (mükerrer sahne) · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
