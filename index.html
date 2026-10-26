@@ -738,6 +738,7 @@ h1 em{font-style:italic;color:var(--amber)}
           <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="password" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
           <div class="fld"><div class="lbl">Yönetici PIN'i (4 rakam — görevli onayı da bununla)</div><input type="password" id="fPin" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off"></div>
           <div class="fld"><div class="lbl">OpenAI API anahtarı (yalnız "Konuk figürle kare" sahnelerinde motor GPT seçilirse)</div><input type="password" id="fGptKey" placeholder="sk-…" autocomplete="off"></div>
+          <div class="fld"><div class="lbl">AI stil motoru</div><select id="fStilMotor"><option value="gemini">Gemini (hızlı, ucuz)</option><option value="gpt">GPT (benzerlik daha iyi, daha yavaş)</option></select></div>
           <div class="fld"><div class="lbl">AI modeli — kalite / hız / maliyet</div>
             <select id="fAiModel">
               <option value="gemini-2.5-flash-image">2.5 Flash — ÖNERİLEN, benzerlikte en iyi · ~8 sn · ~4 kuruş</option>
@@ -904,6 +905,8 @@ var DEFSCENES=[
 /* v0.67 STİL TEMİZLİĞİ — üç bağımsız inceleme (Grok, GPT, Claude denetçi) ortak kararı:
    askeri, savaş, siyasi/anma, dini, çocuklaştırma ve mükerrer stiller kaldırıldı; sabit yaşlar, güzelleştirme ve
    "attractive" kuyrukları silindi; DÜZELT stilleri kısa promptlarla yenilendi. Kaldırılanlar panelde görünmez. */
+/* v0.70 ROL PROMPTLARI — "düzenleme" değil "role sokma": tüm kare birlikte yeniden çizilir (yapıştırma kafa olmaz), kimlik korunur */
+var STIL_ROL={"noir": "a 1950s Hollywood black-and-white studio glamour portrait: classic tailored outfit, dramatic soft key light, deep shadows, plain studio backdrop.", "hero": "an original comic-book superhero: a fitted heroic suit with a cape designed for them, standing on a city rooftop at dusk with dynamic rim light and a confident heroic pose. No mask, no helmet, no existing characters or logos.", "gazino": "the star singer of a 1970s Istanbul gazino: a sharp period stage outfit, a vintage chrome microphone, red velvet curtains, warm spotlights and a softly blurred orchestra.", "y70": "a 1970s Turkish family-album photo: period clothing and hair styling, a modest living room or studio backdrop, warm faded colour film with fine grain.", "y80": "a 1980s Turkish family photo: era clothing (knitwear, blazer), a period living room, direct on-camera flash, warm print colours and film grain.", "yesilcam": "the lead of a hand-painted 1970s Yeşilçam film poster: expressive painted brushwork, warm cinematic colours, an old Istanbul scene behind. Leave the bottom fifth simple and free of any text.", "oil": "a classical oil-painting portrait: elegant period attire, visible brushwork, rich museum lighting and a dark painted background.", "neon": "a portrait in a neon-lit futuristic city at night: stylish modern streetwear, teal and magenta lights in the background, light rain, face lit naturally.", "astro": "an astronaut on the Moon: a detailed white spacesuit with the helmet held under one arm so the face is fully visible, the Earth in the black sky.", "hostes": "a 1960s golden-age airline crew member (pilot or cabin crew, matching the person): a vintage tailored uniform without logos, a classic terminal or airstair, warm film colours.", "efe": "an Aegean zeybek in traditional embroidered costume with a woven sash, in an olive grove at golden hour. No weapons.", "y1900": "a circa-1900 Istanbul studio portrait: elegant period civilian clothing, a painted studio backdrop and antique furniture, sepia albumen-print look.", "sci": "a scientist in a modern research laboratory wearing a lab coat, scientific equipment around, natural professional light, no readable text."};
 var STIL_YENI={"hero": "Turn the person's outfit into an original, elegant superhero costume with a simple cape. Use a cinematic city skyline at dusk. Keep the face, hairstyle, expression, body proportions and camera angle unchanged. No mask, helmet, logos or existing characters.", "y70": "Create a natural 1970s Turkish family-album portrait. Use period clothing, a modest vintage living-room backdrop, warm faded film colors and subtle grain. Preserve the person's current age, face and facial hair. Do not add or remove facial hair.", "y90": "Create an authentic late-1990s Turkish family snapshot. Use simple denim or casual period clothing, a modest home background, direct camera flash and warm color-film grain. Keep the person's current age, face and body proportions. No date stamp or text.", "anim": "Render the person as a detailed stylized 3D animated portrait. Preserve their unique facial proportions, hairstyle, facial hair, age and expression. Use realistic skin detail, soft animation-style lighting and a simple colorful background. Avoid generic cartoon facial features.", "neon": "Place the person in a futuristic neon-lit city at night, with subtle teal and magenta background lights. Keep the face naturally lit with neutral skin tones. Preserve their original clothing, facial features and pose. No masks, cybernetic implants or face changes.", "y20": "Create an elegant 1920s Art Deco studio portrait with period-inspired formal clothing, a geometric backdrop, warm sepia tones and fine film grain. Preserve the person's current age, facial features, hairline and expression. No dramatic hairstyle transformation.", "y80": "Create an authentic 1980s Turkish family photograph. Use era-appropriate jackets, knitwear and a vintage living-room background. Add direct-flash lighting, subtle film grain and warm print colors. Preserve the person's actual age, hairstyle and facial structure.", "y1900": "Create a respectful circa-1900 Istanbul photography-studio portrait. Dress the person in elegant period civilian clothing suited to their existing appearance. Use a painted studio backdrop, antique furniture and subtle sepia albumen-print texture. Preserve facial identity, current age and natural expression. No historical public figures or official insignia.", "yesilcam": "Create a hand-painted 1970s Turkish cinema poster featuring this person as the lead. Use expressive painted brushwork, warm cinematic colors and an old Istanbul backdrop. Keep the person's real age and distinctive facial features recognizable. Leave the lower 20 percent visually simple and completely free of text, numbers and logos.", "mermer": "Create a museum photograph of a classical marble bust modeled on this person's exact facial proportions and hairstyle. Use realistic white stone texture and soft museum lighting. Preserve the distinctive nose, eyes, jawline and facial-hair silhouette. No exaggerated classical facial idealization.", "sci": "Place the person in an elegant contemporary research laboratory wearing a simple lab coat. Use scientific equipment and abstract diagrams without readable equations or text. Keep their real face, age, hair and expression unchanged. Natural professional portrait lighting.", "padisah": "Create an elegant fictional Ottoman-inspired palace portrait. Dress the person in richly embroidered ceremonial silk clothing with refined historical accessories. Use an ornate fictional palace interior and warm cinematic lighting. Preserve the person's real face, age and expression. Do not depict a real sultan, official regalia or weapons.", "misir": "Create a cinematic portrait of this person as a fictional ancient Egyptian royal figure. Use elegant linen clothing, lapis-and-gold accessories and an ancient palace backdrop. Keep their original facial features, body proportions, age and gender presentation. No resemblance to named historical rulers, no heavy face makeup and no face-covering crown.", "lord": "Create a refined early-20th-century British aristocratic portrait. Use elegant period formalwear, an atmospheric manor-house interior and soft natural window light. Preserve the person's real age, face, hairline and expression. No exaggerated makeup, wigs or facial beautification.", "gazino": "Create a glamorous 1970s Istanbul gazino stage portrait. Dress the person in elegant period-inspired evening performance clothing. Place a vintage microphone nearby with red velvet curtains, warm spotlights and a softly blurred orchestra. Preserve their real facial identity and age. No text or famous performers.", "kina": "Create an elegant traditional Turkish henna night portrait. Dress the person in tasteful formal or embroidered celebration attire appropriate to their chosen look. Use warm lantern lighting, a decorative henna tray and a festive background. Preserve their actual face, age, hairstyle and natural body proportions. No childish costumes.", "efe": "Create a respectful Aegean zeybek cultural-costume portrait. Use traditional embroidered clothing, a woven sash and an olive-grove landscape at golden hour. Keep the person's original facial features, age and body proportions. No weapons, military insignia or battle imagery.", "hostes": "Create a glamorous 1960s golden-age airline portrait. Dress the person in a vintage captain or cabin-crew uniform according to their selected role, regardless of gender. Use a classic airport terminal backdrop, warm film colors and elegant natural light. Preserve their original face and hairstyle. No airline logos or readable insignia.", "n23": "Create a joyful spring celebration portrait in a colorful Turkish school-event setting. Use festive decorations, warm daylight and a cheerful atmosphere. Preserve the guest's actual age, face and clothing. No age transformation, no identifiable background children and no readable text.", "e29": "Place the person in an elegant Turkish Republic Day celebration scene at blue hour. Use red-and-white festive decorations, warm architectural lighting and subtle fireworks in the distant sky. Preserve their original face, age, clothing and pose. No political figures or readable slogans.", "balo1923": "Create an elegant fictional ball inspired by early Republican-era Turkey. Use 1920s formal evening attire, an Art Deco ballroom, warm chandeliers and soft film grain. Preserve the person's current age and distinctive facial features. Do not imply participation in a real historical event.", "iftar": "Place the person in an elegant contemporary iftar event setting at sunset. Use a refined dining table, warm lantern lighting and tasteful blue-and-gold evening ambience. Preserve their original face, age and clothing. No religious-role transformation or text.", "m8": "Create a premium contemporary studio portrait with elegant neutral lighting and subtle purple accents suitable for a Women's Day brand event. Preserve the person's original clothing, age, facial features and expression. Use a clean customizable background without text, slogans or decorative clichés.", "k24": "Create a warm professional portrait in a modern educational setting with books, soft daylight and subtle floral details. Preserve the person's original face, age, clothing and expression. Avoid changing their profession or implying an official role. No readable text or public figures.", "s14": "Create an elegant romantic portrait with warm candlelight, subtle roses and soft background bokeh. Preserve every person's original facial identity, age, clothing and relative position. Support either one guest or a real couple without adding or inventing another person."};
 var STIL_KALDIR=["royal", "y1800", "y1700", "saray", "vesika", "yeniceri", "soytari", "ozelkuv", "askerlik", "okul90", "meclis1920", "malazgirt", "fetih1453", "m19", "a30", "may1", "k10", "t15", "ramazanb", "kurbanb", "y2000", "downton", "sultanh"];
 var STIL_ACIK67=["noir", "hero", "gazino", "y80", "y70", "yesilcam", "oil", "neon", "astro", "hostes"];
@@ -990,7 +993,7 @@ function clearGuestData(){
   aiGen++;
   ["#previewImg","#emergeImg","#aiImg"].forEach(function(s){var el=$(s);if(el)el.removeAttribute("src");});
   shots=[];shotsEnh=[];aiShots=[];aiSel=[];aiDone=[];aiForce=[];bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;composed="";storyComposed="";
-  try{aiResult=null;lastTekStyle=null;figurHakKul=false;figurOnayli=false;misafirNo=null;}catch(e){}
+  try{aiResult=null;lastTekStyle=null;figurHakKul=false;figurOnayli=false;misafirNo=null;seritKisi=2;}catch(e){}
   /* RAM: 8'li şeritte onlarca tam boy canvas birikiyordu — misafir gidince bırak */
   try{aiCache=new Map();aiBgCache=new Map();aiCutCache=new Map();}catch(e){}
   try{var bb=$("#bgBusy");if(bb)bb.hidden=true;}catch(e){}
@@ -1603,7 +1606,7 @@ function stopSeq(){if(timer){clearTimeout(timer);timer=null}}
 function beginSeq(m){
   /* önceki oturumdan kalan kamera hata yazısını temizle (çalışan sistemi bozuk gösteriyordu) */
   try{var eski=document.querySelectorAll("#s-shoot .stage .err");for(var q=0;q<eski.length;q++)eski[q].remove();}catch(e){}
-  figurOnayli=false;
+  figurOnayli=false;seritKisi=2;
   mode=m;shots=[];shotsEnh=[];
   if(m.id==="serit")m.shots=S.serit8?8:4;
   filt=(m.id==="glam")?"glam":"dogal";aiShots=[];aiSel=[];aiDone=[];aiForce=[];lastTekStyle=null;bgSel=null;shotsBg=null;gFrame=null;gFrameId=null;gStd=false;copies=1;storyComposed="";
@@ -2159,6 +2162,7 @@ function showReview(){
         : "Hareketli görüntü üretilemedi — baskı ve karekod yine de çalışıyor.";
     }
   }
+  if(mode&&(mode.id==="video"||mode.id==="boom"))aiReady=false; /* v0.70: video/GIF'e AI uygulanmaz */
   $("#aiBtn").hidden=!(aiReady&&S.aiStyles.some(function(st){return st.on}));
   $("#aiSceneBtn").hidden=!(aiReady&&((S.aiScenes&&S.aiScenes.some(function(st){return st.on}))||hasSceneImgs));
   /* AI butonu sessizce kaybolmasın — NEDENİNİ yaz (bu cihazda kurulum eksikse anlaşılsın) */
@@ -2188,6 +2192,7 @@ function composeOn(x,id,sh){
       var iy=lay.t,ih=H-lay.t-lay.b,pad=lay.s;
       if(f==="kongre")drawTopBand(x,sx0,0,sw,lay.t,true);
       var gap=12,cellW=sw-2*pad,cellH=(ih-gap*3-(f==="kenar"?pad:0))/4;
+      if(seritKisi===1&&st2===1){seritKart(x,sx0,sw,f);continue;} /* tek kişi: ikinci yarı marka kartı */
       for(var i=0;i<4;i++)cover(x,sh[(sh.length>=8?st2*4:0)+i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
       if(lay.b>0&&f!=="png"){
         drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
@@ -2283,11 +2288,30 @@ function compose(){
 
 /* ---------- review kontrolleri ---------- */
 var MAXCOPY=10;
+/* ŞERİT TEK KİŞİ (v0.71): 4x6 kâğıt yine ortadan kesilir; misafir tek şerit alır, ikinci yarı şık bir etkinlik kartı olur
+   (boş kâğıt atmaz, karta logo/etkinlik/tarih/numara basılır). */
+var seritKisi=2;
+function seritKart(x,sx0,sw,f){
+  var bg=(f==="yok"||f==="png")?"#12100E":(S.bandBg||"#12100E"),fg=(f==="yok"||f==="png")?"#F6F0E6":(S.bandFg||"#F6F0E6");
+  x.fillStyle=bg;x.fillRect(sx0,0,sw,H);
+  x.strokeStyle=fg;x.globalAlpha=.35;x.lineWidth=2;x.strokeRect(sx0+28,28,sw-56,H-56);x.globalAlpha=1;
+  var cx=sx0+sw/2,y=H*.30;x.textAlign="center";x.fillStyle=fg;
+  if(logoImg){var lw=Math.min(sw*.6,320),lh=lw*logoImg.height/logoImg.width;if(lh>220){lh=220;lw=lh*logoImg.width/logoImg.height}x.drawImage(logoImg,cx-lw/2,y-lh/2,lw,lh);y+=lh/2+70;}
+  else{x.font="500 54px Georgia,serif";x.fillText(S.brand||"OBSKURA",cx,y);y+=90;}
+  var ev=(S.evt||"").trim();if(ev){var fs=fitFont(x,ev,sw*.8,46,"Georgia,serif","500","");x.fillText(ev,cx,y);y+=fs+24;}
+  if(S.date){x.globalAlpha=.75;x.font="400 26px Figtree,sans-serif";x.fillText(S.date,cx,y);x.globalAlpha=1;y+=50;}
+  x.globalAlpha=.6;x.font="600 22px Figtree,sans-serif";x.fillText((S.tag||"Anı burada kalır"),cx,H*.82);x.globalAlpha=1;
+}
 function chips(){
   var c=$("#copyChips");c.innerHTML="";
   function mk(t,fn,on){
     var b=document.createElement("button");b.className="chip num"+(on?" on":"");b.textContent=t;
     b.onclick=fn;c.appendChild(b);return b;
+  }
+  if(mode&&mode.id==="serit"){
+    mk("1 kişi",function(){seritKisi=1;compose();chips()},seritKisi===1);
+    mk("2 kişi",function(){seritKisi=2;compose();chips()},seritKisi===2);
+    var br=document.createElement("span");br.style.cssText="flex-basis:100%;height:0";c.appendChild(br);
   }
   mk("−",function(){if(copies>1){copies--;chips()}},false);
   mk(copies+" adet",function(){},true);
@@ -2802,11 +2826,12 @@ function aiTransform(src,st){
   }
   /* STİL (v0.67): kısa sarmalayıcı — uzun kural listesi ve güzelleştirme yüzü yeniden çizdiriyordu */
   var sp=(st.p||"").replace(/\s*The person must look attractive[^.]*\.[^.]*\./g,"").replace(/\s*Keep the same face[^.]*\./g,"");
-  var KISA="Edit this photo of a real person into the style below. Keep them exactly as they are: same face, age, gender, skin tone, body proportions, hairline and facial hair, unmistakably the same person. Do not beautify, reshape or replace the face. Keep the original number of people and their positions. Change only clothing, hair styling, background and photographic look as the style asks. No added text, letters or logos. Style: ";
-  return geminiImage([
-    {inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},
-    {text:KISA+sp+extra}
-  ],src.width,src.height).then(function(cv){return st.poster?posterBasligi(cv):cv});
+  if(!st.cust&&STIL_ROL[st.id])sp=STIL_ROL[st.id];
+  var KISA="Create a new photograph of this exact person in the role described below. Render the whole image as one coherent photo: new outfit, hair styling, setting, light and a natural pose that fits the role, with head and body drawn together (never a pasted face). Keep who they are: the same face shape, eyes, nose, mouth, skin tone, age, gender and facial hair, so their friends recognise them at first glance. Do not beautify, slim or feminise/masculinise them. If there are several people, keep every one of them. No text, letters or logos. Role: ";
+  var pr=KISA+sp+extra;
+  var uret=(S.stilMotor==="gpt"&&S.gptKey)?gptImage([src],pr,src.width,src.height)
+    :geminiImage([{inline_data:{mime_type:"image/jpeg",data:toB64(src,1408)}},{text:pr}],src.width,src.height);
+  return uret.then(function(cv){return st.poster?posterBasligi(cv):cv});
 }
 /* TEK KESİM: AI kişiyi BİR KEZ düz yeşile çıkarır; fonlar sonra yerel chroma ile ücretsiz uygulanır.
    Fon değiştirmek yeni AI çağrısı ve yeni bozulma riski üretmez. */
@@ -3748,7 +3773,7 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
-  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fGptKey").value=S.gptKey||"";$("#fPin").value="";try{panelSekmeleri()}catch(e){}figurPanel();$("#fFilterMode").value=S.filterMode;
+  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fGptKey").value=S.gptKey||"";$("#fPin").value="";$("#fStilMotor").value=S.stilMotor||"gemini";try{panelSekmeleri()}catch(e){}figurPanel();$("#fFilterMode").value=S.filterMode;
   if($("#fAiBudget"))$("#fAiBudget").value=S.aiBudget||"";
   if($("#fAiBirim"))$("#fAiBirim").value=S.aiBirim||"";
   tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
@@ -3780,7 +3805,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.69 · kütüphane sadeleşti, OBSKURA sıra no, panel sekmeleri · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.71 · şeritte 1 kişi / 2 kişi seçimi · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -4648,6 +4673,7 @@ $("#profSel").addEventListener("change",function(){
 $("#tgAi").onclick=function(){S.aiOn=!S.aiOn;tg(this,S.aiOn);save()};
 $("#fAiKey").addEventListener("input",function(){S.aiKey=this.value.trim();save()});
 $("#fGptKey").addEventListener("input",function(){S.gptKey=this.value.trim();save()});
+$("#fStilMotor").addEventListener("change",function(){S.stilMotor=this.value;save();aiCache=new Map();});
 $("#fPin").addEventListener("input",function(){var v=this.value.replace(/\D/g,"").slice(0,4);this.value=v;if(v.length===4){S.pin=v;save();}});
 $("#fFigurMod").addEventListener("change",function(){S.figurMod=this.value;save();figurSahneYukle(buildModes)});
 $("#tgFigurHak").onclick=function(){S.figurHak=!S.figurHak;tg(this,S.figurHak);save()};
