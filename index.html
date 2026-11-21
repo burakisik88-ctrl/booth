@@ -783,7 +783,7 @@ h1 em{font-style:italic;color:var(--amber)}
         <div class="grp">
           <h3>Baskı Kurtarma</h3>
           <button class="btn gold" id="rePrintBtn">SON BASKIYI TEKRAR BAS</button>
-          <div class="note" id="rePrintNote">Yazıcı sıkışırsa: dişli → 1234 → bu buton. Son basılan kare aynen yeniden basılır, misafire tekrar poz verdirmeye gerek kalmaz. Daha eski kareler için "Galeriyi aç" — dokunduğun kare yeniden basılır.</div>
+          <div class="note" id="rePrintNote">Yazıcı sıkışırsa: dişli → PIN → bu buton. Son basılan kare aynen yeniden basılır, misafire tekrar poz verdirmeye gerek kalmaz. Daha eski kareler için "Galeriyi aç" — dokunduğun kare yeniden basılır.</div>
         </div>
 
         <div class="grp">
@@ -1058,7 +1058,7 @@ function startCam(){
     return Promise.reject();
   }
   return navigator.mediaDevices.getUserMedia({
-    video:{facingMode:"user",width:{ideal:4032},height:{ideal:3024},frameRate:{ideal:30}},audio:false
+    video:{facingMode:"user",width:{ideal:2560},height:{ideal:1920},frameRate:{ideal:30}},audio:false
   }).then(function(st){
     stream=st;cam.srcObject=st;liveBg.srcObject=st;
     var p1=cam.play(),p2=liveBg.play();
@@ -1798,7 +1798,7 @@ function boxBlur(d,w,h,r){
 }
 function enhanceShot(src){
   if(S.enh==="kapali")return src;
-  var k=(S.enh==="guclu")?1:.45; /* v0.74: iPad kamerası zaten işliyor — hafif dokun */
+  var k=(S.enh==="guclu")?1:.45; /* v0.75: iPad kamerası zaten işliyor — hafif dokun */
   var w=src.width,h=src.height;
   var c=document.createElement("canvas");c.width=w;c.height=h;
   var x=c.getContext("2d");x.drawImage(src,0,0);
@@ -1809,11 +1809,11 @@ function enhanceShot(src){
   for(i=0;i<L;i+=28){mr+=d[i];mg+=d[i+1];mb+=d[i+2];n++;}
   mr/=n;mg/=n;mb/=n;var gm=(mr+mg+mb)/3;
   function lim(v){return v<.86?.86:v>1.16?1.16:v}
-  var wr=1,wg=1,wb=1; /* v0.74: gri-dünya beyaz ayarı KAPALI — kırmızı kıyafet çoğunluktayken resmi yeşile/camgöbeğine çekiyordu; iPad'in kendi beyaz ayarına güven */
+  var wr=1,wg=1,wb=1; /* v0.75: gri-dünya beyaz ayarı KAPALI — kırmızı kıyafet çoğunluktayken resmi yeşile/camgöbeğine çekiyordu; iPad'in kendi beyaz ayarına güven */
 
   /* 2 — otomatik seviye (parlaklık histogramı) */
   var hist=new Uint32Array(256),lum,px2,py2,idx2,wq;
-  var qx0=(w*.28)|0,qx1=(w*.72)|0,qy0=(h*.15)|0,qy1=(h*.60)|0; /* v0.74: ölçüm yüze (orta-üst) odaklı */
+  var qx0=(w*.28)|0,qx1=(w*.72)|0,qy0=(h*.15)|0,qy1=(h*.60)|0; /* v0.75: ölçüm yüze (orta-üst) odaklı */
   for(py2=0;py2<h;py2+=3)for(px2=0;px2<w;px2+=3){
     idx2=(py2*w+px2)<<2;
     lum=(d[idx2]*77+d[idx2+1]*150+d[idx2+2]*29)>>8;
@@ -1832,11 +1832,11 @@ function enhanceShot(src){
   var st1=new Float32Array(256),mean=0,cnt=0,t;
   for(i=0;i<256;i++){t=(i+off)*gain;st1[i]=t<0?0:t>255?255:t;mean+=st1[i]*hist[i];cnt+=hist[i];}
   mean=cnt?mean/cnt:128;
-  var target=140,gam=1; /* v0.74: termal baskı ekrandan koyu çıkar → hedef daha aydınlık */
+  var target=140,gam=1; /* v0.75: dye-sub baskı ekrandan koyu çıkar → hedef daha aydınlık */
   if(mean>6&&mean<250){gam=Math.log(target/255)/Math.log(mean/255);}
-  if(gam<.50)gam=.50; if(gam>1)gam=1; /* v0.74: asla karartma */
+  if(gam<.50)gam=.50; if(gam>1)gam=1; /* v0.75: asla karartma */
   gam=1+(gam-1)*k;
-  var dark=mean<100, sAmt=(dark?.06:.12)*k; /* v0.74: gölgeleri gömme */
+  var dark=mean<100, sAmt=(dark?.06:.12)*k; /* v0.75: gölgeleri gömme */
   var lut=new Uint8ClampedArray(256),sv;
   for(i=0;i<256;i++){
     t=255*Math.pow(st1[i]/255,gam);
@@ -2190,7 +2190,7 @@ function composeOn(x,id,sh){
       var iy=lay.t,ih=H-lay.t-lay.b,pad=lay.s;
       if(f==="kongre")drawTopBand(x,sx0,0,sw,lay.t,true);
       var gap=12,cellW=sw-2*pad,cellH=(ih-gap*3-(f==="kenar"?pad:0))/4;
-      if(seritKisi===1&&st2===1){x.fillStyle="#FFFFFF";x.fillRect(sx0-20,0,sw+40,H);continue;} /* v0.74 tek kişi: tek şerit, ikinci yarı boş */
+      if(seritKisi===1&&st2===1){x.fillStyle="#FFFFFF";x.fillRect(sx0-20,0,sw+40,H);continue;} /* v0.75 tek kişi: tek şerit, ikinci yarı boş */
       for(var i=0;i<4;i++)cover(x,sh[(sh.length>=8?st2*4:0)+i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
       if(lay.b>0&&f!=="png"){
         drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
@@ -2286,7 +2286,7 @@ function compose(){
 
 /* ---------- review kontrolleri ---------- */
 var MAXCOPY=10;
-/* ŞERİT TEK KİŞİ (v0.74): 4x6 kâğıt yine ortadan kesilir; misafir tek şerit alır, ikinci yarı şık bir etkinlik kartı olur
+/* ŞERİT TEK KİŞİ (v0.75): 4x6 kâğıt yine ortadan kesilir; misafir tek şerit alır, ikinci yarı şık bir etkinlik kartı olur
    (boş kâğıt atmaz, karta logo/etkinlik/tarih/numara basılır). */
 var seritKisi=2;
 function seritKart(x,sx0,sw,f){
@@ -2663,7 +2663,7 @@ function figurAkis(){
   var myGen=aiGen;
   aiState("work");go("ai");
   $("#aiMsg").textContent="Fotoğrafın hazırlanıyor — 20-40 saniye sürebilir…";
-  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,ton:figurSahne.ton||(figurSahne.sepya?"saygili":"eglenceli"),sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
+  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,ton:figurSahne.sepya?"saygili":(figurSahne.ton||"eglenceli") /* v0.75: anma karesi her zaman saygılı */,sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
   figurKare(shotsEnh[0],st).then(function(c){
     if(myGen!==aiGen)return;
     aiShots=[c];figurEkran(true);compose();chips();go("review");
@@ -2954,7 +2954,7 @@ function yaziciUyar(){
   setTimeout(function(){try{d.remove()}catch(e){}},25000);
 }
 function finish(){
-  go("done");autoBack(45);
+  go("done");autoBack(90);
   if((S.printFail|0)>=3&&!S.printDown)yaziciUyar();
   deliverQR();
 }
@@ -3805,7 +3805,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.74 · şeritte 1 kişi / 2 kişi seçimi · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.75 · şeritte 1 kişi / 2 kişi seçimi · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -4016,7 +4016,7 @@ $("#enhFile").addEventListener("change",function(){
 var cntArm=null;
 $("#resetCnt").onclick=function(){
   var b=this;
-  if(cntArm){clearTimeout(cntArm);cntArm=null;S.shots=S.prints=S.sheets=0;save();fillAdmin();b.textContent="Sıfırlandı ✓";setTimeout(function(){b.textContent="Sayaçları sıfırla"},1500);return}
+  if(cntArm){clearTimeout(cntArm);cntArm=null;S.shots=S.prints=S.sheets=0;save();try{sayacKaydet()}catch(e){}fillAdmin();b.textContent="Sıfırlandı ✓";setTimeout(function(){b.textContent="Sayaçları sıfırla"},1500);return}
   b.textContent="Emin misin? SIFIRLA";
   cntArm=setTimeout(function(){cntArm=null;b.textContent="Sayaçları sıfırla"},3500);
 };
@@ -4879,7 +4879,7 @@ function assetsAll(cb){
 }
 function buildPkg(cb){
   libAll(function(lib){assetsAll(function(as){profAll(function(pr){
-    cb({obskura:1,v:37,t:Date.now(),S:S,lib:lib,assets:as,profiles:pr});
+    var S2=JSON.parse(JSON.stringify(S));delete S2.pin;cb({obskura:1,v:37,t:Date.now(),S:S2,lib:lib,assets:as,profiles:pr});
   })})});
 }
 $("#cfgFileBtn").onclick=function(){
