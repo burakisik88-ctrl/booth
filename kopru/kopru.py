@@ -26,7 +26,7 @@ import json, os, re, subprocess, sys, time, threading, struct, glob
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-SURUM = "1.3"
+SURUM = "1.4"
 PORT = int(os.environ.get("OBSKURA_PORT", "8740"))
 EV = os.path.expanduser("~/OBSKURA-Baski")
 ISLER = os.path.join(EV, "isler")
@@ -363,8 +363,13 @@ def _islenen():
 
 
 def _islenen_yaz(idler, son):
-    with open(os.path.join(EV, "islenen.json"), "w", encoding="utf-8") as f:
+    yol = os.path.join(EV, "islenen.json")
+    gecici = yol + ".yeni"
+    with open(gecici, "w", encoding="utf-8") as f:
         json.dump({"idler": idler[-400:], "son": son}, f)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(gecici, yol)  # 1.4: yarım yazılıp bozulmaz → çift baskı olmaz
 
 
 def istasyon_isi(m):
@@ -400,13 +405,13 @@ def istasyon_dongusu():
             r = urllib.request.Request(NTFY + "/obskura-%s/json?since=%s" % (KOD, since))
             with urllib.request.urlopen(r, timeout=120) as y:
                 _ist.update(bagli=True, hata="")
-                if ilk or time.time() - son_nabiz > 1800:
+                if ilk or time.time() - son_nabiz > 600:
                     nabiz(); son_nabiz = time.time(); ilk = False
                 while True:
                     satir = y.readline()
                     if not satir:
                         break
-                    if time.time() - son_nabiz > 1800:
+                    if time.time() - son_nabiz > 600:
                         nabiz(); son_nabiz = time.time()
                     try:
                         o = json.loads(satir.decode("utf-8"))
