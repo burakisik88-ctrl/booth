@@ -735,6 +735,8 @@ h1 em{font-style:italic;color:var(--amber)}
           <h3>AI Dönüşüm</h3>
           <div class="sw"><div class="t">Misafire açık<div class="note">Tüm modlarda görünür (tek/şerit/dörtlü)</div></div><div class="tg" id="tgAi"><i></i></div></div>
           <div class="sw" style="display:none"><div class="t">İnce rötuş</div><div class="tg" id="tgFlatter"><i></i></div></div>
+          <div class="fld"><div class="lbl">Kit harfi (birden fazla kabin aynı etkinlikteyse: A, B, C — numaralar A-1000 olur)</div><input id="fKitHarf" maxlength="2" placeholder="A" autocomplete="off" style="text-transform:uppercase"></div>
+          <div class="note">Kendi hesaplarını bağla: Gemini anahtarı → aistudio.google.com/apikey · OpenAI → platform.openai.com/api-keys · Her iki panelde de <b>aylık harcama limiti</b> koy. Anahtarlar yalnız bu cihazda kalır, kurulum linkiyle başka cihaza gitmez.</div>
           <div class="fld"><div class="lbl">API anahtarı (Google AI Studio — Gemini)</div><input type="password" id="fAiKey" placeholder="AIza…" autocomplete="off"></div>
           <div class="fld"><div class="lbl">Yönetici PIN'i (4 rakam — görevli onayı da bununla)</div><input type="password" id="fPin" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off"></div>
           <div class="fld"><div class="lbl">OpenAI API anahtarı (yalnız "Konuk figürle kare" sahnelerinde motor GPT seçilirse)</div><input type="password" id="fGptKey" placeholder="sk-…" autocomplete="off"></div>
@@ -1798,7 +1800,7 @@ function boxBlur(d,w,h,r){
 }
 function enhanceShot(src){
   if(S.enh==="kapali")return src;
-  var k=(S.enh==="guclu")?1:.45; /* v0.75: iPad kamerası zaten işliyor — hafif dokun */
+  var k=(S.enh==="guclu")?1:.45; /* v0.76: iPad kamerası zaten işliyor — hafif dokun */
   var w=src.width,h=src.height;
   var c=document.createElement("canvas");c.width=w;c.height=h;
   var x=c.getContext("2d");x.drawImage(src,0,0);
@@ -1809,11 +1811,11 @@ function enhanceShot(src){
   for(i=0;i<L;i+=28){mr+=d[i];mg+=d[i+1];mb+=d[i+2];n++;}
   mr/=n;mg/=n;mb/=n;var gm=(mr+mg+mb)/3;
   function lim(v){return v<.86?.86:v>1.16?1.16:v}
-  var wr=1,wg=1,wb=1; /* v0.75: gri-dünya beyaz ayarı KAPALI — kırmızı kıyafet çoğunluktayken resmi yeşile/camgöbeğine çekiyordu; iPad'in kendi beyaz ayarına güven */
+  var wr=1,wg=1,wb=1; /* v0.76: gri-dünya beyaz ayarı KAPALI — kırmızı kıyafet çoğunluktayken resmi yeşile/camgöbeğine çekiyordu; iPad'in kendi beyaz ayarına güven */
 
   /* 2 — otomatik seviye (parlaklık histogramı) */
   var hist=new Uint32Array(256),lum,px2,py2,idx2,wq;
-  var qx0=(w*.28)|0,qx1=(w*.72)|0,qy0=(h*.15)|0,qy1=(h*.60)|0; /* v0.75: ölçüm yüze (orta-üst) odaklı */
+  var qx0=(w*.28)|0,qx1=(w*.72)|0,qy0=(h*.15)|0,qy1=(h*.60)|0; /* v0.76: ölçüm yüze (orta-üst) odaklı */
   for(py2=0;py2<h;py2+=3)for(px2=0;px2<w;px2+=3){
     idx2=(py2*w+px2)<<2;
     lum=(d[idx2]*77+d[idx2+1]*150+d[idx2+2]*29)>>8;
@@ -1832,11 +1834,11 @@ function enhanceShot(src){
   var st1=new Float32Array(256),mean=0,cnt=0,t;
   for(i=0;i<256;i++){t=(i+off)*gain;st1[i]=t<0?0:t>255?255:t;mean+=st1[i]*hist[i];cnt+=hist[i];}
   mean=cnt?mean/cnt:128;
-  var target=140,gam=1; /* v0.75: dye-sub baskı ekrandan koyu çıkar → hedef daha aydınlık */
+  var target=140,gam=1; /* v0.76: dye-sub baskı ekrandan koyu çıkar → hedef daha aydınlık */
   if(mean>6&&mean<250){gam=Math.log(target/255)/Math.log(mean/255);}
-  if(gam<.50)gam=.50; if(gam>1)gam=1; /* v0.75: asla karartma */
+  if(gam<.50)gam=.50; if(gam>1)gam=1; /* v0.76: asla karartma */
   gam=1+(gam-1)*k;
-  var dark=mean<100, sAmt=(dark?.06:.12)*k; /* v0.75: gölgeleri gömme */
+  var dark=mean<100, sAmt=(dark?.06:.12)*k; /* v0.76: gölgeleri gömme */
   var lut=new Uint8ClampedArray(256),sv;
   for(i=0;i<256;i++){
     t=255*Math.pow(st1[i]/255,gam);
@@ -2190,7 +2192,7 @@ function composeOn(x,id,sh){
       var iy=lay.t,ih=H-lay.t-lay.b,pad=lay.s;
       if(f==="kongre")drawTopBand(x,sx0,0,sw,lay.t,true);
       var gap=12,cellW=sw-2*pad,cellH=(ih-gap*3-(f==="kenar"?pad:0))/4;
-      if(seritKisi===1&&st2===1){x.fillStyle="#FFFFFF";x.fillRect(sx0-20,0,sw+40,H);continue;} /* v0.75 tek kişi: tek şerit, ikinci yarı boş */
+      if(seritKisi===1&&st2===1){x.fillStyle="#FFFFFF";x.fillRect(sx0-20,0,sw+40,H);continue;} /* v0.76 tek kişi: tek şerit, ikinci yarı boş */
       for(var i=0;i<4;i++)cover(x,sh[(sh.length>=8?st2*4:0)+i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
       if(lay.b>0&&f!=="png"){
         drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
@@ -2286,7 +2288,7 @@ function compose(){
 
 /* ---------- review kontrolleri ---------- */
 var MAXCOPY=10;
-/* ŞERİT TEK KİŞİ (v0.75): 4x6 kâğıt yine ortadan kesilir; misafir tek şerit alır, ikinci yarı şık bir etkinlik kartı olur
+/* ŞERİT TEK KİŞİ (v0.76): 4x6 kâğıt yine ortadan kesilir; misafir tek şerit alır, ikinci yarı şık bir etkinlik kartı olur
    (boş kâğıt atmaz, karta logo/etkinlik/tarih/numara basılır). */
 var seritKisi=2;
 function seritKart(x,sx0,sw,f){
@@ -2663,7 +2665,7 @@ function figurAkis(){
   var myGen=aiGen;
   aiState("work");go("ai");
   $("#aiMsg").textContent="Fotoğrafın hazırlanıyor — 20-40 saniye sürebilir…";
-  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,ton:figurSahne.sepya?"saygili":(figurSahne.ton||"eglenceli") /* v0.75: anma karesi her zaman saygılı */,sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
+  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,ton:figurSahne.sepya?"saygili":(figurSahne.ton||"eglenceli") /* v0.76: anma karesi her zaman saygılı */,sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
   figurKare(shotsEnh[0],st).then(function(c){
     if(myGen!==aiGen)return;
     aiShots=[c];figurEkran(true);compose();chips();go("review");
@@ -2914,8 +2916,9 @@ function gorevliUyar(m){
   if(!d){d=document.createElement("div");d.id="gorevliUyari";
     d.style.cssText="position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99;max-width:min(92vw,720px);background:#7a1f12;color:#fff;font:600 14px/1.4 var(--ui);padding:10px 16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)";
     document.body.appendChild(d);}
-  d.textContent="Görevliye — yazıcı: "+m;d.style.display="block";
-  clearTimeout(d._t);d._t=setTimeout(function(){d.style.display="none"},25000);
+  d.textContent="Görevliye — yazıcı: "+m+"  (kapatmak için dokun)";d.style.display="block";d.style.cursor="pointer";
+  d.onclick=function(){d.style.display="none"};clearTimeout(d._t); /* v0.76: görevli kapatana kadar kalır */
+  try{var A=window.AudioContext||window.webkitAudioContext;var ac=new A(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();setTimeout(function(){try{o.stop();ac.close()}catch(e){}},350)}catch(e){}
 }
 /* tarayıcının yazdır ekranı (Windows'ta DNP dahil çalışır; Mac'te DNP 4x6'yı basamaz) */
 function tarayiciylaBas(kare,kopya){
@@ -2961,13 +2964,14 @@ function finish(){
 /* QR ham JPG yerine kendi teslim sayfamıza gider: misafir tek dokunuşla telefonuna kaydeder */
 /* her misafir çıktısının numarası — misafirin gördüğü tek ad: OBSKURA 1000 */
 var misafirNo=null;
+function kitEtiket(n){var h=String(S.kitHarf||"").toUpperCase().replace(/[^A-Z]/g,"").slice(0,2);return (h?h+"-":"")+n}
 function siraNo(){if(misafirNo)return misafirNo;var n=Math.max(1000,(S.seriNo|0)||1000);misafirNo=n;S.seriNo=n+1;save();return n}
 function numaraliKare(du){
   return new Promise(function(res){
     if(!du||du.indexOf("data:image")!==0)return res(du);
     var im=new Image();im.onload=function(){
       var c=document.createElement("canvas");c.width=im.width;c.height=im.height;var x=c.getContext("2d");x.drawImage(im,0,0);
-      var fs=Math.max(14,Math.round(c.height*.012)),t="OBSKURA "+siraNo();
+      var fs=Math.max(14,Math.round(c.height*.012)),t="OBSKURA "+kitEtiket(siraNo());
       x.font="600 "+fs+"px Figtree,-apple-system,sans-serif";x.textAlign="right";x.textBaseline="bottom";
       x.fillStyle="rgba(0,0,0,.35)";x.fillText(t,c.width-fs*1.05+1,c.height-fs*.55+1);x.fillStyle="rgba(255,255,255,.82)";x.fillText(t,c.width-fs*1.05,c.height-fs*.55);
       res(c.toDataURL("image/jpeg",.95));
@@ -2977,7 +2981,7 @@ function numaraliKare(du){
 function fotoSayfa(u){
   try{
     var base=location.href.split(/[?#]/)[0].replace(/[^\/]*$/,"");
-    return base+"foto.html?u="+encodeURIComponent(u)+(S.evt?("&e="+encodeURIComponent(String(S.evt).slice(0,60))):"")+(misafirNo?("&n="+misafirNo):"");
+    return base+"foto.html?u="+encodeURIComponent(u)+(S.evt?("&e="+encodeURIComponent(String(S.evt).slice(0,60))):"")+(misafirNo?("&n="+encodeURIComponent(kitEtiket(misafirNo))):"");
   }catch(e){return u}
 }
 function drawQR(text){
@@ -3773,7 +3777,7 @@ function fillAdmin(){
   $("#fBg").value=S.bandBg;$("#fFg").value=S.bandFg;$("#fEnh").value=S.enh;
   ovNote();drawPreviews();
   if($("#fAiModel"))$("#fAiModel").value=S.aiModel||"gemini-2.5-flash-image";
-  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fGptKey").value=S.gptKey||"";$("#fPin").value="";$("#fStilMotor").value=S.stilMotor||"gemini";try{panelSekmeleri()}catch(e){}figurPanel();$("#fFilterMode").value=S.filterMode;
+  tg($("#tgAi"),S.aiOn);tg($("#tgFlatter"),S.flatter!==false);$("#fAiKey").value=S.aiKey;$("#fGptKey").value=S.gptKey||"";$("#fPin").value="";try{$("#fKitHarf").value=S.kitHarf||""}catch(e){}$("#fStilMotor").value=S.stilMotor||"gemini";try{panelSekmeleri()}catch(e){}figurPanel();$("#fFilterMode").value=S.filterMode;
   if($("#fAiBudget"))$("#fAiBudget").value=S.aiBudget||"";
   if($("#fAiBirim"))$("#fAiBirim").value=S.aiBirim||"";
   tg($("#tgEvMode"),S.evMode);tg($("#tgPrintDown"),S.printDown);
@@ -3805,7 +3809,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.75 · şeritte 1 kişi / 2 kişi seçimi · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.76 · şeritte 1 kişi / 2 kişi seçimi · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -4522,8 +4526,8 @@ function deliverQR(){
     return;
   }
   qrMessage(["Fotoğraf yükleniyor…","birkaç saniye"]);
-  try{$("#noYaz").textContent=misafirNo?("OBSKURA "+misafirNo):"";}catch(e){}
-  var myCode="OBSKURA-"+siraNo()+"-"+Math.random().toString(36).slice(2,10);
+  try{$("#noYaz").textContent=misafirNo?("OBSKURA "+kitEtiket(misafirNo)):"";}catch(e){}
+  var myCode="OBSKURA-"+kitEtiket(siraNo())+"-"+Math.random().toString(36).slice(2,10);
   var sw=$("#qrSwap");if(sw){sw.style.display="none";sw.textContent=""}
   /* INSTAGRAM: post + story birlikte yüklenir; karekoda dokununca ikisi arasında geçilir */
   if(mode&&(mode.id==="insta"||mode.id==="figur")&&storyComposed){
@@ -4673,6 +4677,7 @@ $("#profSel").addEventListener("change",function(){
 $("#tgAi").onclick=function(){S.aiOn=!S.aiOn;tg(this,S.aiOn);save()};
 $("#fAiKey").addEventListener("input",function(){S.aiKey=this.value.trim();save()});
 $("#fGptKey").addEventListener("input",function(){S.gptKey=this.value.trim();save()});
+$("#fKitHarf").addEventListener("input",function(){var v=this.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,2);this.value=v;S.kitHarf=v;save()});
 $("#fStilMotor").addEventListener("change",function(){S.stilMotor=this.value;save();aiCache=new Map();});
 $("#fPin").addEventListener("input",function(){var v=this.value.replace(/\D/g,"").slice(0,4);this.value=v;if(v.length===4){S.pin=v;save();}});
 $("#fFigurMod").addEventListener("change",function(){S.figurMod=this.value;save();figurSahneYukle(buildModes)});
@@ -4705,7 +4710,7 @@ function stilSayGuncelle(){
   sayYaz(document.getElementById("stilSay"),stilNormal());
   sayYaz(document.getElementById("gunSay"),stilGun());
 }
-function stilHepsi(v){stilNormal().forEach(function(x){x.on=v});save();buildStyleRows();updDurum();}
+function stilHepsi(v){stilNormal().forEach(function(x){if(v&&x.kaldir)return;x.on=v});save();buildStyleRows();updDurum();}
 function gunHepsi(v){stilGun().forEach(function(x){x.on=v});save();buildStyleRows();updDurum();}
 function buildStyleRows(){
   var w=$("#styleList");if(!w)return;
@@ -4879,7 +4884,7 @@ function assetsAll(cb){
 }
 function buildPkg(cb){
   libAll(function(lib){assetsAll(function(as){profAll(function(pr){
-    var S2=JSON.parse(JSON.stringify(S));delete S2.pin;cb({obskura:1,v:37,t:Date.now(),S:S2,lib:lib,assets:as,profiles:pr});
+    var S2=JSON.parse(JSON.stringify(S));["pin","aiKey","gptKey","mailKey"].forEach(function(k){delete S2[k]}); /* v0.76: müşteri kendi hesabını bağlar */cb({obskura:1,v:37,t:Date.now(),S:S2,lib:lib,assets:as,profiles:pr});
   })})});
 }
 $("#cfgFileBtn").onclick=function(){
