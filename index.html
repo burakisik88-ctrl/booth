@@ -89,7 +89,7 @@ h1 em{font-style:italic;color:var(--amber)}
 /* ---- shoot ---- */
 .frame{position:relative;background:#000;border-radius:var(--r);overflow:hidden;
   box-shadow:0 0 0 1px var(--line),0 30px 70px rgba(0,0,0,.55);
-  --ar:.75;aspect-ratio:var(--ar);width:min(1200px,96vw,calc(80vh * var(--ar)))} /* v0.79: çekim ekranı büyük */
+  --ar:.75;aspect-ratio:var(--ar);width:min(1200px,96vw,calc(80vh * var(--ar)))} /* v0.80: çekim ekranı büyük */
 #s-shoot .topbar{position:absolute;top:0;left:0;right:0;z-index:5;background:transparent}
 #s-shoot .stage{padding-top:8px}
 .frame video{display:block;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
@@ -923,7 +923,7 @@ var DEF={brand:"OBSKURA",tag:"Anı burada kalır",evt:"",date:"",
   shots:0,prints:0,sheets:0};
 var S=JSON.parse(JSON.stringify(DEF));
 try{var raw=localStorage.getItem("booth.v1");if(raw)S=Object.assign(S,JSON.parse(raw));}catch(e){}
-if(S.evt==="Melisa & Burak")S.evt=""; if(S.date==="26.08.2026")S.date=""; /* v0.79: deneme metni temizlendi */
+if(S.evt==="Melisa & Burak")S.evt=""; if(S.date==="26.08.2026")S.date=""; /* v0.80: deneme metni temizlendi */
 if(!S.aiStyles||!S.aiStyles.length)S.aiStyles=JSON.parse(JSON.stringify(DEFSTYLES));
 DEFSTYLES.forEach(function(d){
   var s=null;for(var i2=0;i2<S.aiStyles.length;i2++)if(S.aiStyles[i2].id===d.id)s=S.aiStyles[i2];
@@ -1339,8 +1339,25 @@ var SABLONLAR=[
  {id:"fuar-gri",n:"Fuar / Stand — Gri",aciklama:"Nötr, her marka rengiyle uyumlu",
   s:{frame:"kenar",bandBg:"#23211F",bandFg:"#F1EDE7"}},
  {id:"sade-fotograf",n:"Sadece Fotoğraf",aciklama:"Çerçeve yok, tam sayfa kare",
-  s:{frame:"yok"}}
+  s:{frame:"yok"}},
+ {id:"epam-yilbasi",n:"EPAM — Yılbaşı 2027",aciklama:"EPAM'ın 12 çerçevesi kütüphaneye yüklenir (11 tek kare + 1 film şeridi)",
+  s:{frame:"png",bandBg:"#08080A",bandFg:"#F5F5F5",evt:"EPAM New Year",date:"2027"},
+  paket:{klasor:"paket/epam/",dosyalar:["01_vizor_rec","02_epam_harfleri","03_dev_2027","04_film_seridi","05_kod_satiri","06_neon","07_serit_4lu","08_binis_karti","09_yilin_katkilari","10_geri_sayim_00_00","11_konfeti","12_hediye"],serit:["07_serit_4lu"]}}
 ];
+/* v0.80: şablon paketi — çerçeveleri sitedeki klasörden indirip kütüphaneye koyar (sabit id: tekrar basınca çoğalmaz) */
+function paketYukle(t,bitti){
+  var P=t.paket,base=location.href.split(/[?#]/)[0].replace(/[^\/]*$/,""),n=0,hata=0;
+  (function sir(i){
+    if(i>=P.dosyalar.length){try{renderLib()}catch(e){}bitti&&bitti(n,hata);return}
+    var ad=P.dosyalar[i];
+    fetch(base+P.klasor+"epam-"+ad+".png",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.blob()}).then(function(b){
+      return new Promise(function(ok){var fr=new FileReader();fr.onload=function(){ok(fr.result)};fr.readAsDataURL(b)});
+    }).then(function(u){
+      var mod=(P.serit.indexOf(ad)>=0)?"serit":"tek";
+      libPut({id:"pk-"+t.id+"-"+ad,kind:"frame",mode:mod,name:"EPAM "+ad.replace(/^\d+_/,"").replace(/_/g," "),dataUrl:u},function(){n++;sir(i+1)});
+    }).catch(function(){hata++;sir(i+1)});
+  })(0);
+}
 function sablonUygula(id){
   var t=null;
   for(var i=0;i<SABLONLAR.length;i++)if(SABLONLAR[i].id===id)t=SABLONLAR[i];
@@ -1348,6 +1365,7 @@ function sablonUygula(id){
   for(var k in t.s)if(Object.prototype.hasOwnProperty.call(t.s,k))S[k]=t.s[k];
   S.sablon=id;save();
   try{overlays&&0}catch(e){}
+  if(t.paket)paketYukle(t,function(n,h){try{var e=document.getElementById("cfgNote")||document.getElementById("bulkNote");if(e)e.textContent=t.n+": "+n+" çerçeve kütüphaneye eklendi"+(h?" ("+h+" indirilemedi)":"")+" ✓"}catch(x){}});
   return true;
 }
 
@@ -1807,7 +1825,7 @@ function boxBlur(d,w,h,r){
 }
 function enhanceShot(src){
   if(S.enh==="kapali")return src;
-  var k=(S.enh==="guclu")?1:.45; /* v0.79: iPad kamerası zaten işliyor — hafif dokun */
+  var k=(S.enh==="guclu")?1:.45; /* v0.80: iPad kamerası zaten işliyor — hafif dokun */
   var w=src.width,h=src.height;
   var c=document.createElement("canvas");c.width=w;c.height=h;
   var x=c.getContext("2d");x.drawImage(src,0,0);
@@ -1818,11 +1836,11 @@ function enhanceShot(src){
   for(i=0;i<L;i+=28){mr+=d[i];mg+=d[i+1];mb+=d[i+2];n++;}
   mr/=n;mg/=n;mb/=n;var gm=(mr+mg+mb)/3;
   function lim(v){return v<.86?.86:v>1.16?1.16:v}
-  var wr=1,wg=1,wb=1; /* v0.79: gri-dünya beyaz ayarı KAPALI — kırmızı kıyafet çoğunluktayken resmi yeşile/camgöbeğine çekiyordu; iPad'in kendi beyaz ayarına güven */
+  var wr=1,wg=1,wb=1; /* v0.80: gri-dünya beyaz ayarı KAPALI — kırmızı kıyafet çoğunluktayken resmi yeşile/camgöbeğine çekiyordu; iPad'in kendi beyaz ayarına güven */
 
   /* 2 — otomatik seviye (parlaklık histogramı) */
   var hist=new Uint32Array(256),lum,px2,py2,idx2,wq;
-  var qx0=(w*.28)|0,qx1=(w*.72)|0,qy0=(h*.15)|0,qy1=(h*.60)|0; /* v0.79: ölçüm yüze (orta-üst) odaklı */
+  var qx0=(w*.28)|0,qx1=(w*.72)|0,qy0=(h*.15)|0,qy1=(h*.60)|0; /* v0.80: ölçüm yüze (orta-üst) odaklı */
   for(py2=0;py2<h;py2+=3)for(px2=0;px2<w;px2+=3){
     idx2=(py2*w+px2)<<2;
     lum=(d[idx2]*77+d[idx2+1]*150+d[idx2+2]*29)>>8;
@@ -1841,11 +1859,11 @@ function enhanceShot(src){
   var st1=new Float32Array(256),mean=0,cnt=0,t;
   for(i=0;i<256;i++){t=(i+off)*gain;st1[i]=t<0?0:t>255?255:t;mean+=st1[i]*hist[i];cnt+=hist[i];}
   mean=cnt?mean/cnt:128;
-  var target=140,gam=1; /* v0.79: dye-sub baskı ekrandan koyu çıkar → hedef daha aydınlık */
+  var target=140,gam=1; /* v0.80: dye-sub baskı ekrandan koyu çıkar → hedef daha aydınlık */
   if(mean>6&&mean<250){gam=Math.log(target/255)/Math.log(mean/255);}
-  if(gam<.50)gam=.50; if(gam>1)gam=1; /* v0.79: asla karartma */
+  if(gam<.50)gam=.50; if(gam>1)gam=1; /* v0.80: asla karartma */
   gam=1+(gam-1)*k;
-  var dark=mean<100, sAmt=(dark?.06:.12)*k; /* v0.79: gölgeleri gömme */
+  var dark=mean<100, sAmt=(dark?.06:.12)*k; /* v0.80: gölgeleri gömme */
   var lut=new Uint8ClampedArray(256),sv;
   for(i=0;i<256;i++){
     t=255*Math.pow(st1[i]/255,gam);
@@ -2199,7 +2217,7 @@ function composeOn(x,id,sh){
       var iy=lay.t,ih=H-lay.t-lay.b,pad=lay.s;
       if(f==="kongre")drawTopBand(x,sx0,0,sw,lay.t,true);
       var gap=12,cellW=sw-2*pad,cellH=(ih-gap*3-(f==="kenar"?pad:0))/4;
-      if(seritKisi===1&&st2===1){x.fillStyle="#FFFFFF";x.fillRect(sx0-20,0,sw+40,H);continue;} /* v0.79 tek kişi: tek şerit, ikinci yarı boş */
+      if(seritKisi===1&&st2===1){x.fillStyle="#FFFFFF";x.fillRect(sx0-20,0,sw+40,H);continue;} /* v0.80 tek kişi: tek şerit, ikinci yarı boş */
       for(var i=0;i<4;i++)cover(x,sh[(sh.length>=8?st2*4:0)+i],sx0+pad,iy+(f==="kenar"?pad:0)+i*(cellH+gap),cellW,cellH);
       if(lay.b>0&&f!=="png"){
         drawFooter(x,sx0,H-lay.b,sw,lay.b,true,S.bandFg);
@@ -2295,7 +2313,7 @@ function compose(){
 
 /* ---------- review kontrolleri ---------- */
 var MAXCOPY=10;
-/* ŞERİT TEK KİŞİ (v0.79): 4x6 kâğıt yine ortadan kesilir; misafir tek şerit alır, ikinci yarı şık bir etkinlik kartı olur
+/* ŞERİT TEK KİŞİ (v0.80): 4x6 kâğıt yine ortadan kesilir; misafir tek şerit alır, ikinci yarı şık bir etkinlik kartı olur
    (boş kâğıt atmaz, karta logo/etkinlik/tarih/numara basılır). */
 var seritKisi=2;
 function seritKart(x,sx0,sw,f){
@@ -2672,7 +2690,7 @@ function figurAkis(){
   var myGen=aiGen;
   aiState("work");go("ai");
   $("#aiMsg").textContent="Fotoğrafın hazırlanıyor — 20-40 saniye sürebilir…";
-  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,ton:figurSahne.sepya?"saygili":(figurSahne.ton||"eglenceli") /* v0.79: anma karesi her zaman saygılı */,sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
+  var st={img:figurSahne.dataUrl,fig:figurSahne.fig,ton:figurSahne.sepya?"saygili":(figurSahne.ton||"eglenceli") /* v0.80: anma karesi her zaman saygılı */,sepya:!!figurSahne.sepya,motor:figurSahne.motor||"gemini",etiket:figurSahne.etiket||"",etiketYok:true};
   figurKare(shotsEnh[0],st).then(function(c){
     if(myGen!==aiGen)return;
     aiShots=[c];figurEkran(true);compose();chips();go("review");
@@ -2924,7 +2942,7 @@ function gorevliUyar(m){
     d.style.cssText="position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:99;max-width:min(92vw,720px);background:#7a1f12;color:#fff;font:600 14px/1.4 var(--ui);padding:10px 16px;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.35)";
     document.body.appendChild(d);}
   d.textContent="Görevliye — yazıcı: "+m+"  (kapatmak için dokun)";d.style.display="block";d.style.cursor="pointer";
-  d.onclick=function(){d.style.display="none"};clearTimeout(d._t); /* v0.79: görevli kapatana kadar kalır */
+  d.onclick=function(){d.style.display="none"};clearTimeout(d._t); /* v0.80: görevli kapatana kadar kalır */
   try{var A=window.AudioContext||window.webkitAudioContext;var ac=new A(),o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start();setTimeout(function(){try{o.stop();ac.close()}catch(e){}},350)}catch(e){}
 }
 /* tarayıcının yazdır ekranı (Windows'ta DNP dahil çalışır; Mac'te DNP 4x6'yı basamaz) */
@@ -3818,7 +3836,7 @@ function fillAdmin(){
   tg($("#tgBg"),S.bgOn);tg($("#tgFrChoice"),S.frameChoice);$("#fCldName").value=S.cldName;$("#fCldPreset").value=S.cldPreset;updGalLink();
   tg($("#tgPngText"),S.pngText);
   if(S.profName)$("#fProfName").value=S.profName;
-  $("#verNote").textContent="v0.79 · şeritte 1 kişi / 2 kişi seçimi · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
+  $("#verNote").textContent="v0.80 · şeritte 1 kişi / 2 kişi seçimi · Kamera: "+(fileMode?"cihaz kamerası (çerçeve içinde canlı kamera kapalı)":"canlı");
 }
 if($("#kontrolBtn"))$("#kontrolBtn").onclick=function(){sahaKontrol(true)};
 if($("#kontrolHizli"))$("#kontrolHizli").onclick=function(){sahaKontrol(false)};
@@ -4894,7 +4912,7 @@ function assetsAll(cb){
 }
 function buildPkg(cb){
   libAll(function(lib){assetsAll(function(as){profAll(function(pr){
-    var S2=JSON.parse(JSON.stringify(S));(window.__anahtarli?["pin"]:["pin","aiKey","gptKey","mailKey"]).forEach(function(k){delete S2[k]});window.__anahtarli=false; /* v0.79: anahtar isteğe bağlı */cb({obskura:1,v:37,t:Date.now(),S:S2,lib:lib,assets:as,profiles:pr});
+    var S2=JSON.parse(JSON.stringify(S));(window.__anahtarli?["pin"]:["pin","aiKey","gptKey","mailKey"]).forEach(function(k){delete S2[k]});window.__anahtarli=false; /* v0.80: anahtar isteğe bağlı */cb({obskura:1,v:37,t:Date.now(),S:S2,lib:lib,assets:as,profiles:pr});
   })})});
 }
 $("#cfgFileBtn").onclick=function(){
